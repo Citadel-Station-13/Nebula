@@ -1,18 +1,17 @@
 /obj/item/clothing/head/fated
 	name = "strange key"
 	desc = "A glowing key, uncomfortably hot to the touch."
-	icon_state = "world"
 	icon = 'icons/clothing/head/fated_key.dmi'
-	on_mob_icon = 'icons/clothing/head/fated_key.dmi'
 	body_parts_covered = 0
 	armor = list(melee = 55, bullet = 55, laser = 55, energy = 55, bomb = 55, bio = 100, rad = 100)
+	flags_inv = 0
 
 /obj/item/clothing/head/fated/equipped(mob/living/user, slot)
 	. = ..()
 	if(istype(user) && canremove && loc == user && slot == slot_head_str)
 		canremove = FALSE
 		to_chat(user, SPAN_DANGER("<font size=3>\The [src] shatters your mind as it sears through [user.isSynthetic() ? "metal and circuitry" : "flesh and bone"], embedding itself into your skull!</font>"))
-		user.Paralyse(5)
+		SET_STATUS_MAX(user, STAT_PARA, 5)
 		addtimer(CALLBACK(src, .proc/activate_role), 5 SECONDS)
 	else
 		canremove = TRUE
@@ -27,7 +26,7 @@
 		name = "halo of starfire"
 		desc = "Beware the fire of the star-bearers; it is too terrible to touch."
 		starbearer.add_aura(new /obj/aura/regenerating(starbearer))
-		body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS|HEAD|FACE|EYES|HANDS|FEET
+		body_parts_covered = SLOT_UPPER_BODY|SLOT_LOWER_BODY|SLOT_LEGS|SLOT_ARMS|SLOT_HEAD|SLOT_FACE|SLOT_EYES|SLOT_HANDS|SLOT_FEET
 		item_flags |= ITEM_FLAG_AIRTIGHT
 
 /obj/item/clothing/head/fated/verb/perform_division()
@@ -50,7 +49,7 @@
 		return
 
 	var/atom/blade
-	for(var/obj/item/held in shuffle(list(user.l_hand, user.r_hand)))
+	for(var/obj/item/held in shuffle(user.get_held_items()))
 		if(has_edge(held))
 			blade = held
 			break
@@ -58,20 +57,16 @@
 		to_chat(user, SPAN_WARNING("You have no blade with which to divide."))
 		return
 
-	user.visible_message(SPAN_DANGER("\The [user] raises \his [blade.name] to shoulder level!"))
+	var/decl/pronouns/G = user.get_pronouns()
+	user.visible_message(SPAN_DANGER("\The [user] raises [G.his] [blade.name] to shoulder level!"))
 	playsound(user.loc, 'sound/effects/sanctionedaction_prep.ogg', 100, 1)
 
 	if(do_after(user, 1 SECOND, progress = 0, same_direction = 1))
-		user.visible_message(SPAN_DANGER("\The [user] swings \his [blade.name] in a blazing arc!"))
+		user.visible_message(SPAN_DANGER("\The [user] swings [G.his] [blade.name] in a blazing arc!"))
 		playsound(user.loc, 'sound/effects/sanctionedaction_cut.ogg', 100, 1)
 		var/obj/item/projectile/sanctionedaction/cut = new(user.loc)
 		cut.launch(get_edge_target_turf(get_turf(user.loc), user.dir), user.zone_sel.selecting)
 		user.last_special = world.time + 10 SECONDS
-
-/obj/item/clothing/suit/fated
-	name = "mantle"
-	desc = "A heavy, gold-chained mantle."
-	icon_state = "fated"
 
 /obj/item/projectile/sanctionedaction
 	name = "rending slash"
@@ -84,10 +79,10 @@
 	. = TRUE
 	if(istype(A, /mob/living/carbon/human))
 		var/mob/living/carbon/human/H = A
-		if(H.organs && H.organs.len)
-			var/obj/item/organ/external/E = pick(H.organs)
-			if(istype(E))
-				E.droplimb()
+		var/list/external_organs = H.get_external_organs()
+		if(LAZYLEN(external_organs))
+			var/obj/item/organ/external/E = pick(external_organs)
+			E.dismember()
 
 /obj/item/projectile/sanctionedaction/before_move()
 	. = ..()

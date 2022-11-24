@@ -1,6 +1,5 @@
 /datum/map_template/ruin/exoplanet/lodge
 	name = "lodge"
-	id = "lodge"
 	description = "A wood cabin."
 	suffixes = list("lodge/lodge.dmm")
 	cost = 1
@@ -8,4 +7,4 @@
 	ruin_tags = RUIN_HUMAN|RUIN_HABITAT
 
 /turf/simulated/floor/wood/usedup
-	initial_gas = list(MAT_CO2 = MOLES_O2STANDARD, MAT_NITROGEN = MOLES_N2STANDARD)
+	initial_gas = list(/decl/material/gas/carbon_dioxide = MOLES_O2STANDARD, /decl/material/gas/nitrogen = MOLES_N2STANDARD)

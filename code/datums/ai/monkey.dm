@@ -1,8 +1,9 @@
 /datum/ai/monkey
 	name = "monkey"
+	expected_type = /mob/living/carbon/human
 	var/list/no_touchie = list(
 		/obj/item/mirror,
-		/obj/item/storage/mirror
+		/obj/structure/mirror
 	)
 
 /datum/ai/monkey/do_process(var/time_elapsed)
@@ -10,7 +11,7 @@
 		return
 
 	if(prob(33) && isturf(body.loc) && !LAZYLEN(body.grabbed_by)) //won't move if being pulled
-		body.SelfMove(pick(GLOB.cardinal))
+		body.SelfMove(pick(global.cardinal))
 
 	var/obj/held = body.get_active_hand()
 	if(held && prob(1))
@@ -22,7 +23,8 @@
 			else
 				body.throw_item(T)
 		else
-			body.unequip_item()
+			body.unEquip(held)
+
 	if(!held && !body.restrained() && prob(5))
 		var/list/touchables = list()
 		for(var/obj/O in range(1,get_turf(body)))

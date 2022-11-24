@@ -14,7 +14,6 @@
 		"nav_cluster_6",
 		"nav_cluster_7"
 	)
-	known = 0
 
 /obj/effect/overmap/visitable/sector/cluster/generate_skybox()
 	return overlay_image('icons/skybox/rockbox.dmi', "rockbox", COLOR_ASTEROID_ROCK, RESET_COLOR)
@@ -26,7 +25,6 @@
 
 /datum/map_template/ruin/away_site/mining_asteroid
 	name = "Mining - Asteroid"
-	id = "awaysite_mining_asteroid"
 	description = "A medium-sized asteroid full of minerals."
 	suffixes = list("mining/mining-asteroid.dmm")
 	cost = 1
@@ -85,7 +83,6 @@
 		"nav_away_6",
 		"nav_away_7"
 	)
-	known = 0
 
 /obj/effect/overmap/visitable/sector/away/generate_skybox()
 	return overlay_image('icons/skybox/rockbox.dmi', "rockbox", COLOR_ASTEROID_ROCK, RESET_COLOR)
@@ -97,7 +94,6 @@
 
 /datum/map_template/ruin/away_site/mining_signal
 	name = "Mining - Planetoid"
-	id = "awaysite_mining_signal"
 	description = "A mineral-rich, formerly-volcanic site on a planetoid."
 	suffixes = list("mining/mining-signal.dmm")
 	cost = 1
@@ -155,7 +151,6 @@
 		"nav_orb_6",
 		"nav_orb_7"
 	)
-	known = 0
 
 /obj/effect/overmap/visitable/sector/orb/get_skybox_representation()
 	var/image/res = overlay_image('icons/skybox/skybox_rock_128.dmi', "bigrock", COLOR_ASTEROID_ROCK, RESET_COLOR)
@@ -165,7 +160,6 @@
 
 /datum/map_template/ruin/away_site/orb
 	name = "Mining - Orb"
-	id = "awaysite_mining_orb"
 	description = "A sort of circular asteroid with a bird."
 	suffixes = list("mining/mining-orb.dmm")
 	cost = 1
@@ -212,7 +206,7 @@
 /obj/structure/totem
 	name = "totem"
 	desc = "Some kind of post, pillar, plinth, column, or totem."
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/structures/totem.dmi'
 	icon_state = "totem"
 	density = 1
 	anchored = 1
@@ -229,7 +223,7 @@
 
 
 /obj/item/stool/stone/Initialize(mapload)
-	. = ..(mapload, MAT_SANDSTONE)
+	. = ..(mapload, /decl/material/solid/stone/sandstone)
 
 /turf/simulated/floor/airless/stone
 	name = "temple floor"

@@ -7,57 +7,56 @@
 	icon_state = "evidenceobj"
 	item_state = ""
 	w_class = ITEM_SIZE_SMALL
+	material = /decl/material/solid/plastic
+	item_flags = ITEM_FLAG_HOLLOW
 	var/obj/item/stored_item = null
 
-/obj/item/evidencebag/MouseDrop(var/obj/item/I)
-	if (!ishuman(usr))
-		return
+/obj/item/evidencebag/handle_mouse_drop(atom/over, mob/user)
+	if(user.get_empty_hand_slot() && isitem(over))
 
-	var/mob/living/carbon/human/user = usr
+		var/obj/item/I = over
 
-	if (!(user.l_hand == src || user.r_hand == src))
-		return //bag must be in your hands to use
+		if(I.anchored)
+			return ..()
 
-	if (isturf(I.loc))
-		if (!user.Adjacent(I))
-			return
-	else
-		//If it isn't on the floor. Do some checks to see if it's in our hands or a box. Otherwise give up.
-		if(istype(I.loc,/obj/item/storage))	//in a container.
-			var/sdepth = I.storage_depth(user)
-			if (sdepth == -1 || sdepth > 1)
-				return	//too deeply nested to access
+		if(istype(I, /obj/item/evidencebag))
+			to_chat(user, SPAN_WARNING("You find putting an evidence bag in another evidence bag to be slightly absurd."))
+			return TRUE
 
-			var/obj/item/storage/U = I.loc
-			user.client.screen -= I
-			U.contents.Remove(I)
-		else if(user.l_hand == I)					//in a hand
-			user.drop_l_hand()
-		else if(user.r_hand == I)					//in a hand
-			user.drop_r_hand()
+		if(I.w_class > ITEM_SIZE_NORMAL)
+			to_chat(user, SPAN_WARNING("\The [I] won't fit in \the [src]."))
+			return TRUE
+
+		if(stored_item)
+			to_chat(user, SPAN_WARNING("\The [src] already has something inside it."))
+			return TRUE
+
+		if(isturf(I.loc))
+			if(!user.Adjacent(I))
+				return ..()
 		else
-			return
+			//If it isn't on the floor. Do some checks to see if it's in our hands or a box. Otherwise give up.
+			if(istype(I.loc, /obj/item/storage))	//in a container.
+				var/sdepth = I.storage_depth(user)
+				if (sdepth == -1 || sdepth > 1)
+					return ..() //too deeply nested to access
+				var/obj/item/storage/U = I.loc
+				user.client.screen -= I
+				U.contents.Remove(I)
+			else if(I in user.get_held_items())
+				user.drop_from_inventory(I)
+			else
+				return ..()
 
-	if(!istype(I) || I.anchored)
-		return
-
-	if(istype(I, /obj/item/evidencebag))
-		to_chat(user, "<span class='notice'>You find putting an evidence bag in another evidence bag to be slightly absurd.</span>")
-		return
-
-	if(I.w_class > ITEM_SIZE_NORMAL)
-		to_chat(user, "<span class='notice'>[I] won't fit in [src].</span>")
-		return
-
-	if(stored_item)
-		to_chat(user, "<span class='notice'>[src] already has something inside it.</span>")
-		return
-
-	user.visible_message("[user] puts [I] into [src]", "You put [I] inside [src].",\
-	"You hear a rustle as someone puts something into a plastic bag.")
-	if(!user.skill_check(SKILL_FORENSICS, SKILL_BASIC))
-		I.add_fingerprint(user)
-	store_item(I)
+		user.visible_message( \
+			SPAN_NOTICE("\The [user] puts \the [I] into \the [src]."), \
+			SPAN_NOTICE("You put \the [I] inside \the [src]."), \
+			"You hear a rustle as someone puts something into a plastic bag.")
+		if(!user.skill_check(SKILL_FORENSICS, SKILL_BASIC))
+			I.add_fingerprint(user)
+		store_item(I)
+		return TRUE
+	. = ..()
 
 /obj/item/evidencebag/proc/store_item(obj/item/I)
 	I.forceMove(src)
@@ -66,18 +65,15 @@
 	update_icon()
 
 /obj/item/evidencebag/on_update_icon()
-	overlays.Cut()
+	. = ..()
 	if(stored_item)
 		icon_state = "evidence"
-		var/xx = stored_item.pixel_x	//save the offset of the item
-		var/yy = stored_item.pixel_y
-		stored_item.pixel_x = 0		//then remove it so it'll stay within the evidence bag
-		stored_item.pixel_y = 0
-		var/image/img = image("icon"=stored_item, "layer"=FLOAT_LAYER)	//take a snapshot. (necessary to stop the underlays appearing under our inventory-HUD slots ~Carn
-		stored_item.pixel_x = xx		//and then return it
-		stored_item.pixel_y = yy
-		overlays += img
-		overlays += "evidence"	//should look nicer for transparent stuff. not really that important, but hey.
+		//copy the item's appearance and make its layer relative to its parent.
+		var/image/img = image("icon"=stored_item, "layer"=FLOAT_LAYER) // (necessary to stop the underlays appearing under our inventory-HUD slots ~Carn
+		img.pixel_x = 0
+		img.pixel_y = 0
+		add_overlay(img)
+		add_overlay("evidence")	//should look nicer for transparent stuff. not really that important, but hey.
 
 		desc = "An evidence bag containing [stored_item]."
 	else
@@ -88,7 +84,6 @@
 	if(stored_item)
 		user.visible_message("[user] takes [stored_item] out of [src]", "You take [stored_item] out of [src].",\
 		"You hear someone rustle around in a plastic bag, and remove something.")
-
 		user.put_in_hands(stored_item)
 		empty()
 	else

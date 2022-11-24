@@ -8,9 +8,9 @@
 	origin_tech = "{'programming':2}"
 	usage_flags = PROGRAM_ALL & ~PROGRAM_PDA
 	external_slot = TRUE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
-	var/can_write = TRUE
+	// TODO: reimplment RFID card write access and can_write
 	var/can_broadcast = FALSE
 	var/obj/item/card/id/stored_card = null
 
@@ -40,7 +40,7 @@
 					if(check_functionality()) // Read the access, or show "RD_ERR"
 						var/datum/access/access_information = get_access_by_id(access_id)
 						var/access_type = access_information.access_type
-						if(access_type == ACCESS_TYPE_NONE || access_type == ACCESS_TYPE_SYNDICATE || access_type == ACCESS_TYPE_CENTCOM) // Don't elaborate on these access types.
+						if(access_type == ACCESS_TYPE_NONE || access_type == ACCESS_TYPE_ANTAG || access_type == ACCESS_TYPE_CENTCOM) // Don't elaborate on these access types.
 							list_of_accesses += "UNKNOWN" // "UNKNOWN"
 						else
 							list_of_accesses += uppertext(access_information.desc)
@@ -63,7 +63,7 @@
 
 	if(!device.stored_card)
 		if(usr)
-			to_chat(usr, "There is no card in \the [src]")
+			to_chat(usr, "There is no card in \the [src].")
 		return
 
 	device.eject_id(usr)
@@ -79,7 +79,7 @@
 		dropInto(loc)
 	stored_card = null
 
-	var/datum/extension/interactive/ntos/os = get_extension(loc, /datum/extension/interactive/ntos)
+	var/datum/extension/interactive/os/os = get_extension(loc, /datum/extension/interactive/os)
 	if(os)
 		os.event_idremoved()
 	loc.verbs -= /obj/item/stock_parts/computer/card_slot/proc/verb_eject_id
@@ -102,16 +102,15 @@
 		loc.verbs |= /obj/item/stock_parts/computer/card_slot/proc/verb_eject_id
 	return TRUE
 
-/obj/item/stock_parts/computer/card_slot/attackby(obj/item/card/id/I, mob/living/user)
+/obj/item/stock_parts/computer/card_slot/attackby(obj/item/card/id/I, mob/user)
 	if(!istype(I))
-		return
+		return ..()
 	insert_id(I, user)
 	return TRUE
 
 /obj/item/stock_parts/computer/card_slot/broadcaster // read only
 	name = "RFID card broadcaster"
 	desc = "Reads and broadcasts the RFID signal of an inserted card."
-	can_write = FALSE
 	can_broadcast = TRUE
 
 	usage_flags = PROGRAM_PDA

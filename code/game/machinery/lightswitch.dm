@@ -6,23 +6,24 @@
 	desc = "It turns lights on and off. What are you, simple?"
 	icon = 'icons/obj/power.dmi'
 	icon_state = "light0"
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
 	anchored = 1.0
 	idle_power_usage = 20
 	power_channel = LIGHT
+	required_interaction_dexterity = DEXTERITY_SIMPLE_MACHINES
+	z_flags = ZMM_MANGLE_PLANES
+
 	var/on = 0
 	var/area/connected_area = null
 	var/other_area = null
-	var/image/overlay
 
 	construct_state = /decl/machine_construction/wall_frame/panel_closed/simple
 	frame_type = /obj/item/frame/button/light_switch
 	uncreated_component_parts = list(
-		/obj/item/stock_parts/power/apc/buildable
+		/obj/item/stock_parts/power/apc
 	)
-	base_type = /obj/machinery/light_switch/buildable
-
-/obj/machinery/light_switch/buildable
-	uncreated_component_parts = null
+	base_type = /obj/machinery/light_switch
+	directional_offset = "{'NORTH':{'y':-20}, 'SOUTH':{'y':25}, 'EAST':{'x':-24}, 'WEST':{'x':24}}"
 
 /obj/machinery/light_switch/on
 	on = TRUE
@@ -35,7 +36,7 @@
 		connected_area = get_area(src)
 
 	if(connected_area && name == initial(name))
-		SetName("light switch ([connected_area.name])")
+		SetName("light switch ([connected_area.proper_name])")
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/machinery/light_switch/LateInitialize()
@@ -44,20 +45,14 @@
 	update_icon()
 
 /obj/machinery/light_switch/on_update_icon()
-	if(!overlay)
-		overlay = image(icon, "light1-overlay")
-		overlay.plane = EFFECTS_ABOVE_LIGHTING_PLANE
-		overlay.layer = ABOVE_LIGHTING_LAYER
-
-	overlays.Cut()
+	cut_overlays()
 	if(stat & (NOPOWER|BROKEN))
 		icon_state = "light-p"
 		set_light(0)
 	else
 		icon_state = "light[on]"
-		overlay.icon_state = "light[on]-overlay"
-		overlays += overlay
-		set_light(0.1, 0.1, 1, 2, on ? "#82ff4c" : "#f86060")
+		add_overlay(emissive_overlay(icon, "[icon_state]-overlay"))
+		set_light(2, 0.25, on ? "#82ff4c" : "#f86060")
 
 /obj/machinery/light_switch/examine(mob/user, distance)
 	. = ..()
@@ -80,4 +75,11 @@
 	if(CanInteract(user, DefaultTopicState()))
 		playsound(src, "switch", 30)
 		set_state(!on)
+		return TRUE
+
+/obj/machinery/light_switch/attackby(obj/item/I, mob/user)
+	. = ..()
+	if(!.)
+		to_chat(user, SPAN_NOTICE("You flick \the [src] with \the [I]."))
+		interface_interact(user) 
 		return TRUE

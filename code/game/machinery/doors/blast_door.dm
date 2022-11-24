@@ -12,6 +12,7 @@
 	desc = "That looks like it doesn't open easily."
 	icon = 'icons/obj/doors/rapid_pdoor.dmi'
 	icon_state = null
+	can_open_manually = FALSE
 
 	// Icon states for different shutter types. Simply change this instead of rewriting the update_icon proc.
 	var/icon_state_open = null
@@ -28,6 +29,7 @@
 	closed_layer = ABOVE_WINDOW_LAYER
 	dir = NORTH
 	explosion_resistance = 25
+	atom_flags = ATOM_FLAG_ADJACENT_EXCEPTION
 
 	//Most blast doors are infrequently toggled and sometimes used with regular doors anyways,
 	//turning this off prevents awkward zone geometry in places like medbay lobby, for example.
@@ -47,7 +49,7 @@
 		/decl/public_access/public_method/toggle_door_to
 	)
 	stock_part_presets = list(/decl/stock_part_preset/radio/receiver/blast_door = 1)
-
+	construct_state = /decl/machine_construction/default/panel_closed/blast_door
 	frame_type = /obj/structure/door_assembly/blast
 	base_type = /obj/machinery/door/blast
 
@@ -60,7 +62,7 @@
 		set_opacity(0)
 		layer = open_layer
 
-	implicit_material = decls_repository.get_decl(MAT_PLASTEEL)
+	implicit_material = GET_DECL(/decl/material/solid/metal/plasteel)
 
 /obj/machinery/door/blast/examine(mob/user)
 	. = ..()
@@ -80,6 +82,13 @@
 // Parameters: None
 // Description: Updates icon of this object. Uses icon state variables.
 /obj/machinery/door/blast/on_update_icon()
+
+	if(set_dir_on_update)
+		if(connections & (NORTH|SOUTH))
+			set_dir(EAST)
+		else
+			set_dir(SOUTH)
+
 	if(density)
 		if(stat & BROKEN)
 			icon_state = icon_state_closed_broken
@@ -97,14 +106,16 @@
 // Parameters: None
 // Description: Opens the door. No checks are done inside this proc.
 /obj/machinery/door/blast/proc/force_open()
+	set waitfor = FALSE
 	operating = 1
 	playsound(src.loc, open_sound, 100, 1)
 	flick(icon_state_opening, src)
-	set_density(0)
+
+	sleep(0.6 SECONDS)
+	set_density(FALSE)
 	update_nearby_tiles()
 	update_icon()
-	set_opacity(0)
-	sleep(15)
+	set_opacity(FALSE)
 	layer = open_layer
 	operating = 0
 
@@ -116,11 +127,12 @@
 	playsound(src.loc, close_sound, 100, 1)
 	layer = closed_layer
 	flick(icon_state_closing, src)
-	set_density(1)
+
+	sleep(0.6 SECONDS)
+	set_density(TRUE)
 	update_nearby_tiles()
 	update_icon()
-	set_opacity(1)
-	sleep(15)
+	set_opacity(TRUE)
 	operating = 0
 
 // Proc: force_toggle()
@@ -141,18 +153,19 @@
 // This only works on broken doors or doors without power. Also allows repair with Plasteel.
 /obj/machinery/door/blast/attackby(obj/item/C, mob/user)
 	add_fingerprint(user, 0, C)
-	if(isCrowbar(C) || (istype(C, /obj/item/material/twohanded/fireaxe) && C:wielded == 1))
-		if(((stat & NOPOWER) || (stat & BROKEN)) && !( operating ))
-			to_chat(user, "<span class='notice'>You begin prying at \the [src]...</span>")
-			if(do_after(user, 2 SECONDS, src))
-				force_toggle()
+	if(!panel_open) //Do this here so the door won't change state while prying out the circuit
+		if(IS_CROWBAR(C) || (istype(C, /obj/item/twohanded/fireaxe) && C:wielded == 1))
+			if(((stat & NOPOWER) || (stat & BROKEN)) && !( operating ))
+				to_chat(user, "<span class='notice'>You begin prying at \the [src]...</span>")
+				if(do_after(user, 2 SECONDS, src))
+					force_toggle()
+				else
+					to_chat(user, "<span class='warning'>You must remain still while working on \the [src].</span>")
 			else
-				to_chat(user, "<span class='warning'>You must remain still while working on \the [src].</span>")
-		else
-			to_chat(user, "<span class='notice'>[src]'s motors resist your effort.</span>")
-		return
-	if(istype(C, /obj/item/stack/material) && C.get_material_type() == MAT_PLASTEEL)
-		var/amt = Ceiling((maxhealth - health)/150)
+				to_chat(user, "<span class='notice'>[src]'s motors resist your effort.</span>")
+			return
+	if(istype(C, /obj/item/stack/material) && C.get_material_type() == /decl/material/solid/metal/plasteel)
+		var/amt = CEILING((maxhealth - health)/150)
 		if(!amt)
 			to_chat(user, "<span class='notice'>\The [src] is already fully functional.</span>")
 			return
@@ -175,20 +188,23 @@
 // Parameters: None
 // Description: Opens the door. Does necessary checks. Automatically closes if autoclose is true
 /obj/machinery/door/blast/open()
-	if (operating || (stat & BROKEN || stat & NOPOWER))
+	if (!can_open() || (stat & BROKEN || stat & NOPOWER))
 		return
+
 	force_open()
+
 	if(autoclose)
-		spawn(150)
-			close()
-	return 1
+		addtimer(CALLBACK(src, .proc/close), 15 SECONDS, TIMER_UNIQUE|TIMER_OVERRIDE)
+
+	return TRUE
 
 // Proc: close()
 // Parameters: None
 // Description: Closes the door. Does necessary checks.
 /obj/machinery/door/blast/close()
-	if (operating || (stat & BROKEN || stat & NOPOWER))
+	if (!can_close() || (stat & BROKEN || stat & NOPOWER))
 		return
+
 	force_close()
 
 /obj/machinery/door/blast/toggle(to_open = density)
@@ -214,6 +230,15 @@
 	sleep(5 SECONDS)
 	close()
 
+/obj/machinery/door/blast/dismantle()
+	var/obj/structure/door_assembly/da = ..()
+	. = da
+
+	da.anchored = 1
+	da.state = 1
+	da.created_name = name
+	da.update_icon()
+
 /decl/public_access/public_method/close_door_delayed
 	name = "delayed close door"
 	desc = "Closes the door if possible, after a short delay."
@@ -230,18 +255,25 @@
 	)
 
 /obj/machinery/button/blast_door
-	icon = 'icons/obj/stationobjs.dmi'
 	name = "remote blast door-control"
 	desc = "It controls blast doors, remotely."
+	icon = 'icons/obj/machines/button_blastdoor.dmi'
 	icon_state = "blastctrl"
 	stock_part_presets = list(
 		/decl/stock_part_preset/radio/event_transmitter/blast_door_button = 1,
 		/decl/stock_part_preset/radio/receiver/blast_door_button = 1
 	)
 	uncreated_component_parts = list(
-		/obj/item/stock_parts/power/apc/buildable,
+		/obj/item/stock_parts/power/apc,
 		/obj/item/stock_parts/radio/transmitter/on_event/buildable,
 		/obj/item/stock_parts/radio/receiver/buildable
+	)
+	base_type = /obj/machinery/button/blast_door/buildable
+	frame_type = /obj/item/frame/button/blastdoor
+
+/obj/machinery/button/blast_door/buildable
+	uncreated_component_parts = list(
+		/obj/item/stock_parts/power/apc
 	)
 
 /obj/machinery/button/blast_door/Initialize(mapload)
@@ -293,8 +325,8 @@
 /obj/machinery/door/blast/regular/escape_pod
 	name = "Escape Pod release Door"
 
-/obj/machinery/door/blast/regular/escape_pod/Process()	
-	if(SSevac.evacuation_controller.emergency_evacuation && SSevac.evacuation_controller.state >= EVAC_LAUNCHING && src.icon_state == icon_state_closed)		
+/obj/machinery/door/blast/regular/escape_pod/Process()
+	if(SSevac.evacuation_controller && SSevac.evacuation_controller.emergency_evacuation && SSevac.evacuation_controller.state >= EVAC_LAUNCHING && src.icon_state == icon_state_closed)
 		src.force_open()
 	. = ..()
 
@@ -322,7 +354,8 @@
 	maxhealth = 500
 	explosion_resistance = 10
 	pry_mod = 0.55
-	frame_type = /obj/structure/door_assembly/blast
+	frame_type = /obj/structure/door_assembly/blast/shutter
 
 /obj/machinery/door/blast/shutters/open
 	begins_closed = FALSE
+	icon_state = "shutter0"

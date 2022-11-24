@@ -1,12 +1,3 @@
-GLOBAL_LIST_INIT(science_strings, list(
-	"Extruding Mesh Terrain", "Virtualizing Microprocessor",
-	"Reticulating Splines", "Inserting Chaos Generator",
-	"Reversing Polarity", "Unfolding Proteins",
-	"Simulating Alien Abductions", "Scanning Pigeons",
-	"Iterating Chaos Array", "Abstracting Supermatter",
-	"Adjusting Social Network", "Recalculating Clown Principle"
-))
-
 #define MINIMUM_SCIENCE_INTERVAL 450
 #define MAXIMUM_SCIENCE_INTERVAL 900
 #define MINIMUM_FOLDING_EVENT_INTERVAL 50
@@ -15,7 +6,7 @@ GLOBAL_LIST_INIT(science_strings, list(
 
 /datum/computer_file/program/folding
 	filename = "fldng"
-	filedesc = "FOLDING@SAPCE"
+	filedesc = "FOLDING@SPACE"
 	extended_desc = "This program uses processor cycles for science, in exchange for money."
 	program_icon_state = "generic"
 	program_key_state = "generic_key"
@@ -68,8 +59,7 @@ GLOBAL_LIST_INIT(science_strings, list(
 
 	if(world.timeofday > next_event)
 		return
-
-	var/mob/living/holder = get_holder_of_type(computer, /mob/living/carbon/human)
+	var/mob/living/holder = computer.holder.get_recursive_loc_of_type(/mob/living/carbon/human)
 	if(!crashed)
 		if(holder)
 			switch(rand(1,3))
@@ -77,7 +67,7 @@ GLOBAL_LIST_INIT(science_strings, list(
 					to_chat(holder, SPAN_WARNING("The [computer] starts to get very warm."))
 				if(2)
 					to_chat(holder, SPAN_WARNING("The [computer] gets scaldingly hot, burning you!"))
-					holder.burn_skin(0.45)
+					holder.take_overall_damage(0, 0.45)
 				if(3)
 					to_chat(holder, SPAN_WARNING("The [computer] pings an error chime."))
 					crashed = TRUE
@@ -96,8 +86,22 @@ GLOBAL_LIST_INIT(science_strings, list(
 
 /datum/nano_module/program/folding
 	name = "FOLDING@SPACE"
+	var/static/list/science_strings = list(
+		"Extruding Mesh Terrain",
+		"Virtualizing Microprocessor",
+		"Reticulating Splines",
+		"Inserting Chaos Generator",
+		"Reversing Polarity",
+		"Unfolding Proteins",
+		"Simulating Alien Abductions",
+		"Scanning Pigeons",
+		"Iterating Chaos Array",
+		"Abstracting Supermatter",
+		"Adjusting Social Network",
+		"Recalculating Clown Principle"
+	)
 
-/datum/nano_module/program/folding/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
+/datum/nano_module/program/folding/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
 	var/list/data = host.initial_data()
 	var/datum/computer_file/program/folding/prog = program
 	if(!prog.computer)
@@ -106,7 +110,7 @@ GLOBAL_LIST_INIT(science_strings, list(
 	data["time_remaining"] = ((prog.started_on + prog.current_interval) - world.timeofday) / 10
 	data["completed"] = prog.started_on + prog.current_interval <= world.timeofday
 	data["crashed"] = prog.crashed
-	data["science_string"] = pick(GLOB.science_strings)
+	data["science_string"] = pick(science_strings)
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if (!ui)

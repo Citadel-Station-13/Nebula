@@ -20,7 +20,7 @@
 	skillset = null
 	. = ..()
 
-/datum/nano_module/skill_ui/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.self_state)
+/datum/nano_module/skill_ui/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.self_topic_state)
 	if(!skillset)
 		return
 	var/list/data = skillset.get_nano_data(hide_unskilled)
@@ -52,7 +52,7 @@
 	.["hide_unskilled"] = hide_unskilled
 
 	var/list/skill_data = list()
-	var/decl/hierarchy/skill/skill = decls_repository.get_decl(/decl/hierarchy/skill)
+	var/decl/hierarchy/skill/skill = GET_DECL(/decl/hierarchy/skill)
 	for(var/decl/hierarchy/skill/V in skill.children)
 		var/list/skill_cat = list()
 		skill_cat["name"] = V.name
@@ -93,7 +93,7 @@
 	return skill_item
 
 /datum/skillset/proc/check_prerequisites(skill_type)
-	var/decl/hierarchy/skill/S = decls_repository.get_decl(skill_type)
+	var/decl/hierarchy/skill/S = GET_DECL(skill_type)
 	if(!S.prerequisites)
 		return TRUE
 	for(var/prereq_type in S.prerequisites)
@@ -114,7 +114,7 @@ The generic antag version.
 	. = ..()
 	.["can_choose"] = can_choose()
 	var/list/selection_data = list()
-	var/decl/hierarchy/skill/skill = decls_repository.get_decl(/decl/hierarchy/skill)
+	var/decl/hierarchy/skill/skill = GET_DECL(/decl/hierarchy/skill)
 	for(var/i in 1 to length(max_choices))
 		var/choices = max_choices[i]
 		if(!choices)
@@ -142,7 +142,7 @@ The generic antag version.
 			return 1
 		var/level = text2num(href_list["add_skill"])
 		var/list/choices = list()
-		for(var/decl/hierarchy/skill/S in GLOB.skills)
+		for(var/decl/hierarchy/skill/S in global.skills)
 			if(can_select(S.type, level))
 				choices[S.name] = S.type
 		var/choice = input(usr, "Which skill would you like to add?", "Add Skill") as null|anything in choices
@@ -187,7 +187,7 @@ The generic antag version.
 		return
 	if(skillset.get_value(skill_type) >= level)
 		return
-	var/decl/hierarchy/skill/S = decls_repository.get_decl(skill_type)
+	var/decl/hierarchy/skill/S = GET_DECL(skill_type)
 	if(length(S.levels) < level)
 		return
 	if(S.prerequisites)
@@ -240,7 +240,7 @@ Admin version, with debugging options.
 /datum/nano_module/skill_ui/admin
 	template = "skill_ui_admin.tmpl"
 
-/datum/nano_module/skill_ui/admin/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.admin_state)
+/datum/nano_module/skill_ui/admin/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.admin_topic_state)
 	..() //Uses different default state.
 
 /datum/nano_module/skill_ui/admin/get_data()
@@ -284,7 +284,7 @@ Admin version, with debugging options.
 		log_and_message_admins("SKILLS: The job skills for [key_name_admin(skillset.owner)] have been imported.")
 		return 1
 	if(href_list["antag"])
-		var/datum/antagonist/antag = skillset.owner.mind && player_is_antag(skillset.owner.mind)
+		var/decl/special_role/antag = skillset.owner.mind && player_is_antag(skillset.owner.mind)
 		if(!antag)
 			to_chat(usr, "Mob lacks valid antag status.")
 			return 1

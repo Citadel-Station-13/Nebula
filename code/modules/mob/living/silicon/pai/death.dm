@@ -2,10 +2,10 @@
 	if(card)
 		card.removePersonality()
 		if(gibbed)
-			dropInto(loc.loc)
+			dropInto(loc)
 			qdel(card)
 		else
-			close_up()
+			fold()
 	if(mind)
 		qdel(mind)
 	..(gibbed, deathmessage, "You have suffered a critical system failure, and are dead.")

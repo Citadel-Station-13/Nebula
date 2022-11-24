@@ -6,10 +6,13 @@
 	item_state = "analyzer"
 	w_class = ITEM_SIZE_SMALL
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	item_flags = ITEM_FLAG_NO_BLUDGEON
-	material = MAT_ALUMINIUM
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/aluminium
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
+	drop_sound = 'sound/foley/drop1.ogg'
+	pickup_sound = 'sound/foley/pickup2.ogg'
+
 	var/scan_title
 	var/scan_data
 	var/window_width = 450
@@ -22,7 +25,7 @@
 	show_menu(user)
 
 /obj/item/scanner/proc/show_menu(mob/user)
-	var/datum/browser/written/popup = new(user, "scanner", scan_title, window_width, window_height)
+	var/datum/browser/written_digital/popup = new(user, "scanner", scan_title, window_width, window_height)
 	popup.set_content("[get_header()]<hr>[scan_data]")
 	popup.open()
 

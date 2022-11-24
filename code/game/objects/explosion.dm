@@ -1,7 +1,7 @@
 //TODO: Flash range does nothing currently
 /proc/explosion(turf/epicenter, devastation_range, heavy_impact_range, light_impact_range, flash_range, adminlog = 1, z_transfer = UP|DOWN)
 	if(config.use_iterative_explosions)
-		. = explosion_iter(epicenter, (devastation_range * 2 + heavy_impact_range + light_impact_range))
+		. = explosion_iter(epicenter, (devastation_range * 2 + heavy_impact_range + light_impact_range), z_transfer)
 	else
 		. = explosion_basic(epicenter, devastation_range, heavy_impact_range, light_impact_range, flash_range, adminlog, z_transfer)
 
@@ -9,7 +9,7 @@
 	set waitfor = FALSE
 
 	epicenter = get_turf(epicenter)
-	if(!epicenter) 
+	if(!epicenter)
 		return
 
 	var/start_time = REALTIMEOFDAY
@@ -36,7 +36,7 @@
 	far_dist += heavy_impact_range * 5
 	far_dist += devastation_range * 20
 	var/frequency = get_rand_frequency()
-	for(var/mob/M in GLOB.player_list)
+	for(var/mob/M in global.player_list)
 		if(M.z == epicenter.z)
 			var/turf/M_turf = get_turf(M)
 			var/dist = get_dist(M_turf, epicenter)
@@ -44,7 +44,7 @@
 			if(dist <= round(max_range + world.view - 2, 1))
 				M.playsound_local(epicenter, get_sfx("explosion"), 100, 1, frequency, falloff = 5) // get_sfx() is so that everyone gets the same sound
 			else if(dist <= far_dist)
-				var/far_volume = Clamp(far_dist, 30, 50) // Volume is based on explosion size and dist
+				var/far_volume = clamp(far_dist, 30, 50) // Volume is based on explosion size and dist
 				far_volume += (dist <= far_dist * 0.5 ? 50 : 0) // add 50 volume if the mob is pretty close to the explosion
 				M.playsound_local(epicenter, 'sound/effects/explosionfar.ogg', far_volume, 1, frequency, falloff = 5)
 
@@ -89,7 +89,7 @@
 						addtimer(CALLBACK(AM, /atom/movable/.proc/throw_at, throw_target, throw_dist, throw_dist), 0)
 
 	var/took = (REALTIMEOFDAY-start_time)/10
-	if(Debug2) 
+	if(Debug2)
 		to_world_log("## DEBUG: Explosion([x0],[y0],[z0])(d[devastation_range],h[heavy_impact_range],l[light_impact_range]): Took [took] seconds.")
 	return 1
 
@@ -102,7 +102,7 @@
 #define SEARCH_DIR(dir) \
 	search_direction = dir;\
 	search_turf = get_step(current_turf, search_direction);\
-	if (istype(search_turf, /turf/simulated)) {\
+	if (isturf(search_turf)) {\
 		turf_queue += search_turf;\
 		dir_queue += search_direction;\
 		power_queue += current_power;\
@@ -138,7 +138,7 @@
 	var/list/dir_queue = list(NORTH, SOUTH, EAST, WEST)
 	var/list/power_queue = list(power, power, power, power)
 
-	var/turf/simulated/current_turf
+	var/turf/current_turf
 	var/turf/search_turf
 	var/origin_direction
 	var/search_direction
@@ -189,7 +189,7 @@
 
 	var/sound/explosion_sound = sound(get_sfx("explosion"))
 
-	for (var/thing in GLOB.player_list)
+	for (var/thing in global.player_list)
 		var/mob/M = thing
 		var/reception = EXPLFX_BOTH
 		var/turf/T = isturf(M.loc) ? M.loc : get_turf(M)
@@ -205,7 +205,7 @@
 		if (T.type == /turf/space)	// Equality is faster than istype.
 			reception = EXPLFX_NONE
 
-			for (var/turf/simulated/THING in RANGE_TURFS(M, 1))
+			for (var/turf/THING in RANGE_TURFS(M, 1))
 				reception |= EXPLFX_SHAKE
 				break
 
@@ -214,7 +214,7 @@
 				continue
 
 		var/dist = get_dist(M, epicenter) || 1
-		if ((reception & EXPLFX_SOUND) && M.ear_deaf <= 0)
+		if ((reception & EXPLFX_SOUND) && !HAS_STATUS(M, STAT_DEAF))
 			if (dist <= close_dist)
 				M.playsound_local(epicenter, explosion_sound, min(100, volume), 1, frequency, falloff = 5)
 				//You hear a far explosion if you're outside the blast radius. Small bombs shouldn't be heard all over the station.

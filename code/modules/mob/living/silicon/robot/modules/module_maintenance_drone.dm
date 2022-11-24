@@ -2,8 +2,11 @@
 	name = "drone module"
 	hide_on_manifest = 1
 	no_slip = 1
-	networks = list(
-		NETWORK_ENGINEERING
+	camera_channels = list(
+		CAMERA_CAMERA_CHANNEL_ENGINEERING
+	)
+	languages = list(
+		/decl/language/human/common = FALSE
 	)
 	equipment = list(
 		/obj/item/weldingtool,
@@ -12,15 +15,15 @@
 		/obj/item/crowbar,
 		/obj/item/wirecutters,
 		/obj/item/multitool,
+		/obj/item/t_scanner,
 		/obj/item/lightreplacer,
 		/obj/item/gripper,
-		/obj/item/soap,
+		/obj/item/mop/advanced,
 		/obj/item/gripper/no_use/loader,
-		/obj/item/extinguisher/mini,
-		/obj/item/pipe_painter,
-		/obj/item/floor_painter,
+		/obj/item/chems/spray/extinguisher/mini,
+		/obj/item/paint_sprayer,
 		/obj/item/inducer/borg,
-		/obj/item/plunger/robot,
+		/obj/item/plunger/unbreakable,
 		/obj/item/inflatable_dispenser/robot,
 		/obj/item/chems/spray/cleaner/drone,
 		/obj/item/borg/sight/hud/jani,
@@ -28,9 +31,12 @@
 		/obj/item/matter_decompiler,
 		/obj/item/stack/material/cyborg/steel,
 		/obj/item/stack/material/rods/cyborg,
+		/obj/item/stack/material/strut/cyborg,
 		/obj/item/stack/tile/floor/cyborg,
+		/obj/item/stack/tile/roof/cyborg,
 		/obj/item/stack/material/cyborg/glass,
 		/obj/item/stack/material/cyborg/glass/reinforced,
+		/obj/item/stack/material/cyborg/fiberglass,
 		/obj/item/stack/tile/wood/cyborg,
 		/obj/item/stack/material/cyborg/wood,
 		/obj/item/stack/cable_coil/cyborg,
@@ -78,7 +84,9 @@
 	for(var/thing in list(
 		 /obj/item/stack/material/cyborg/steel,
 		 /obj/item/stack/material/rods/cyborg,
+		 /obj/item/stack/material/strut/cyborg,
 		 /obj/item/stack/tile/floor/cyborg,
+		 /obj/item/stack/tile/roof/cyborg,
 		 /obj/item/stack/material/cyborg/glass/reinforced
 		))
 		var/obj/item/stack/stack = locate(thing) in equipment
@@ -86,7 +94,8 @@
 
 	for(var/thing in list(
 		 /obj/item/stack/material/cyborg/glass,
-		 /obj/item/stack/material/cyborg/glass/reinforced
+		 /obj/item/stack/material/cyborg/glass/reinforced,
+		 /obj/item/stack/material/cyborg/fiberglass
 		))
 		var/obj/item/stack/stack = locate(thing) in equipment
 		LAZYDISTINCTADD(stack.synths, glass)
@@ -97,7 +106,7 @@
 		))
 		var/obj/item/stack/stack = locate(thing) in equipment
 		LAZYDISTINCTADD(stack.synths, wood)
-	
+
 	var/obj/item/stack/cable_coil/cyborg/C = locate() in equipment
 	C.synths = list(wire)
 
@@ -115,7 +124,6 @@
 	channels = list(
 		"Engineering" = 1
 	)
-	languages = list()
 
 /obj/item/robot_module/drone/construction/Initialize()
 	equipment += /obj/item/rcd/borg

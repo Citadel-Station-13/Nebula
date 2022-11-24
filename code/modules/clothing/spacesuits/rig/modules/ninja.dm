@@ -29,14 +29,14 @@
 
 	suit_overlay_active =   "stealth_active"
 	suit_overlay_inactive = "stealth_inactive"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_DIAMOND = MATTER_AMOUNT_TRACE,
-		MAT_SILVER = MATTER_AMOUNT_TRACE,
-		MAT_URANIUM = MATTER_AMOUNT_TRACE,
-		MAT_GOLD = MATTER_AMOUNT_TRACE,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/gemstone/diamond = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/stealth_field/activate()
@@ -82,7 +82,7 @@
 /obj/item/rig_module/teleporter/proc/phase_in(var/mob/M,var/turf/T)
 	if(!M || !T)
 		return
-	holder.spark_system.start()
+	spark_at(holder, 5, holder = holder)
 	M.phase_in(T)
 
 /obj/item/rig_module/teleporter/proc/phase_out(var/mob/M,var/turf/T)
@@ -94,7 +94,7 @@
 
 	var/mob/living/carbon/human/H = holder.wearer
 
-	if(!istype(H.loc, /turf))
+	if(!isturf(H.loc))
 		to_chat(H, "<span class='warning'>You cannot teleport out of your current location.</span>")
 		return 0
 
@@ -112,7 +112,7 @@
 		to_chat(H, "<span class='warning'>You cannot teleport into solid walls.</span>")
 		return 0
 
-	if(T.z in GLOB.using_map.admin_levels)
+	if(isAdminLevel(T.z))
 		to_chat(H, "<span class='warning'>You cannot use your teleporter on this Z-level.</span>")
 		return 0
 
@@ -154,18 +154,18 @@
 	fabrication_type = /obj/item/energy_net
 	use_power_cost = 20 KILOWATTS
 	origin_tech = "{'materials':5,'powerstorage':6,'magnets':5,'esoteric':4,'engineering':6}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_DIAMOND = MATTER_AMOUNT_TRACE,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/gemstone/diamond = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/fabricator/energy_net/engage(atom/target)
 
 	if(holder && holder.wearer)
 		if(..(target) && target)
-			holder.wearer.Beam(target,"n_beam",,10)
+			holder.wearer.Beam(target, "n_beam", time = 1 SECOND)
 		return 1
 	return 0
 
@@ -233,7 +233,7 @@
 	holder.visible_message("<span class='danger'>\The [src.holder] emits a shrill tone!</span>","<span class='danger'> You hear a shrill tone!</span>")
 	sleep(blink_solid_time)
 	src.blink_mode = 0
-	src.holder.set_light(0, 0, 0, 2, "#000000")
+	src.holder.set_light(0)
 
 	explosion(get_turf(src), explosion_values[1], explosion_values[2], explosion_values[3], explosion_values[4])
 	if(holder && holder.wearer)
@@ -243,7 +243,7 @@
 
 /obj/item/rig_module/self_destruct/Process()
 	// Not being worn, leave it alone.
-	if(!holder || !holder.wearer || !holder.wearer.wear_suit == holder)
+	if(!holder || !holder.wearer || !holder.wearer.get_equipped_item(slot_wear_suit_str) == holder)
 		return 0
 
 	//OH SHIT.
@@ -257,17 +257,17 @@
 		if(0)
 			return
 		if(1)
-			src.holder.set_light(1, 1, 8.5, 2, "#ff0a00")
+			src.holder.set_light(1.5, 8.5, "#ff0a00")
 			sleep(6)
-			src.holder.set_light(0, 0, 0, 2, "#000000")
+			src.holder.set_light(0)
 			spawn(6) .()
 		if(2)
-			src.holder.set_light(1, 1, 8.5, 2, "#ff0a00")
+			src.holder.set_light(1.5, 8.5, "#ff0a00")
 			sleep(2)
-			src.holder.set_light(0, 0, 0, 2, "#000000")
+			src.holder.set_light(0)
 			spawn(2) .()
 		if(3)
-			src.holder.set_light(1, 1, 8.5, 2, "#ff0a00")
+			src.holder.set_light(1.5, 8.5, "#ff0a00")
 
 /obj/item/rig_module/grenade_launcher/ninja
 	suit_overlay = null

@@ -27,25 +27,20 @@
 	var/datum/fabricator_build_order/currently_building
 
 	var/fabricator_class = FABRICATOR_CLASS_GENERAL
+	var/filter_string
 
-	var/list/stored_material
-	var/list/storage_capacity
-	var/list/base_storage_capacity = list(
-		MAT_STEEL =     SHEET_MATERIAL_AMOUNT * 20,
-		MAT_ALUMINIUM = SHEET_MATERIAL_AMOUNT * 20,
-		MAT_GLASS =     SHEET_MATERIAL_AMOUNT * 10,
-		MAT_PLASTIC =   SHEET_MATERIAL_AMOUNT * 10
-	)
+	var/list/stored_material = list()
+	var/list/storage_capacity = list()
+	var/base_storage_capacity_mult = 20
+	var/list/base_storage_capacity = list()
 
-	var/initial_id_tag
 	var/show_category = "All"
 	var/fab_status_flags = 0
 	var/mat_efficiency = 1.1
 	var/build_time_multiplier = 1
-	var/global/list/stored_substances_to_names = list()
 
 	var/list/design_cache = list()
-	var/list/installed_designs
+	var/list/installed_designs = list()
 
 	var/sound_id
 	var/datum/sound_token/sound_token
@@ -55,6 +50,17 @@
 
 	var/initial_network_id
 	var/initial_network_key
+
+	var/species_variation = /decl/species/human // If this fabricator is a variant for a specific species, this will be checked to unlock species-specific designs.
+
+	// If TRUE, fills fabricator with material on initalize
+	var/prefilled = FALSE
+
+	//Collapsing Menus stuff
+	var/ui_expand_queue     = FALSE
+	var/ui_expand_resources = FALSE
+	var/ui_expand_config    = FALSE
+	var/ui_nb_categories    = 1      //Cached amount of categories in loaded designs. Used to decide if we display the category filter or not
 
 /obj/machinery/fabricator/Destroy()
 	QDEL_NULL(currently_building)
@@ -67,7 +73,8 @@
 	if(length(storage_capacity))
 		var/list/material_names = list()
 		for(var/thing in storage_capacity)
-			material_names += "[storage_capacity[thing]] [stored_substances_to_names[thing]]"
+			var/decl/material/mat = GET_DECL(thing)
+			material_names += "[storage_capacity[thing]] [mat.use_name]"
 		to_chat(user, SPAN_NOTICE("It can store [english_list(material_names)]."))
 	if(has_recycler)
 		to_chat(user, SPAN_NOTICE("It has a built-in shredder that can recycle most items, although any materials it cannot use will be wasted."))
@@ -79,30 +86,35 @@
 	sound_id = "[fabricator_sound]"
 
 	// Get any local network we need to be part of.
-	set_extension(src, /datum/extension/network_device, initial_network_id, initial_network_key, NETWORK_CONNECTION_WIRED)
+	set_extension(src, /datum/extension/network_device, initial_network_id, initial_network_key, RECEIVER_STRONG_WIRELESS)
 
-	// Initialize material storage lists.
-	stored_material = list()
-	for(var/mat in base_storage_capacity)
-		stored_material[mat] = 0
+	if(SSfabrication.post_recipe_init)
+		refresh_design_cache()
+	else
+		SSfabrication.queue_design_cache_refresh(src)
 
-		// Update global type to string cache.
-		if(!stored_substances_to_names[mat])
-			if(ispath(mat, /decl/material))
-				var/decl/material/mat_instance = decls_repository.get_decl(mat)
-				if(istype(mat_instance))
-					stored_substances_to_names[mat] =  lowertext(mat_instance.name)
-			else if(ispath(mat, /decl/material))
-				var/decl/material/reg = mat
-				stored_substances_to_names[mat] = lowertext(initial(reg.name))
+/obj/machinery/fabricator/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(initial_network_id, map_hash)
 
-	SSfabrication.init_fabricator(src)
+/obj/machinery/fabricator/handle_post_network_connection()
+	..()
+	refresh_design_cache()
+
+/obj/machinery/fabricator/proc/fill_to_capacity()
+	for(var/mat in storage_capacity)
+		stored_material[mat] = storage_capacity[mat]
 
 /obj/machinery/fabricator/proc/refresh_design_cache(var/list/known_tech)
+
+	var/list/base_designs = SSfabrication.get_initial_recipes(fabricator_class)
+	design_cache = islist(base_designs) ? base_designs.Copy() : list() // Don't want to mutate the subsystem cache.
+
 	if(length(installed_designs))
 		design_cache |= installed_designs
+
 	if(!known_tech)
-		known_tech = list()
+		known_tech = get_default_initial_tech_levels()
 		var/datum/extension/network_device/device = get_extension(src, /datum/extension/network_device)
 		var/datum/computer_network/network = device.get_network()
 		if(network)
@@ -110,10 +122,51 @@
 				for(var/tech in db.tech_levels)
 					if(db.tech_levels[tech] > known_tech[tech])
 						known_tech[tech] = db.tech_levels[tech]
-	if(length(known_tech))
-		var/list/unlocked_tech = SSfabrication.get_unlocked_recipes(fabricator_class, known_tech)
-		if(length(unlocked_tech))
-			design_cache |= unlocked_tech
+
+	var/list/unlocked_tech = SSfabrication.get_unlocked_recipes(fabricator_class, known_tech)
+	if(length(unlocked_tech))
+		design_cache |= unlocked_tech
+
+	var/list/unique_categories
+	var/list/add_mat_to_storage_cap = list()
+	for(var/datum/fabricator_recipe/R in design_cache)
+
+		for(var/mat in R.resources)
+			add_mat_to_storage_cap |= mat
+
+		LAZYDISTINCTADD(unique_categories, R.category)
+		if(!length(R.species_locked))
+			continue
+
+		if(isnull(species_variation))
+			design_cache.Remove(R)
+			continue
+
+		for(var/species_type in R.species_locked)
+			if(!(ispath(species_variation, species_type)))
+				design_cache.Remove(R)
+				continue
+
+	design_cache = sortTim(design_cache, /proc/cmp_name_asc)
+	ui_nb_categories = LAZYLEN(unique_categories)
+
+	if(length(add_mat_to_storage_cap))
+		var/need_storage_recalc = FALSE
+		for(var/mat in add_mat_to_storage_cap)
+			if(mat in base_storage_capacity)
+				continue
+			need_storage_recalc = TRUE
+			base_storage_capacity[mat] = (SHEET_MATERIAL_AMOUNT * base_storage_capacity_mult)
+			if(!(mat in stored_material))
+				stored_material[mat] = 0
+
+		if(need_storage_recalc)
+			RefreshParts()
+
+	// We handle this here, as we don't know what materials should be stocked prior to updating our recipes.
+	if(prefilled)
+		prefilled = FALSE
+		fill_to_capacity()
 
 /obj/machinery/fabricator/state_transition(var/decl/machine_construction/default/new_state)
 	. = ..()
@@ -131,7 +184,7 @@
 /obj/machinery/fabricator/proc/is_functioning()
 	. = use_power != POWER_USE_OFF && !(stat & NOPOWER) && !(stat & BROKEN) && !(fab_status_flags & FAB_DISABLED)
 
-/obj/machinery/fabricator/Process(var/wait)
+/obj/machinery/fabricator/Process(wait, tick)
 	..()
 	if(use_power == POWER_USE_ACTIVE && (fab_status_flags & FAB_BUSY))
 		update_current_build(wait)
@@ -157,21 +210,19 @@
 //Updates overall lathe storage size.
 /obj/machinery/fabricator/RefreshParts()
 	..()
-	var/mb_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/matter_bin), 0, 10)
-	var/man_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 0.5, 3.5)
-	storage_capacity = list()
+	var/mb_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/matter_bin), 0, 10)
+	var/man_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 0.5, 3.5)
 	for(var/mat in base_storage_capacity)
 		storage_capacity[mat] = mb_rating * base_storage_capacity[mat]
+		if(!(mat in stored_material))
+			stored_material[mat] = 0
 	mat_efficiency = initial(mat_efficiency) - man_rating * 0.1
 	build_time_multiplier = initial(build_time_multiplier) * man_rating
 
 /obj/machinery/fabricator/dismantle()
 	for(var/mat in stored_material)
-		if(ispath(mat, /decl/material))
-			var/mat_name = stored_substances_to_names[mat]
-			var/decl/material/M = decls_repository.get_decl(mat_name)
-			if(stored_material[mat] > SHEET_MATERIAL_AMOUNT)
-				M.place_sheet(get_turf(src), round(stored_material[mat] / SHEET_MATERIAL_AMOUNT), M.type)
+		if(stored_material[mat] > SHEET_MATERIAL_AMOUNT)
+			SSmaterials.create_object(mat, get_turf(src), round(stored_material[mat] / SHEET_MATERIAL_AMOUNT))
 	..()
 	return TRUE
 

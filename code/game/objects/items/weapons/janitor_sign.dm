@@ -4,16 +4,16 @@
 	icon = 'icons/obj/janitor.dmi'
 	icon_state = "caution"
 	force = 1.0
-	throwforce = 3.0
+	throwforce = 3
 	throw_speed = 1
 	throw_range = 5
 	w_class = ITEM_SIZE_SMALL
 	attack_verb = list("warned", "cautioned", "smashed")
+	material = /decl/material/solid/plastic
 
 /obj/item/caution/cone
 	desc = "This cone is trying to warn you of something!"
 	name = "warning cone"
 	icon = 'icons/obj/items/warning_cone.dmi'
-	on_mob_icon = 'icons/obj/items/warning_cone.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	slot_flags = SLOT_HEAD

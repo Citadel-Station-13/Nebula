@@ -17,14 +17,14 @@
 
 /mob/living/carbon/human/singularity_pull(S, current_size)
 	if(current_size >= STAGE_THREE)
-		var/list/handlist = list(l_hand, r_hand)
-		for(var/obj/item/hand in handlist)
+		for(var/obj/item/hand in get_held_items())
 			if(prob(current_size*5) && hand.w_class >= ((11-current_size)/2) && unEquip(hand))
 				step_towards(hand, S)
 				to_chat(src, "<span class = 'warning'>\The [S] pulls \the [hand] from your grip!</span>")
+		var/obj/item/shoes = get_equipped_item(slot_shoes_str)
 		if(!lying && (!shoes || !(shoes.item_flags & ITEM_FLAG_NOSLIP)) && (!species || !(species.check_no_slip(src))) && prob(current_size*5))
 			to_chat(src, "<span class='danger'>A strong gravitational force slams you to the ground!</span>")
-			Weaken(current_size)
+			SET_STATUS_MAX(src, STAT_WEAK, current_size)
 	..()
 
 /obj/singularity_act()

@@ -1,6 +1,6 @@
 // QUALITY COPYPASTA
-/turf/unsimulated/wall/supermatter
-	name = "Bluespace"
+/turf/unsimulated/wall/cascade
+	name = "unravelling spacetime"
 	desc = "THE END IS right now actually."
 
 	icon = 'icons/turf/space.dmi'
@@ -8,27 +8,27 @@
 
 	//luminosity = 5
 	//l_color="#0066ff"
-	plane = EFFECTS_ABOVE_LIGHTING_PLANE
+	plane = ABOVE_LIGHTING_PLANE
 	layer = SUPERMATTER_WALL_LAYER
 
 	var/list/avail_dirs = list(NORTH,SOUTH,EAST,WEST,UP,DOWN)
 
-/turf/unsimulated/wall/supermatter/Initialize(mapload, ...)
+/turf/unsimulated/wall/cascade/Initialize(mapload, ...)
 	. = ..()
 	START_PROCESSING(SSturf, src)
 
 	// Nom.
 	for(var/atom/movable/A in src)
-		Consume(A)
+		try_supermatter_consume(null, A, src)
 
-/turf/unsimulated/wall/supermatter/Destroy()
-	STOP_PROCESSING(SSturf, src)	
+/turf/unsimulated/wall/cascade/Destroy()
+	STOP_PROCESSING(SSturf, src)
 	. = ..()
 
-/turf/unsimulated/wall/supermatter/Process(wait, times_fired)
+/turf/unsimulated/wall/cascade/Process(wait, tick)
 	// Only check infrequently.
 	var/how_often = max(round(5 SECONDS/wait), 1)
-	if(times_fired % how_often)
+	if(tick % how_often)
 		return
 
 	// No more available directions? Stop processing.
@@ -49,30 +49,24 @@
 				return
 			T.ChangeTurf(type)
 
-/turf/unsimulated/wall/supermatter/attack_robot(mob/user)
-	if(Adjacent(user))
+/turf/unsimulated/wall/cascade/attack_robot(mob/user)
+	if(CanPhysicallyInteract(user))
 		return attack_hand(user)
-	else
-		user.examinate(src)
+	user.examinate(src)
 
 // /vg/: Don't let ghosts fuck with this.
-/turf/unsimulated/wall/supermatter/attack_ghost(mob/user)
+/turf/unsimulated/wall/cascade/attack_ghost(mob/user)
 	user.examinate(src)
 
-/turf/unsimulated/wall/supermatter/attack_ai(mob/user)
+/turf/unsimulated/wall/cascade/attack_ai(mob/living/silicon/ai/user)
 	user.examinate(src)
 
-/turf/unsimulated/wall/supermatter/attack_hand(mob/user)
-	user.visible_message("<span class=\"warning\">\The [user] reaches out and touches \the [src]... And then blinks out of existance.</span>",\
-		"<span class=\"danger\">You reach out and touch \the [src]. Everything immediately goes quiet. Your last thought is \"That was not a wise decision.\"</span>",\
-		"<span class=\"warning\">You hear an unearthly noise.</span>")
+/turf/unsimulated/wall/cascade/attack_hand(mob/user)
+	if(try_supermatter_consume(null, user, src, TRUE))
+		return TRUE
+	return ..()
 
-	playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
-
-	Consume(user)
-	return TRUE
-
-/turf/unsimulated/wall/supermatter/attackby(obj/item/W, mob/living/user)
+/turf/unsimulated/wall/cascade/attackby(obj/item/W, mob/user)
 	user.visible_message("<span class=\"warning\">\The [user] touches \a [W] to \the [src] as a silence fills the room...</span>",\
 		"<span class=\"danger\">You touch \the [W] to \the [src] when everything suddenly goes silent.\"</span>\n<span class=\"notice\">\The [W] flashes into dust as you flinch away from \the [src].</span>",\
 		"<span class=\"warning\">Everything suddenly goes silent.</span>")
@@ -80,31 +74,12 @@
 	playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
 
 	user.drop_from_inventory(W)
-	Consume(W)
+	Bumped(W)
 	return TRUE
 
-#define MayConsume(A) (istype(A) && A.simulated && !isobserver(A))
-
-/turf/unsimulated/wall/supermatter/Bumped(var/atom/movable/AM)
-	if(!MayConsume(AM))
-		return
-
-	if(istype(AM, /mob/living))
-		AM.visible_message("<span class=\"warning\">\The [AM] slams into \the [src] inducing a resonance... \his body starts to glow and catch flame before flashing into ash.</span>",\
-		"<span class=\"danger\">You slam into \the [src] as your ears are filled with unearthly ringing. Your last thought is \"Oh, fuck.\"</span>",\
-		"<span class=\"warning\">You hear an unearthly noise as a wave of heat washes over you.</span>")
-	else
-		AM.visible_message("<span class=\"warning\">\The [AM] smacks into \the [src] and rapidly flashes to ash.</span>",\
-		"<span class=\"warning\">You hear a loud crack as you are washed with a wave of heat.</span>")
-
-	playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
-	Consume(AM)
-
-/turf/unsimulated/wall/supermatter/Entered(var/atom/movable/AM)
+/turf/unsimulated/wall/cascade/Entered(var/atom/movable/AM)
 	Bumped(AM)
 
-/turf/unsimulated/wall/supermatter/proc/Consume(var/atom/movable/AM)
-	if(MayConsume(AM))
-		qdel(AM)
-
-#undef MayConsume
+/turf/unsimulated/wall/cascade/Bumped(var/atom/movable/AM)
+	if(!try_supermatter_consume(null, AM, src))
+		return ..()

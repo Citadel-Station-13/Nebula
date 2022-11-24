@@ -10,12 +10,10 @@
 	anchored = 1
 
 	var/ready = 1
-	var/malfunction = 0
 	var/list/obj/item/implant/loyalty/implant_list = list()
 	var/max_implants = 5
 	var/injection_cooldown = 600
 	var/replenish_cooldown = 6000
-	var/replenishing = 0
 	var/mob/living/carbon/occupant = null
 	var/injecting = 0
 
@@ -73,17 +71,14 @@
 /obj/machinery/implantchair/attackby(var/obj/item/G, var/mob/user)
 	if(istype(G, /obj/item/grab))
 		var/obj/item/grab/grab = G
-		if(!ismob(grab.affecting))
+		var/mob/grabbed = grab.get_affecting_mob()
+		if(!istype(grabbed) || !grabbed.can_enter_cryopod(user))
 			return
-		for(var/mob/living/carbon/slime/M in range(1, grab.affecting))
-			if(M.Victim == grab.affecting)
-				to_chat(usr, "[grab.affecting.name] will not fit into the [src.name] because they have a slime latched onto their head.")
-				return
+
 		var/mob/M = grab.affecting
 		if(put_mob(M))
 			qdel(G)
 	src.updateUsrDialog()
-
 
 /obj/machinery/implantchair/proc/go_out(var/mob/M)
 	if(!( src.occupant ))
@@ -126,9 +121,7 @@
 	for(var/obj/item/implant/loyalty/imp in implant_list)
 		if(!imp)	continue
 		if(istype(imp, /obj/item/implant/loyalty))
-			for (var/mob/O in viewers(M, null))
-				O.show_message("<span class='warning'>\The [M] has been implanted by \the [src].</span>", 1)
-
+			M.visible_message(SPAN_NOTICE("\The [M] has been implanted by \the [src]."))
 			if(imp.implanted(M))
 				imp.forceMove(M)
 				imp.imp_in = M

@@ -3,10 +3,10 @@
 	desc = "Used to time things. Works well with contraptions which have to count down. Tick tock."
 	icon_state = "timer"
 	origin_tech = "{'magnets':1}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_WASTE = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/copper = MATTER_AMOUNT_TRACE
 	)
 
 	wires = WIRE_PULSE
@@ -43,7 +43,7 @@
 	if(!secured)	return 0
 	pulse(0)
 	if(!holder)
-		visible_message("\icon[src] *beep* *beep*", "*beep* *beep*")
+		visible_message("[html_icon(src)] *beep* *beep*", "*beep* *beep*")
 	cooldown = 2
 	spawn(10)
 		process_cooldown()
@@ -62,15 +62,14 @@
 
 
 /obj/item/assembly/timer/on_update_icon()
-	overlays.Cut()
-	attached_overlays = list()
+	. = ..()
+	LAZYCLEARLIST(attached_overlays)
 	if(timing)
-		overlays += "timer_timing"
-		attached_overlays += "timer_timing"
+		var/image/img = overlay_image(icon, "timer_timing")
+		add_overlay(img)
+		LAZYADD(attached_overlays, img)
 	if(holder)
 		holder.update_icon()
-	return
-
 
 /obj/item/assembly/timer/interact(mob/user)//TODO: Have this use the wires
 	if(!secured)
@@ -86,7 +85,7 @@
 	return
 
 
-/obj/item/assembly/timer/Topic(href, href_list, state = GLOB.physical_state)
+/obj/item/assembly/timer/Topic(href, href_list, state = global.physical_topic_state)
 	if((. = ..()))
 		close_browser(usr, "window=timer")
 		onclose(usr, "timer")

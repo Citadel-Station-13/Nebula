@@ -4,6 +4,7 @@
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "spirit_board"
 	density = TRUE
+	material = /decl/material/solid/wood
 	var/next_use = 0
 	var/planchette = "A"
 	var/lastuser = null
@@ -21,7 +22,8 @@
 
 //ATTACK GHOST IGNORING PARENT RETURN VALUE
 /obj/item/spirit_board/attack_ghost(var/mob/observer/ghost/user)
-	if(GLOB.cult.max_cult_rating >= CULT_GHOSTS_2)
+	var/decl/special_role/cultist/cult = GET_DECL(/decl/special_role/cultist)
+	if(cult.max_cult_rating >= CULT_GHOSTS_2)
 		spirit_board_pick_letter(user)
 	return ..()
 
@@ -63,7 +65,7 @@
 	var/users_in_range = 0
 	for(var/mob/living/L in orange(1,src))
 		if(L.ckey && L.client)
-			if(L.client.is_afk(300) || L.incapacitated())//no playing with braindeads or corpses or handcuffed dudes.
+			if(L.client.is_afk(300) || L.incapacitated())//no playing with braindeads or corpses or cuffed dudes.
 				to_chat(M, SPAN_WARNING("[L] doesn't seem to be paying attention..."))
 			else
 				users_in_range++

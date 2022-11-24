@@ -6,11 +6,11 @@
 	throw_range = 5
 	w_class = ITEM_SIZE_NORMAL		 //upped to three because books are, y'know, pretty big. (and you could hide them inside eachother recursively forever)
 	attack_verb = list("bashed", "whacked", "educated")
-	material = MAT_PLASTIC
-	matter = list(MAT_WOOD = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/plastic
+	matter = list(/decl/material/solid/paper = MATTER_AMOUNT_REINFORCEMENT)
 
 	var/dat			 // Actual page content
-	var/pencode_dat  // Cache pencode if input, so it can be edited later. 
+	var/pencode_dat  // Cache pencode if input, so it can be edited later.
 	var/author		 // Who wrote the thing, can be changed by pen or PC. It is not automatically assigned
 	var/unique = 0   // 0 - Normal book, 1 - Should not be treated as normal book, unable to be copied, unable to be modified
 	var/title		 // The real name of the book.
@@ -26,26 +26,13 @@
 
 /obj/item/book/Initialize(var/ml)
 	if(!ml && !unique)
-		SSpersistence.track_value(src, /datum/persistent/book)
+		SSpersistence.track_value(src, /decl/persistence_handler/book)
 	. = ..()
 
 /obj/item/book/Destroy()
-	if(dat && last_modified_ckey && SSpersistence.is_tracking(src, /datum/persistent/book))
-		// Create a new book in nullspace that is tracked by persistence.
-		// This is so destroying a book does not get rid of someone's 
-		// content, as books with null coords will get spawned in a random
-		// library bookcase.
-		var/obj/item/book/backup_book = new(src)
-		backup_book.dat =                dat
-		backup_book.author =             author
-		backup_book.title =              title
-		backup_book.last_modified_ckey = last_modified_ckey
-		backup_book.unique =             TRUE
-		backup_book.forceMove(null)
-		backup_book.SetName(backup_book.title)
-
-	SSpersistence.forget_value(src, /datum/persistent/book)
 	. = ..()
+	if(SSpersistence.is_tracking(src, /decl/persistence_handler/book))
+		. = QDEL_HINT_LETMELIVE
 
 /obj/item/book/attack_self(var/mob/user)
 	if(carved)
@@ -81,14 +68,14 @@
 		else
 			to_chat(user, "<span class='notice'>There's already something in [title]!</span>")
 			return
-	if(istype(W, /obj/item/pen))
+	if(IS_PEN(W))
 		if(unique)
 			to_chat(user, "These pages don't seem to take the ink well. Looks like you can't modify it.")
 			return
 		var/choice = input("What would you like to change?") in list("Title", "Contents", "Author", "Cancel")
 		switch(choice)
 			if("Title")
-				var/newtitle = reject_bad_text(sanitizeSafe(input("Write a new title:")))
+				var/newtitle = reject_bad_text(sanitize_safe(input("Write a new title:")))
 				if(!newtitle)
 					to_chat(usr, "The title is invalid.")
 					return
@@ -123,7 +110,7 @@
 						author = newauthor
 			else
 				return
-	else if(istype(W, /obj/item/material/knife) || isWirecutter(W))
+	else if(istype(W, /obj/item/knife) || IS_WIRECUTTER(W))
 		if(carved)	return
 		to_chat(user, "<span class='notice'>You begin to carve out [title].</span>")
 		if(do_after(user, 30, src))
@@ -146,9 +133,14 @@
 /obj/item/book/proc/formatpencode(var/mob/user, var/t, var/obj/item/pen/P)
 	. = t
 	if(findtext(t, "\[sign\]"))
-		. = replacetext(t, "\[sign\]", "<font face=\"[signfont]\"><i>[P ? P.get_signature(user) : "Anonymous"]</i></font>")
+		var/decl/tool_archetype/pen/parch = GET_DECL(TOOL_PEN)
+		var/signature = parch.get_signature(user, P)
+		. = replacetext(t, "\[sign\]", "<font face=\"[signfont]\"><i>[signature]</i></font>")
+
+	var/pen_flag  = P.get_tool_property(TOOL_PEN, TOOL_PROP_PEN_FLAG)
+	var/pen_color = P.get_tool_property(TOOL_PEN, TOOL_PROP_COLOR)
 	if(P)
-		if(P.iscrayon)
+		if(pen_flag & PEN_FLAG_CRAYON)
 			. = replacetext(t, "\[*\]", "")
 			. = replacetext(t, "\[hr\]", "")
 			. = replacetext(t, "\[small\]", "")
@@ -160,11 +152,11 @@
 			. = replacetext(t, "\[row\]", "")
 			. = replacetext(t, "\[cell\]", "")
 			. = replacetext(t, "\[logo\]", "")
-			. = "<font face=\"[crayonfont]\" color=\"[P.colour]\"><b>[.]</b></font>"
-		else if(P.isfancy)
-			. = "<font face=\"[fancyfont]\" color=\"[P.colour]\"><i>[.]</i></font>"
+			. = "<font face=\"[crayonfont]\" color=\"[pen_color]\"><b>[.]</b></font>"
+		else if(pen_flag & PEN_FLAG_FANCY)
+			. = "<font face=\"[fancyfont]\" color=\"[pen_color]\"><i>[.]</i></font>"
 		else
-			. = "<font face=\"[deffont]\" color=\"[P.colour]\">[.]</font>"
+			. = "<font face=\"[deffont]\" color=\"[pen_color]\">[.]</font>"
 	else
 		. = "<font face=\"[deffont]\" color=\"black\"]>[.]</font>"
 	. = pencode2html(.)

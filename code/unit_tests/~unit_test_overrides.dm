@@ -21,11 +21,9 @@
 /obj/random
 	spawn_method = /obj/random/proc/unit_test_spawn_item
 
-GLOBAL_DATUM(unit_test_last_obj_random_creation, /atom/movable)
+var/global/atom/movable/unit_test_last_obj_random_creation
 /obj/random/proc/unit_test_spawn_item()
-	var/build_path = unit_test_select_heaviest(spawn_choices())
-	GLOB.unit_test_last_obj_random_creation = new build_path()
-
+	global.unit_test_last_obj_random_creation = create_instance(unit_test_select_heaviest(spawn_choices()))
 
 /proc/unit_test_select_heaviest(var/list/choices)
 	if(ispath(choices) || istype(choices, /datum))
@@ -38,6 +36,8 @@ GLOBAL_DATUM(unit_test_last_obj_random_creation, /atom/movable)
 
 	for(var/choice in choices)
 		var/path = unit_test_select_heaviest(choice)
+		while(islist(path)) // Refine it down to a path.
+			path = unit_test_select_heaviest(path)
 		var/weight = unit_test_weight_of_path(path)
 		if(weight > heaviest_weight)
 			heaviest_weight = weight
@@ -45,17 +45,22 @@ GLOBAL_DATUM(unit_test_last_obj_random_creation, /atom/movable)
 
 	return heaviest_choice
 
-GLOBAL_LIST_EMPTY(unit_test_obj_random_weights_by_type)
+var/global/list/unit_test_obj_random_weights_by_type = list()
 
 // If you adjust any of the values below, please also update /obj/structure/closet/proc/content_size(atom/movable/AM)
 /proc/unit_test_weight_of_path(var/path)
+	if(ispath(path, /decl/archaeological_find))
+		var/decl/archaeological_find/find = GET_DECL(path)
+		if(!length(find?.possible_types))
+			return 0
+		return unit_test_weight_of_path(find.possible_types[1])
 	if(ispath(path, /obj/random))
-		var/weight = GLOB.unit_test_obj_random_weights_by_type[path]
+		var/weight = global.unit_test_obj_random_weights_by_type[path]
 		if(!weight)
 			var/obj/random/R = new path()
 			var/type = unit_test_select_heaviest(R.spawn_choices())
 			weight = unit_test_weight_of_path(type)
-			GLOB.unit_test_obj_random_weights_by_type[path] = weight
+			global.unit_test_obj_random_weights_by_type[path] = weight
 		return weight
 	// Would be nice to re-use how closets calculate size/weight but the difference between instances and paths prevents it.
 	if(ispath(path, /obj))
@@ -80,7 +85,19 @@ GLOBAL_LIST_EMPTY(unit_test_obj_random_weights_by_type)
 /datum/is_date/CurrentMonthAndDay()
 	return list(6, 6)
 
-/datum/controller/subsystem/mapping/includeTemplate(var/datum/map_template/map_template, var/banned_maps)
-	var/datum/map_template/MT = new map_template()
-	map_templates[MT.name] = MT
-	. = MT
+var/global/list/seen_decls
+/decl/New()
+	..()
+	// Some of this can be procced by globally scoped
+	// new(), so we can't rely on pre-declaring lists.
+	if(!global.seen_decls)
+		global.seen_decls = list()
+	if(!global.seen_decls[type])
+		global.seen_decls[type] = list()
+	global.seen_decls[type] |= src
+	if(length(global.seen_decls[type]) > 1)
+		PRINT_STACK_TRACE("More than one /decl of type [type] created.")
+	spawn(1) // to avoid GET_DECL stack overflows
+		var/decl/existing_decl = GET_DECL(type)
+		if(existing_decl != src)
+			PRINT_STACK_TRACE("Non-repository or non-initialized /decl of type [type] created.")

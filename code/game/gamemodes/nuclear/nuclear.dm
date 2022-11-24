@@ -2,22 +2,19 @@
 	MERCENARY ROUNDTYPE
 */
 
-var/list/nuke_disks = list()
+var/global/list/nuke_disks = list()
 
 /datum/game_mode/nuclear
 	name = "Mercenary"
 	round_description = "A mercenary strike force is approaching!"
-	extended_round_description = "The Company's majority control of phoron in Nyx has marked the \
-		station to be a highly valuable target for many competing organizations and individuals. Being a \
-		colony of sizable population and considerable wealth causes it to often be the target of various \
-		attempts of robbery, fraud and other malicious actions."
+	extended_round_description = "A heavily armed merc team is approaching in their warship; whatever their goal is, it can't be good for the crew."
 	config_tag = "mercenary"
 	required_players = 15
 	required_enemies = 1
 	end_on_antag_death = FALSE
 	var/nuke_off_station = 0 //Used for tracking if the syndies actually haul the nuke to the station
 	var/syndies_didnt_escape = 0 //Used for tracking if the syndies got the shuttle off of the z-level
-	antag_tags = list(MODE_MERCENARY)
+	associated_antags = list(/decl/special_role/mercenary)
 	cinematic_icon_states = list(
 		"intro_nuke" = 35,
 		"summary_nukewin",
@@ -32,18 +29,18 @@ var/list/nuke_disks = list()
 	return FALSE
 
 /datum/game_mode/nuclear/declare_completion()
-	var/datum/antagonist/merc = GLOB.all_antag_types_[MODE_MERCENARY]
+	var/decl/special_role/merc = GET_DECL(/decl/special_role/mercenary)
 	if(config.objectives_disabled == CONFIG_OBJECTIVE_NONE || (merc && !merc.global_objectives.len))
 		..()
 		return
 	var/disk_rescued = TRUE
-	for(var/obj/item/disk/nuclear/D in world)
+	for(var/obj/item/disk/nuclear/D in global.nuke_disks)
 		var/disk_area = get_area(D)
-		if(!is_type_in_list(disk_area, GLOB.using_map.post_round_safe_areas))
+		if(!is_type_in_list(disk_area, global.using_map.post_round_safe_areas))
 			disk_rescued = FALSE
 			break
-	var/crew_evacuated = (SSevac.evacuation_controller.has_evacuated())
-
+	var/crew_evacuated = (SSevac.evacuation_controller?.has_evacuated())
+	var/decl/special_role/mercenary/mercs = GET_DECL(/decl/special_role/mercenary)
 	if(!disk_rescued &&  station_was_nuked && !syndies_didnt_escape)
 		SSstatistics.set_field_details("round_end_result","win - syndicate nuke")
 		to_world("<FONT size = 3><B>Mercenary Major Victory!</B></FONT>")
@@ -64,7 +61,7 @@ var/list/nuke_disks = list()
 		to_world("<FONT size = 3><B>[syndicate_name()] operatives have earned Darwin Award!</B></FONT>")
 		to_world("<B>[syndicate_name()] operatives blew up something that wasn't [station_name()] and got caught in the explosion.</B> Next time, don't lose the disk!")
 
-	else if (disk_rescued && GLOB.mercs.antags_are_dead())
+	else if (disk_rescued && mercs.antags_are_dead())
 		SSstatistics.set_field_details("round_end_result","loss - evacuation - disk secured - syndi team dead")
 		to_world("<FONT size = 3><B>Crew Major Victory!</B></FONT>")
 		to_world("<B>The Research Staff has saved the disc and killed the [syndicate_name()] Operatives</B>")
@@ -74,7 +71,7 @@ var/list/nuke_disks = list()
 		to_world("<FONT size = 3><B>Crew Major Victory</B></FONT>")
 		to_world("<B>The Research Staff has saved the disc and stopped the [syndicate_name()] Operatives!</B>")
 
-	else if (!disk_rescued && GLOB.mercs.antags_are_dead())
+	else if (!disk_rescued && mercs.antags_are_dead())
 		SSstatistics.set_field_details("round_end_result","loss - evacuation - disk not secured")
 		to_world("<FONT size = 3><B>Mercenary Minor Victory!</B></FONT>")
 		to_world("<B>The Research Staff failed to secure the authentication disk but did manage to kill most of the [syndicate_name()] Operatives!</B>")

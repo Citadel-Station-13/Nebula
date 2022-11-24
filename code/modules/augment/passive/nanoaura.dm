@@ -9,17 +9,18 @@
 //The organ itself
 
 /obj/item/organ/internal/augment/active/nanounit
-	name = "Nanite MCU"
+	name = "nanite MCU"
 	allowed_organs = list(BP_AUGMENT_CHEST_ACTIVE)
 	icon_state = "armor-chest"
 	desc = "Nanomachines, son."
 	action_button_name = "Toggle Nanomachines"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GOLD = MATTER_AMOUNT_TRACE,
-		MAT_URANIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE
 	)
+	origin_tech = "{'materials':4,'magnets':4,'engineering':5,'biotech':3}"
 
 	var/obj/aura/nanoaura/aura = null
 	var/charges = 4
@@ -35,7 +36,7 @@
 /obj/item/organ/internal/augment/active/nanounit/proc/catastrophic_failure()
 	playsound(owner,'sound/mecha/internaldmgalarm.ogg',25,1)
 	owner.visible_message(SPAN_WARNING("The nanites attempt to harden. But they seem... brittle."))
-	for(var/obj/item/organ/external/E in owner.organs)
+	for(var/obj/item/organ/external/E in owner.get_external_organs())
 		if(prob(25))
 			E.status |= ORGAN_BRITTLE //Some nanites are not responding and you're out of luck
 			to_chat(owner,SPAN_DANGER("Your [E.name] feels cold and rigid"))

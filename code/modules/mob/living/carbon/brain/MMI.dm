@@ -1,13 +1,10 @@
-//This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:32
-
 /obj/item/mmi/digital/Initialize()
-	src.brainmob = new(src)
-	src.brainmob.set_stat(CONSCIOUS)
-	src.brainmob.add_language("Robot Talk")
-	src.brainmob.add_language("Encoded Audio Language")
-
-	src.brainmob.container = src
-	src.brainmob.silent = 0
+	brainmob = new(src)
+	brainmob.set_stat(CONSCIOUS)
+	brainmob.add_language(/decl/language/binary)
+	brainmob.add_language(/decl/language/machine)
+	brainmob.container = src
+	brainmob.set_status(STAT_SILENCE, 0)
 	PickName()
 	. = ..()
 
@@ -20,14 +17,6 @@
 /obj/item/mmi/digital/attack_self()
 	return
 
-/obj/item/mmi/digital/transfer_identity(var/mob/living/carbon/H)
-	brainmob.dna = H.dna
-	brainmob.timeofhostdeath = H.timeofdeath
-	brainmob.set_stat(CONSCIOUS)
-	if(H.mind)
-		H.mind.transfer_to(brainmob)
-	return
-
 /obj/item/mmi
 	name = "\improper Man-Machine Interface"
 	desc = "A complex life support shell that interfaces between a brain and electronic devices."
@@ -35,8 +24,8 @@
 	icon_state = "mmi_empty"
 	w_class = ITEM_SIZE_NORMAL
 	origin_tech = "{'biotech':3}"
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 	req_access = list(access_robotics)
 
 	//Revised. Brainmob is now contained directly within object of transfer. MMI in this case.
@@ -119,14 +108,15 @@
 	brainmob.real_name = H.real_name
 	brainmob.dna = H.dna
 	brainmob.container = src
+	brainmob.timeofhostdeath = H.timeofdeath
+	brainmob.set_stat(CONSCIOUS)
 
 	SetName("[initial(name)]: [brainmob.real_name]")
 	update_icon()
 	locked = 1
-	return
 
 /obj/item/mmi/relaymove(var/mob/user, var/direction)
-	if(user.stat || user.stunned)
+	if(user.incapacitated(INCAPACITATION_KNOCKOUT))
 		return
 	var/obj/item/rig/rig = src.get_rig()
 	if(rig)
@@ -143,8 +133,8 @@
 	name = "radio-enabled man-machine interface"
 	desc = "The Warrior's bland acronym, MMI, obscures the true horror of this monstrosity. This one comes with a built-in radio."
 	origin_tech = "{'biotech':4}"
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 	var/obj/item/radio/radio = null//Let's give it a radio.
 
 /obj/item/mmi/radio_enabled/Initialize()
@@ -192,4 +182,5 @@
 	..()
 
 /obj/item/mmi/on_update_icon()
+	. = ..()
 	icon_state = brainmob ? "mmi_full" : "mmi_empty"

@@ -5,42 +5,57 @@
 	charge_costs = list(1000)
 	gender = NEUTER
 	matter = null // Don't shove it in the autholathe.
+	health = ITEM_HEALTH_NO_DAMAGE
 
 /obj/item/stack/material/cyborg/Initialize()
 	. = ..()
 	if(material)
-		name = "[material.solid_name] synthesiser"
-		desc = "A device that synthesises [material.solid_name]."
+		if(reinf_material)
+			name = "[reinf_material.solid_name]-reinforced [material.solid_name] synthesiser"
+			desc = "A device that synthesises [reinf_material.solid_name]-reinforced[material.solid_name]."
+		else
+			name = "[material.solid_name] synthesiser"
+			desc = "A device that synthesises [material.solid_name]."
 		matter = null
 
 /obj/item/stack/material/cyborg/plastic
+	name = "cyborg plastic synthesiser"
 	icon_state = "sheet"
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 
 /obj/item/stack/material/cyborg/steel
+	name = "cyborg steel synthesiser"
 	icon_state = "sheet"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/stack/material/cyborg/plasteel
+	name = "cyborg plasteel synthesiser"
 	icon_state = "sheet-reinf"
-	material = MAT_PLASTEEL
+	material = /decl/material/solid/metal/plasteel
 
 /obj/item/stack/material/cyborg/wood
+	name = "cyborg wood synthesiser"
 	icon_state = "sheet-wood"
-	material = MAT_WOOD
+	material = /decl/material/solid/wood
 
 /obj/item/stack/material/cyborg/glass
+	name = "cyborg glass synthesiser"
 	icon_state = "sheet"
-	material = MAT_GLASS
-	material_flags = USE_MATERIAL_COLOR|USE_MATERIAL_SINGULAR_NAME|USE_MATERIAL_PLURAL_NAME
+	material = /decl/material/solid/glass
+
+/obj/item/stack/material/cyborg/fiberglass
+	name = "cyborg fiberglass synthesiser"
+	icon_state = "sheet"
+	material = /decl/material/solid/fiberglass
 
 /obj/item/stack/material/cyborg/glass/reinforced
+	name = "cyborg reinforced glass synthesiser"
 	icon_state = "sheet-reinf"
-	material = MAT_GLASS
-	reinf_material = MAT_STEEL
+	material = /decl/material/solid/glass
+	reinf_material = /decl/material/solid/metal/steel
 	charge_costs = list(500, 1000)
 
 /obj/item/stack/material/cyborg/aluminium
+	name = "cyborg aluminium synthesiser"
 	icon_state = "sheet"
-	material = MAT_ALUMINIUM
-	material_flags = USE_MATERIAL_COLOR|USE_MATERIAL_SINGULAR_NAME|USE_MATERIAL_PLURAL_NAME
+	material = /decl/material/solid/metal/aluminium

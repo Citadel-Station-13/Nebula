@@ -6,7 +6,6 @@
 	item_state = "walkietalkie"
 
 	var/on = 1 // 0 for off
-	var/last_transmission
 	var/frequency = PUB_FREQ //common chat
 	var/traitor_frequency = 0 //tune to frequency to unlock traitor supplies
 	var/canhear_range = 3 // the range which mobs can hear this radio from
@@ -18,14 +17,18 @@
 	var/subspace_transmission = 0
 	var/syndie = 0//Holder to see if it's a syndicate encrypted radio
 	var/intercept = 0 //can intercept other channels
+
+	var/intercom = FALSE // If an intercom, will receive data == 1 packets.
+	var/virtual =  FALSE // If virtual, will receive all broadcasts but will never notify nearby listeners.
+
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	throw_speed = 2
 	throw_range = 9
 	w_class = ITEM_SIZE_SMALL
 
-	material = MAT_GLASS
-	matter = list(MAT_ALUMINIUM = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/fiberglass
+	matter = list(/decl/material/solid/metal/aluminium = MATTER_AMOUNT_REINFORCEMENT)
 	var/const/FREQ_LISTENING = 1
 	var/list/internal_channels
 
@@ -37,6 +40,11 @@
 
 	var/last_radio_sound = -INFINITY
 
+	var/intercom_handling = FALSE
+
+/obj/item/radio/get_radio(var/message_mode)
+	return src
+
 /obj/item/radio/proc/set_frequency(new_frequency)
 	radio_controller.remove_object(src, frequency)
 	frequency = new_frequency
@@ -47,8 +55,8 @@
 	wires = new(src)
 	if(ispath(cell))
 		cell = new(src)
-	internal_channels = GLOB.using_map.default_internal_channels()
-	GLOB.listening_objects += src
+	internal_channels = global.using_map.default_internal_channels()
+	global.listening_objects += src
 
 	if(frequency < RADIO_LOW_FREQ || frequency > RADIO_HIGH_FREQ)
 		frequency = sanitize_frequency(frequency, RADIO_LOW_FREQ, RADIO_HIGH_FREQ)
@@ -59,7 +67,7 @@
 
 /obj/item/radio/Destroy()
 	QDEL_NULL(wires)
-	GLOB.listening_objects -= src
+	global.listening_objects -= src
 	if(radio_controller)
 		radio_controller.remove_object(src, frequency)
 		for (var/ch_name in channels)
@@ -69,6 +77,7 @@
 /obj/item/radio/attack_self(mob/user)
 	user.set_machine(src)
 	interact(user)
+	return TRUE
 
 /obj/item/radio/interact(mob/user)
 	if(!user)
@@ -222,7 +231,10 @@
 	if(.)
 		SSnano.update_uis(src)
 
-/obj/item/radio/proc/autosay(var/message, var/from, var/channel) //BS12 EDIT
+/mob/announcer // used only for autosay
+	simulated = FALSE
+
+/obj/item/radio/proc/autosay(var/message, var/from, var/channel, var/sayverb = "states") //BS12 EDIT
 	var/datum/radio_frequency/connection = null
 	if(channel && channels && channels.len > 0)
 		if (channel == "department")
@@ -233,13 +245,13 @@
 		channel = null
 	if (!istype(connection))
 		return
-	var/mob/living/silicon/ai/A = new /mob/living/silicon/ai(src, null, null, 1)
+	var/mob/announcer/A = new()
 	A.fully_replace_character_name(from)
-	talk_into(A, message, channel,"states")
+	talk_into(A, message, channel, sayverb)
 	qdel(A)
 
 // Interprets the message mode when talking into a radio, possibly returning a connection datum
-/obj/item/radio/proc/handle_message_mode(mob/living/M, message, message_mode)
+/obj/item/radio/proc/get_connection_from_message_mode(mob/living/M, message, message_mode)
 	// If a channel isn't specified, send to common.
 	if(!message_mode || message_mode == "headset")
 		return radio_connection
@@ -256,16 +268,17 @@
 	return null
 
 /obj/item/radio/talk_into(mob/living/M, message, channel, var/verb = "says", var/decl/language/speaking = null)
+	set waitfor = FALSE
 	if(!on) return 0 // the device has to be on
 	//  Fix for permacell radios, but kinda eh about actually fixing them.
 	if(!M || !message) return 0
 
-	if(speaking && (speaking.flags & (NONVERBAL|SIGNLANG))) return 0
+	if(speaking && (speaking.flags & (LANG_FLAG_NONVERBAL|LANG_FLAG_SIGNLANG))) return 0
 
 	if (!broadcasting)
 		// Sedation chemical effect should prevent radio use.
 		var/mob/living/carbon/C = M
-		if ((istype(C)) && (C.chem_effects[CE_SEDATE] || C.incapacitated(INCAPACITATION_DISRUPTED)))
+		if(istype(C) && (C.has_chemical_effect(CE_SEDATE, 1) || C.incapacitated(INCAPACITATION_DISRUPTED)))
 			to_chat(M, SPAN_WARNING("You're unable to reach \the [src]."))
 			return 0
 
@@ -307,7 +320,7 @@
 	*/
 
 	//#### Grab the connection datum ####//
-	var/datum/radio_frequency/connection = handle_message_mode(M, message, channel)
+	var/datum/radio_frequency/connection = get_connection_from_message_mode(M, message, channel)
 	if (!istype(connection))
 		return 0
 
@@ -336,12 +349,12 @@
 		jobname = "No id"
 
 	// --- AI ---
-	else if (isAI(M))
-		jobname = "AI"
+	else if (isAI(M) || istype(M, /mob/announcer))
+		jobname = ASSIGNMENT_COMPUTER
 
 	// --- Cyborg ---
 	else if (isrobot(M))
-		jobname = "Robot"
+		jobname = ASSIGNMENT_ROBOT
 
 	// --- Personal AI (pAI) ---
 	else if (istype(M, /mob/living/silicon/pai))
@@ -559,7 +572,7 @@
 /obj/item/radio/attackby(obj/item/W, mob/user)
 	..()
 	user.set_machine(src)
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		b_stat = !b_stat
 		if(!istype(src, /obj/item/radio/beacon))
 			if (b_stat)
@@ -591,15 +604,16 @@
 //Giving borgs their own radio to have some more room to work with -Sieve
 
 /obj/item/radio/borg
-	var/mob/living/silicon/robot/myborg = null // Cyborg which owns this radio. Used for power checks
-	var/obj/item/encryptionkey/keyslot = null//Borg radios can handle a single encryption key
-	var/shut_up = 1
 	icon = 'icons/obj/robot_component.dmi' // Cyborgs radio icons should look like the component.
 	icon_state = "radio"
 	canhear_range = 0
 	subspace_transmission = 1
 	cell = null
 	power_usage = 0
+	is_spawnable_type = FALSE
+	var/mob/living/silicon/robot/myborg = null // Cyborg which owns this radio. Used for power checks
+	var/obj/item/encryptionkey/keyslot = null//Borg radios can handle a single encryption key
+	var/shut_up = 1
 
 /obj/item/radio/borg/ert
 	keyslot = /obj/item/encryptionkey/ert
@@ -635,10 +649,10 @@
 /obj/item/radio/borg/attackby(obj/item/W, mob/user)
 //	..()
 	user.set_machine(src)
-	if (!( isScrewdriver(W) || (istype(W, /obj/item/encryptionkey/ ))))
+	if (!( IS_SCREWDRIVER(W) || (istype(W, /obj/item/encryptionkey/ ))))
 		return
 
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		if(keyslot)
 			for(var/ch_name in channels)
 				radio_controller.remove_object(src, radiochannels[ch_name])
@@ -758,6 +772,12 @@
 		ui.set_initial_data(data)
 		ui.open()
 
+// Used for radios that need to do something upon chatter.
+/obj/item/radio/proc/received_chatter(display_freq, level)
+	if((last_radio_sound + 1 SECOND) < world.time)
+		playsound(loc, 'sound/effects/radio_chatter.ogg', 10, 0, -6)
+		last_radio_sound = world.time
+
 /obj/item/radio/proc/config(op)
 	if(radio_controller)
 		for (var/ch_name in channels)
@@ -781,15 +801,16 @@
 	power_usage = 0
 	channels=list("Engineering" = 1, "Security" = 1, "Medical" = 1, "Command" = 1, "Common" = 1, "Science" = 1, "Supply" = 1, "Service" = 1, "Exploration" = 1)
 	cell = null
+	is_spawnable_type = FALSE
 
 /obj/item/radio/announcer/Destroy()
 	SHOULD_CALL_PARENT(FALSE)
-	crash_with("attempt to delete a [src.type] detected, and prevented.")
+	PRINT_STACK_TRACE("attempt to delete a [src.type] detected, and prevented.")
 	return QDEL_HINT_LETMELIVE
 
 /obj/item/radio/announcer/Initialize()
 	. = ..()
-	forceMove(locate(1,1,GLOB.using_map.contact_levels.len ? GLOB.using_map.contact_levels[1] : 1))
+	forceMove(locate(1,1,global.using_map.contact_levels.len ? global.using_map.contact_levels[1] : 1))
 
 /obj/item/radio/announcer/subspace
 	subspace_transmission = 1
@@ -807,7 +828,7 @@
 
 /obj/item/radio/phone/medbay/Initialize()
 	. = ..()
-	internal_channels = GLOB.default_medbay_channels.Copy()
+	internal_channels = global.default_medbay_channels.Copy()
 
 /obj/item/radio/CouldUseTopic(var/mob/user)
 	..()
@@ -827,6 +848,7 @@
 /obj/item/radio/exosuit
 	name = "exosuit radio"
 	cell = null
+	intercom_handling = TRUE
 
 /obj/item/radio/exosuit/get_cell()
 	. = ..()
@@ -856,5 +878,5 @@
 		if(istype(exosuit) && exosuit.head && exosuit.head.radio && exosuit.head.radio.is_functional())
 			return ..()
 
-/obj/item/radio/exosuit/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.mech_state)
+/obj/item/radio/exosuit/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.mech_topic_state)
 	. = ..()

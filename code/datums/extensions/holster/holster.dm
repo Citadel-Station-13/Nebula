@@ -48,28 +48,29 @@
 		holstered = I
 		storage.handle_item_insertion(holstered, 1)
 		holstered.add_fingerprint(user)
+		holstered.add_fibers(atom_holder)
 		storage.w_class = max(storage.w_class, holstered.w_class)
 		user.visible_message("<span class='notice'>\The [user] holsters \the [holstered].</span>", "<span class='notice'>You holster \the [holstered].</span>")
 		atom_holder.SetName("occupied [initial(atom_holder.name)]")
 		atom_holder.update_icon()
-		GLOB.moved_event.register(holstered, src, .proc/check_holster)
-		GLOB.destroyed_event.register(holstered, src, .proc/clear_holster)
+		events_repository.register(/decl/observ/moved, holstered, src, .proc/check_holster)
+		events_repository.register(/decl/observ/destroyed, holstered, src, .proc/clear_holster)
 		return 1
 	return 0
 
 /datum/extension/holster/proc/clear_holster()
-	GLOB.moved_event.unregister(holstered, src, .proc/check_holster)
-	GLOB.destroyed_event.unregister(holstered, src, .proc/clear_holster)
+	events_repository.unregister(/decl/observ/moved, holstered, src, .proc/check_holster)
+	events_repository.unregister(/decl/observ/destroyed, holstered, src, .proc/clear_holster)
 	holstered = null
 	atom_holder.SetName(initial(atom_holder.name))
 
 /datum/extension/holster/proc/unholster(mob/user, var/avoid_intent = FALSE)
 	if(!holstered)
 		return 0
-	if(user.get_active_hand() && user.get_inactive_hand())
-		to_chat(user, "<span class='warning'>You need an empty hand to draw \the [holstered]!</span>")
+	if(!user.get_empty_hand_slot())
+		to_chat(user, SPAN_WARNING("You need an empty hand to draw \the [holstered]!"))
 		return 1
-	var/using_intent_preference = user.client ? user.client.get_preference_value(/datum/client_preference/holster_on_intent) == GLOB.PREF_YES : FALSE
+	var/using_intent_preference = user.client ? user.client.get_preference_value(/datum/client_preference/holster_on_intent) == PREF_YES : FALSE
 	if(avoid_intent || (using_intent_preference && user.a_intent != I_HELP))
 		var/sound_vol = 25
 		if(user.a_intent == I_HURT)
@@ -93,6 +94,7 @@
 		holstered.add_fingerprint(user)
 		holstered.queue_icon_update()
 		user.put_in_hands(holstered)
+		holstered = null
 		storage.w_class = initial(storage.w_class)
 		atom_holder.update_icon()
 		return 1

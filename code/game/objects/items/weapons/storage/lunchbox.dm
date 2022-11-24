@@ -7,23 +7,22 @@
 	desc = "A little lunchbox. This one is the colors of the rainbow!"
 	w_class = ITEM_SIZE_NORMAL
 	max_w_class = ITEM_SIZE_SMALL
-	var/filled = FALSE
 	attack_verb = list("lunched")
+	material = /decl/material/solid/plastic
+	var/tmp/filled = FALSE
 
-/obj/item/storage/lunchbox/Initialize()
-	. = ..()
-	if(filled)
-		var/list/lunches = lunchables_lunches()
-		var/lunch = lunches[pick(lunches)]
-		new lunch(src)
-
-		var/list/snacks = lunchables_snacks()
-		var/snack = snacks[pick(snacks)]
-		new snack(src)
-
-		var/list/drinks = lunchables_drinks()
-		var/drink = drinks[pick(drinks)]
-		new drink(src)
+/obj/item/storage/lunchbox/WillContain()
+	if(!filled)
+		return
+	//#TODO: Those procs and that code is so overcomplicated for some reasons.
+	var/list/lunches = lunchables_lunches()
+	var/list/snacks  = lunchables_snacks()
+	var/list/drinks  = lunchables_drinks()
+	return list(
+		lunches[pick(lunches)],
+		snacks[pick(snacks)],
+		drinks[pick(drinks)],
+	)
 
 /obj/item/storage/lunchbox/filled
 	filled = TRUE
@@ -72,13 +71,3 @@
 
 /obj/item/storage/lunchbox/syndicate/filled
 	filled = TRUE
-
-/obj/item/storage/lunchbox/TCC
-	name = "\improper GCC lunchbox"
-	icon_state = "lunchbox_tcc"
-	item_state = "toolbox_syndi"
-	desc = "A little lunchbox. This one is branded with the flag of the Gilgamesh Colonial Confederation!"
-
-/obj/item/storage/lunchbox/syndicate/filled
-	filled = TRUE
-

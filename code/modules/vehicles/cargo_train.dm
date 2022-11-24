@@ -9,12 +9,12 @@
 
 	load_item_visible = 1
 	load_offset_x = 0
-	buckle_pixel_shift = @"{'x':0,'y':0,'z':7}"
+	buckle_pixel_shift = list("x" = 0, "y" = 0, "z" = 7)
 
 	var/car_limit = 3		//how many cars an engine can pull before performance degrades
 	charge_use = 1 KILOWATTS
 	active_engines = 1
-	var/obj/item/key/cargo_train/key
+	var/obj/item/key/cargo_train/key	
 
 /obj/item/key/cargo_train
 	name = "key"
@@ -30,11 +30,12 @@
 	anchored = 0
 	passenger_allowed = 0
 	locked = 0
+	buckle_pixel_shift = list("x" = 0, "y" = 0, "z" = 8)
 
 	load_item_visible = 1
 	load_offset_x = 0
 	load_offset_y = 4
-	buckle_pixel_shift = @"{'x':0,'y':0,'z':8}"
+
 
 //-------------------------------------------
 // Standard procs
@@ -60,13 +61,13 @@
 		return 0
 
 	//space check ~no flying space trains sorry
-	if(on && istype(destination, /turf/space))
+	if(on && isspaceturf(destination))
 		return 0
 
 	return ..()
 
 /obj/vehicle/train/cargo/trolley/attackby(obj/item/W, mob/user)
-	if(open && isWirecutter(W))
+	if(open && IS_WIRECUTTER(W))
 		passenger_allowed = !passenger_allowed
 		user.visible_message("<span class='notice'>[user] [passenger_allowed ? "cuts" : "mends"] a cable in [src].</span>","<span class='notice'>You [passenger_allowed ? "cut" : "mend"] the load limiter cable.</span>")
 	else
@@ -166,7 +167,7 @@
 	if(is_train_head() && istype(load, /mob/living/carbon/human))
 		var/mob/living/carbon/human/D = load
 		to_chat(D, "<span class='danger'>You ran over [H]!</span>")
-		visible_message("<span class='danger'>>\The [src] ran over [H]!</span>")
+		visible_message("<span class='danger'>\The [src] ran over [H]!</span>")
 		attack_log += text("\[[time_stamp()]\] <font color='red'>ran over [H.name] ([H.ckey]), driven by [D.name] ([D.ckey])</font>")
 		msg_admin_attack("[D.name] ([D.ckey]) ran over [H.name] ([H.ckey]). (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[src.x];Y=[src.y];Z=[src.z]'>JMP</a>)")
 	else
@@ -181,7 +182,7 @@
 		return 0
 
 	if(is_train_head())
-		if(direction == GLOB.reverse_dir[dir] && tow)
+		if(direction == global.reverse_dir[dir] && tow)
 			return 0
 		if(Move(get_step(src, direction)))
 			return 1
@@ -339,7 +340,7 @@
 
 		if(dir == T_dir) 	//if car is ahead
 			src.attach_to(T, user)
-		else if(GLOB.reverse_dir[dir] == T_dir)	//else if car is behind
+		else if(global.reverse_dir[dir] == T_dir)	//else if car is behind
 			T.attach_to(src, user)
 
 //-------------------------------------------------------

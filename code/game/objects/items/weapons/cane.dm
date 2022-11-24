@@ -6,9 +6,9 @@
 	item_state = "stick"
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	force = 5.0
-	throwforce = 7.0
+	throwforce = 7
 	w_class = ITEM_SIZE_SMALL
-	material = MAT_ALUMINIUM
+	material = /decl/material/solid/metal/aluminium
 	attack_verb = list("bludgeoned", "whacked", "disciplined", "thrashed")
 	base_parry_chance = 30
 
@@ -21,7 +21,7 @@
 
 /obj/item/cane/concealed/Initialize()
 	. = ..()
-	var/obj/item/material/knife/folding/combat/switchblade/temp_blade = new(src)
+	var/obj/item/knife/folding/combat/switchblade/temp_blade = new(src)
 	concealed_blade = temp_blade
 
 /obj/item/cane/concealed/attack_self(var/mob/user)
@@ -34,22 +34,21 @@
 		user.put_in_hands(src)
 		concealed_blade = null
 		update_icon()
-		user.update_inv_l_hand()
-		user.update_inv_r_hand()
+		user.update_inv_hands()
 	else
 		..()
 
-/obj/item/cane/concealed/attackby(var/obj/item/material/knife/folding/W, var/mob/user)
+/obj/item/cane/concealed/attackby(var/obj/item/knife/folding/W, var/mob/user)
 	if(!src.concealed_blade && istype(W) && user.unEquip(W, src))
 		user.visible_message("<span class='warning'>[user] has sheathed \a [W] into [src]!</span>", "You sheathe \the [W] into [src].")
 		src.concealed_blade = W
 		update_icon()
-		user.update_inv_l_hand()
-		user.update_inv_r_hand()
+		user.update_inv_hands()
 	else
 		..()
 
 /obj/item/cane/concealed/on_update_icon()
+	. = ..()
 	if(concealed_blade)
 		SetName(initial(name))
 		icon_state = initial(icon_state)

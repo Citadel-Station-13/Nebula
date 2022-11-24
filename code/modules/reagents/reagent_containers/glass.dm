@@ -12,7 +12,11 @@
 	volume = 60
 	w_class = ITEM_SIZE_SMALL
 	atom_flags = ATOM_FLAG_OPEN_CONTAINER
+	item_flags = ITEM_FLAG_HOLLOW
 	unacidable = 1 //glass doesn't dissolve in acid
+
+	drop_sound = 'sound/foley/bottledrop1.ogg'
+	pickup_sound = 'sound/foley/bottlepickup1.ogg'
 
 	var/list/can_be_placed_into = list(
 		/obj/machinery/chem_master/,
@@ -40,7 +44,7 @@
 	. = ..()
 	if(distance > 2)
 		return
-	
+
 	if(reagents?.total_volume)
 		to_chat(user, "<span class='notice'>It contains [reagents.total_volume] units of liquid.</span>")
 	else
@@ -61,9 +65,7 @@
 /obj/item/chems/glass/attack(mob/M, mob/user, def_zone)
 	if(force && !(item_flags & ITEM_FLAG_NO_BLUDGEON) && user.a_intent == I_HURT)
 		return	..()
-	if(standard_feed_mob(user, M))
-		return
-	return 0
+	return FALSE
 
 /obj/item/chems/glass/standard_feed_mob(var/mob/user, var/mob/target)
 	if(!ATOM_IS_OPEN_CONTAINER(src))
@@ -81,66 +83,71 @@
 
 /obj/item/chems/glass/afterattack(var/obj/target, var/mob/user, var/proximity)
 	if(!ATOM_IS_OPEN_CONTAINER(src) || !proximity) //Is the container open & are they next to whatever they're clicking?
-		return 1 //If not, do nothing.
+		return FALSE //If not, do nothing.
 	for(var/type in can_be_placed_into) //Is it something it can be placed into?
 		if(istype(target, type))
-			return 1
+			return TRUE
 	if(standard_dispenser_refill(user, target)) //Are they clicking a water tank/some dispenser?
-		return 1
+		return TRUE
 	if(standard_pour_into(user, target)) //Pouring into another beaker?
-		return
+		return TRUE
+	if(standard_feed_mob(user, target))
+		return TRUE
 	if(user.a_intent == I_HURT)
 		if(standard_splash_mob(user,target))
-			return 1
+			return TRUE
 		if(reagents && reagents.total_volume)
-			to_chat(user, "<span class='notice'>You splash the contents of \the [src] onto [target].</span>") //They are on harm intent, aka wanting to spill it.
+			to_chat(user, SPAN_DANGER("You splash the contents of \the [src] onto \the [target]."))
 			reagents.splash(target, reagents.total_volume)
-			return 1
-	..()
+			return TRUE
+	else if(reagents && reagents.total_volume)
+		to_chat(user, SPAN_NOTICE("You splash a small amount of the contents of \the [src] onto \the [target]."))
+		reagents.splash(target, min(reagents.total_volume, 5))
+		return TRUE
+	. = ..()
 
 /obj/item/chems/glass/bucket
 	name = "bucket"
 	desc = "It's a bucket."
 	icon = 'icons/obj/items/bucket.dmi'
-	on_mob_icon = 'icons/obj/items/bucket.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	center_of_mass = @"{'x':16,'y':9}"
 	w_class = ITEM_SIZE_NORMAL
 	amount_per_transfer_from_this = 20
 	possible_transfer_amounts = @"[10,20,30,60,120,150,180]"
 	volume = 180
-	atom_flags = ATOM_FLAG_OPEN_CONTAINER | ATOM_FLAG_SHOW_REAGENT_NAME
+	atom_flags = ATOM_FLAG_OPEN_CONTAINER
+	presentation_flags = PRESENTATION_FLAG_NAME
 	unacidable = 0
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	material_force_multiplier = 0.2
 	slot_flags = SLOT_HEAD
+	drop_sound = 'sound/foley/donk1.ogg'
+	pickup_sound = 'sound/foley/pickup2.ogg'
 
 /obj/item/chems/glass/bucket/wood
 	desc = "It's a wooden bucket. How rustic."
 	icon = 'icons/obj/items/wooden_bucket.dmi'
-	on_mob_icon = 'icons/obj/items/wooden_bucket.dmi'
 	volume = 200
-	material = MAT_WOOD
+	material = /decl/material/solid/wood
 
 /obj/item/chems/glass/bucket/attackby(var/obj/D, mob/user)
 	if(istype(D, /obj/item/mop))
 		if(reagents.total_volume < 1)
-			to_chat(user, "<span class='warning'>\The [src] is empty!</span>")
-		else
+			to_chat(user, SPAN_WARNING("\The [src] is empty!"))
+		else if(REAGENTS_FREE_SPACE(D.reagents) >= 5)
 			reagents.trans_to_obj(D, 5)
-			to_chat(user, "<span class='notice'>You wet \the [D] in \the [src].</span>")
+			to_chat(user, SPAN_NOTICE("You wet \the [D] in \the [src]."))
 			playsound(loc, 'sound/effects/slosh.ogg', 25, 1)
+		else
+			to_chat(user, SPAN_WARNING("\The [D] is saturated."))
 		return
 	else
 		return ..()
 
 /obj/item/chems/glass/bucket/on_update_icon()
-	var/new_overlays
+	. = ..()
 	if (!ATOM_IS_OPEN_CONTAINER(src))
-		var/image/lid = image(icon, src, "lid_[initial(icon_state)]")
-		LAZYADD(new_overlays, lid)
+		add_overlay("lid_[initial(icon_state)]")
 	else if(reagents && reagents.total_volume && round((reagents.total_volume / volume) * 100) > 80)
-		var/image/filling = image('icons/obj/reagentfillings.dmi', src, "bucket")
-		filling.color = reagents.get_color()
-		LAZYADD(new_overlays, filling)
-	overlays = new_overlays
+		add_overlay(overlay_image('icons/obj/reagentfillings.dmi', "bucket", reagents.get_color()))

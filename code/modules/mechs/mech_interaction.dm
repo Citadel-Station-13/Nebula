@@ -1,21 +1,13 @@
-/mob/living/MouseDrop(atom/over)
-	if(usr == src && usr != over)
-		if(istype(over, /mob/living/exosuit))
-			var/mob/living/exosuit/exosuit = over
-			if(exosuit.body)
-				if(usr.mob_size >= exosuit.body.min_pilot_size && usr.mob_size <= exosuit.body.max_pilot_size)
-					if(exosuit.enter(src))
-						return
-				else
-					to_chat(usr, SPAN_WARNING("You cannot pilot a exosuit of this size."))
-					return
-	return ..()
+/mob/living/exosuit/receive_mouse_drop(atom/dropping, mob/user)
+	. = ..()
+	if(!. && istype(dropping, /obj/machinery/portable_atmospherics/canister))
+		body.receive_mouse_drop(dropping, user)
+		return TRUE
 
-/mob/living/exosuit/MouseDrop_T(atom/dropping, mob/user)
-	var/obj/machinery/portable_atmospherics/canister/C = dropping
-	if(istype(C))
-		body.MouseDrop_T(dropping, user)
-	else . = ..()
+/mob/living/exosuit/handle_mouse_drop(atom/over, mob/user)
+	if(body?.handle_mouse_drop(over, user))
+		return TRUE
+	. = ..()
 
 /mob/living/exosuit/RelayMouseDrag(src_object, over_object, src_location, over_location, src_control, over_control, params, var/mob/user)
 	if(user && (user in pilots) && user.loc == src)
@@ -50,7 +42,23 @@
 	if(LAZYISIN(pilots, user) && !hatch_closed)
 		return TRUE
 	. = ..()
-	
+
+//UI distance checks
+/mob/living/exosuit/contents_nano_distance(src_object, mob/living/user)
+	. = ..()
+	if((user in pilots) && (src_object == src))
+		return STATUS_INTERACTIVE //Pilots can always interact with exosuit hosted uis
+	if(!hatch_closed)
+		return max(shared_living_nano_distance(src_object), .) //Either visible to mech(outside) or visible to user (inside)
+
+/mob/living/exosuit/exosuit/CanUseTopic(mob/user, datum/topic_state/state, href_list)
+	if(user in pilots)
+		return STATUS_INTERACTIVE
+	return ..()
+
+/mob/living/exosuit/has_dexterity(dex_level)
+	return TRUE
+
 /mob/living/exosuit/ClickOn(var/atom/A, var/params, var/mob/user)
 
 	if(!user || incapacitated() || user.incapacitated())
@@ -63,18 +71,18 @@
 	if(modifiers["shift"])
 		user.examinate(A)
 		return
-		
+
 	if(modifiers["ctrl"] && selected_system == A)
 		selected_system.CtrlClick(user)
 		setClickCooldown(3)
-		return	
+		return
 
 	if(!(user in pilots) && user != src)
 		return
 
 	if(!canClick())
 		return
-	
+
 	// Are we facing the target?
 	if(A.loc != src && !(get_dir(src, A) & dir))
 		return
@@ -90,7 +98,8 @@
 		return
 
 	if(!get_cell()?.checked_use(arms.power_use * CELLRATE))
-		to_chat(user, SPAN_WARNING("Error: Power levels insufficient."))
+		to_chat(user, power == MECH_POWER_ON ? SPAN_WARNING("Error: Power levels insufficient.") :  SPAN_WARNING("\The [src] is powered off."))
+		return
 
 	// User is not necessarily the exosuit, or the same person, so update intent.
 	if(user != src)
@@ -126,7 +135,7 @@
 				ME = selected_system
 				temp_system = ME.get_effective_obj()
 				if(temp_system in ME)
-					system_moved = 1
+					system_moved = TRUE
 					temp_system.forceMove(src)
 			else
 				temp_system = selected_system
@@ -152,15 +161,17 @@
 				adj = A.Adjacent(src)
 
 			var/resolved
+			current_user = user
 
-			if(adj) resolved = temp_system.resolve_attackby(A, src, params)
+			if(adj)
+				resolved = temp_system.resolve_attackby(A, src, params)
 			if(!resolved && A && temp_system)
 				var/mob/ruser = src
 				if(!system_moved) //It's more useful to pass along clicker pilot when logic is fully mechside
 					ruser = user
 				temp_system.afterattack(A,ruser,adj,params)
 			if(system_moved) //We are using a proxy system that may not have logging like mech equipment does
-				log_and_message_admins("used [temp_system] targetting [A]", user, src.loc)
+				admin_attack_log(user, A, "Attacked using \a [temp_system] (MECH)", "Was attacked with \a [temp_system] (MECH)", "used \a [temp_system] (MECH) to attack")
 			//Mech equipment subtypes can add further click delays
 			var/extra_delay = 0
 			if(ME != null)
@@ -169,11 +180,13 @@
 			setClickCooldown(arms ? arms.action_delay + extra_delay : 15 + extra_delay)
 			if(system_moved)
 				temp_system.forceMove(selected_system)
+			current_user = null
 			return
 
 	if(A == src)
 		setClickCooldown(5)
-		return attack_self(user)
+		visible_message("\The [src] pokes itself.")
+		return TRUE
 	else if(adj)
 		setClickCooldown(arms ? arms.action_delay : 15)
 		admin_attack_log(user, A, "Attacked using \a [arms]", "Was attacked with \a [arms]", "used \a [arms] to attack")
@@ -195,50 +208,57 @@
 		for(var/hardpoint in hardpoints)
 			if(hardpoint != selected_hardpoint)
 				continue
-			var/obj/screen/movable/exosuit/hardpoint/H = hardpoint_hud_elements[hardpoint]
+			var/obj/screen/exosuit/hardpoint/H = hardpoint_hud_elements[hardpoint]
 			if(istype(H))
 				H.icon_state = "hardpoint"
 				break
 		selected_system = null
 	selected_hardpoint = null
 
-/mob/living/exosuit/proc/check_enter(var/mob/user)
-	if(!user || user.incapacitated())
+/mob/living/exosuit/proc/check_enter(mob/user, silent = FALSE, check_incap = TRUE)
+	if(!user || (check_incap && user.incapacitated()))
+		return FALSE
+	if(!(user.mob_size >= body.min_pilot_size && user.mob_size <= body.max_pilot_size))
+		if(!silent)
+			to_chat(user, SPAN_WARNING("You cannot pilot an exosuit of this size."))
 		return FALSE
 	if(!user.Adjacent(src))
 		return FALSE
 	if(hatch_locked)
-		to_chat(user, SPAN_WARNING("The [body.hatch_descriptor] is locked."))
+		if(!silent)
+			to_chat(user, SPAN_WARNING("The [body.hatch_descriptor] is locked."))
 		return FALSE
 	if(hatch_closed)
-		to_chat(user, SPAN_WARNING("The [body.hatch_descriptor] is closed."))
+		if(!silent)
+			to_chat(user, SPAN_WARNING("The [body.hatch_descriptor] is closed."))
 		return FALSE
 	if(LAZYLEN(pilots) >= LAZYLEN(body.pilot_positions))
-		to_chat(user, SPAN_WARNING("\The [src] is occupied to capacity."))
+		if(!silent)
+			to_chat(user, SPAN_WARNING("\The [src] is occupied to capacity."))
 		return FALSE
 	return TRUE
 
-/mob/living/exosuit/proc/enter(var/mob/user)
-	if(!check_enter(user))
-		return
+/mob/living/exosuit/proc/enter(mob/user, silent = FALSE, check_incap = TRUE, instant = FALSE)
+	if(!check_enter(user, silent, check_incap))
+		return FALSE
 	to_chat(user, SPAN_NOTICE("You start climbing into \the [src]..."))
-	if(!body || !do_after(user, body.climb_time))
-		return
 	if(!body)
-		return
-	if(!check_enter(user))
-		return
-	to_chat(user, SPAN_NOTICE("You climb into \the [src]."))
+		return FALSE
+	if(!instant && !do_after(user, body.climb_time))
+		return FALSE
+	if(!check_enter(user, silent, check_incap))
+		return FALSE
+	if(!silent)
+		to_chat(user, SPAN_NOTICE("You climb into \the [src]."))
+		playsound(src, 'sound/machines/windowdoor.ogg', 50, 1)
 	user.forceMove(src)
 	LAZYDISTINCTADD(pilots, user)
 	sync_access()
-	playsound(src, 'sound/machines/windowdoor.ogg', 50, 1)
-	user.playsound_local(null, 'sound/mecha/nominal.ogg', 50)
 	if(user.client) user.client.screen |= hud_elements
 	LAZYDISTINCTADD(user.additional_vision_handlers, src)
 	update_pilots()
 	user.PushClickHandler(/datum/click_handler/default/mech)
-	return 1
+	return TRUE
 
 /mob/living/exosuit/proc/sync_access()
 	access_card.access = saved_access?.Copy()
@@ -291,27 +311,35 @@
 			if(hardpoints[hardpoint] == null)
 				free_hardpoints += hardpoint
 		var/to_place = input("Where would you like to install it?") as null|anything in (realThing.restricted_hardpoints & free_hardpoints)
+		if(!to_place)
+			to_chat(user, SPAN_WARNING("There is no room to install \the [thing]."))
 		if(install_system(thing, to_place, user))
 			return
-		to_chat(user, SPAN_WARNING("\The [src] could not be installed in that hardpoint."))
+		to_chat(user, SPAN_WARNING("\The [thing] could not be installed in that hardpoint."))
 		return
 
 	else if(istype(thing, /obj/item/kit/paint))
 		user.visible_message(SPAN_NOTICE("\The [user] opens \the [thing] and spends some quality time customising \the [src]."))
+
 		var/obj/item/kit/paint/P = thing
 		SetName(P.new_name)
 		desc = P.new_desc
-		for(var/obj/item/mech_component/comp in list(arms, legs, head, body))
-			comp.decal = P.new_icon
-		if(P.new_icon_file)
-			icon = P.new_icon_file
+
+		if(P.new_state)
+			for(var/obj/item/mech_component/comp in list(arms, legs, head, body))
+				comp.decal = P.new_state
+
+		if(P.new_icon)
+			for(var/obj/item/mech_component/comp in list(arms, legs, head, body))
+				comp.icon = P.new_icon
+
 		queue_icon_update()
 		P.use(1, user)
 		return 1
 
 	else
 		if(user.a_intent != I_HURT)
-			if(isMultitool(thing))
+			if(IS_MULTITOOL(thing))
 				if(hardpoints_locked)
 					to_chat(user, SPAN_WARNING("Hardpoint system access is disabled."))
 					return
@@ -327,7 +355,7 @@
 					return
 				to_chat(user, SPAN_WARNING("\The [src] has no hardpoint systems to remove."))
 				return
-			else if(isWrench(thing))
+			else if(IS_WRENCH(thing))
 				if(!maintenance_protocols)
 					to_chat(user, SPAN_WARNING("The securing bolts are not visible while maintenance protocols are disabled."))
 					return
@@ -339,7 +367,7 @@
 				visible_message(SPAN_NOTICE("\The [user] loosens and removes the securing bolts, dismantling \the [src]."))
 				dismantle()
 				return
-			else if(isWelder(thing))
+			else if(IS_WELDER(thing))
 				if(!getBruteLoss())
 					return
 				var/list/damaged_parts = list()
@@ -350,7 +378,7 @@
 				if(CanPhysicallyInteract(user) && !QDELETED(to_fix) && (to_fix in src) && to_fix.brute_damage)
 					to_fix.repair_brute_generic(thing, user)
 				return
-			else if(isCoil(thing))
+			else if(IS_COIL(thing))
 				if(!getFireLoss())
 					return
 				var/list/damaged_parts = list()
@@ -361,7 +389,7 @@
 				if(CanPhysicallyInteract(user) && !QDELETED(to_fix) && (to_fix in src) && to_fix.burn_damage)
 					to_fix.repair_burn_generic(thing, user)
 				return
-			else if(isCrowbar(thing))
+			else if(IS_SCREWDRIVER(thing))
 				if(!maintenance_protocols)
 					to_chat(user, SPAN_WARNING("The cell compartment remains locked while maintenance protocols are disabled."))
 					return
@@ -375,8 +403,29 @@
 				user.put_in_hands(body.cell)
 				to_chat(user, SPAN_NOTICE("You remove \the [body.cell] from \the [src]."))
 				playsound(user.loc, 'sound/items/Crowbar.ogg', 50, 1)
-				visible_message(SPAN_NOTICE("\The [user] pries out \the [body.cell] using the \the [thing]."))
+				visible_message(SPAN_NOTICE("\The [user] pries out \the [body.cell] using \the [thing]."))
+				power = MECH_POWER_OFF
+				hud_power_control.queue_icon_update()
 				body.cell = null
+				return
+			else if(IS_CROWBAR(thing))
+				if(!hatch_locked)
+					to_chat(user, SPAN_NOTICE("The cockpit isn't locked. There is no need for this."))
+					return
+				if(!body) //Error
+					return
+				var/delay = min(50 * user.skill_delay_mult(SKILL_DEVICES), 50 * user.skill_delay_mult(SKILL_EVA))
+				visible_message(SPAN_NOTICE("\The [user] starts forcing the \the [src]'s emergency [body.hatch_descriptor] release using \the [thing]."))
+				if(!do_after(user, delay, src))
+					return
+				visible_message(SPAN_NOTICE("\The [user] forces \the [src]'s [body.hatch_descriptor] open using the \the [thing]."))
+				playsound(user.loc, 'sound/machines/bolts_up.ogg', 25, 1)
+				hatch_locked = FALSE
+				hatch_closed = FALSE
+				for(var/mob/pilot in pilots)
+					eject(pilot, silent = 1)
+				hud_open.queue_icon_update()
+				queue_icon_update()
 				return
 			else if(istype(thing, /obj/item/cell))
 				if(!maintenance_protocols)
@@ -385,7 +434,7 @@
 				if(!body || body.cell)
 					to_chat(user, SPAN_WARNING("There is already a cell in there!"))
 					return
-				
+
 				if(user.unEquip(thing))
 					thing.forceMove(body)
 					body.cell = thing
@@ -393,11 +442,29 @@
 					playsound(user.loc, 'sound/items/Screwdriver.ogg', 50, 1)
 					visible_message(SPAN_NOTICE("\The [user] installs \the [body.cell] into \the [src]."))
 				return
+			else if(istype(thing, /obj/item/robotanalyzer))
+				to_chat(user, SPAN_NOTICE("Diagnostic Report for \the [src]:"))
+				for(var/obj/item/mech_component/MC in list(arms, legs, body, head))
+					if(MC)
+						MC.return_diagnostics(user)
+				return
 	return ..()
 
-/mob/living/exosuit/attack_hand(var/mob/user)
-	// Drag the pilot out if possible.
-	if(user.a_intent == I_HURT)
+/mob/living/exosuit/default_interaction(var/mob/user)
+	. = ..()
+	if(!.)
+		// Toggle the hatch.
+		if(hatch_locked)
+			to_chat(user, SPAN_WARNING("The [body.hatch_descriptor] is locked."))
+			return TRUE
+		if(hud_open)
+			hud_open.toggled()
+			return TRUE
+
+/mob/living/exosuit/default_hurt_interaction(var/mob/user)
+	. = ..()
+	if(.)
+		// Drag the pilot out if possible.
 		if(!LAZYLEN(pilots))
 			to_chat(user, SPAN_WARNING("There is nobody inside \the [src]."))
 		else if(!hatch_closed)
@@ -406,20 +473,13 @@
 			if(do_after(user, 30) && user.Adjacent(src) && (pilot in pilots) && !hatch_closed)
 				user.visible_message(SPAN_DANGER("\The [user] drags \the [pilot] out of \the [src]!"))
 				eject(pilot, silent=1)
+				return TRUE
 		return
 
-	// Otherwise toggle the hatch.
-	if(hatch_locked)
-		to_chat(user, SPAN_WARNING("The [body.hatch_descriptor] is locked."))
-		return
-	hatch_closed = !hatch_closed
-	to_chat(user, SPAN_NOTICE("You [hatch_closed ? "close" : "open"] the [body.hatch_descriptor]."))
-	hud_open.queue_icon_update()
-	queue_icon_update()
-	return
-
-/mob/living/exosuit/proc/attack_self(var/mob/user)
-	return visible_message("\The [src] pokes itself.")
+/mob/living/exosuit/attack_generic(var/mob/user, var/damage, var/attack_message = "smashes into")
+	if(..())
+		playsound(loc, 'sound/effects/metal_close.ogg', 40, 1)
+		playsound(loc, 'sound/weapons/tablehit1.ogg', 40, 1)
 
 /mob/living/exosuit/proc/rename(var/mob/user)
 	if(user != src && !(user in pilots))

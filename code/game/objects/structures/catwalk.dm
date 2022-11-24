@@ -7,10 +7,12 @@
 	anchored = 1.0
 	layer = CATWALK_LAYER
 	footstep_type = /decl/footsteps/catwalk
-	obj_flags = OBJ_FLAG_NOFALL
+	obj_flags = OBJ_FLAG_NOFALL | OBJ_FLAG_MOVES_UNSUPPORTED
 	handle_generic_blending = TRUE
 	tool_interaction_flags = TOOL_INTERACTION_DECONSTRUCT
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
+	parts_type = /obj/item/stack/material/rods
+	parts_amount = 2
 
 	var/hatch_open = FALSE
 	var/decl/flooring/tiling/plated_tile
@@ -48,7 +50,7 @@
 			AM.fall(oldloc)
 
 /obj/structure/catwalk/proc/redraw_nearby_catwalks()
-	for(var/direction in GLOB.alldirs)
+	for(var/direction in global.alldirs)
 		var/obj/structure/catwalk/L = locate() in get_step(src, direction)
 		if(L)
 			L.update_connections()
@@ -56,32 +58,43 @@
 
 /obj/structure/catwalk/on_update_icon()
 	update_connections()
-	overlays.Cut()
+	..()
 	icon_state = ""
-	var/image/I
 	if(!hatch_open)
 		for(var/i = 1 to 4)
-			I = image(icon, "catwalk[connections ? connections[i] : "0"]", dir = 1<<(i-1))
-			overlays += I
+			add_overlay(image(icon, "catwalk[connections ? connections[i] : "0"]", dir = BITFLAG(i-1)))
 	if(plated_tile)
-		I = image(icon, "plated")
+		var/image/I = image(icon, "plated")
 		I.color = plated_tile.color
-		overlays += I
+		add_overlay(I)
 
 /obj/structure/catwalk/create_dismantled_products(var/turf/T)
-	new /obj/item/stack/material/rods(T, 2, material.type)
 	if(plated_tile)
 		var/plate_path = plated_tile.build_type
 		new plate_path(T)
+	. = ..()
 
 /obj/structure/catwalk/explosion_act(severity)
 	..()
 	if(!QDELETED(src) && severity != 3)
 		physically_destroyed()
 
+/obj/structure/catwalk/grab_attack(var/obj/item/grab/G)
+	var/mob/living/affecting_mob = G.get_affecting_mob()
+	if(atom_flags & ATOM_FLAG_CLIMBABLE)
+		var/obj/occupied = turf_is_crowded()
+		if (occupied)
+			to_chat(G.assailant, SPAN_WARNING("There's \a [occupied] in the way."))
+			return TRUE
+		G.affecting.forceMove(src.loc)
+		if(affecting_mob)
+			SET_STATUS_MAX(affecting_mob, STAT_WEAK, rand(2,5))
+		visible_message(SPAN_DANGER("[G.assailant] puts [G.affecting] on \the [src]."))
+		return TRUE
+
 /obj/structure/catwalk/attack_robot(var/mob/user)
-	if(Adjacent(user))
-		attack_hand(user)
+	if(CanPhysicallyInteract(user))
+		return attack_hand(user)
 
 /obj/structure/catwalk/attackby(obj/item/C, mob/user)
 	. = ..()
@@ -98,16 +111,7 @@
 				return
 			dismantle(user)
 			return TRUE
-		if(isCrowbar(C) && plated_tile)
-			hatch_open = !hatch_open
-			if(hatch_open)
-				playsound(src, 'sound/items/Crowbar.ogg', 100, 2)
-				to_chat(user, "<span class='notice'>You pry open \the [src]'s maintenance hatch.</span>")
-			else
-				playsound(src, 'sound/items/Deconstruct.ogg', 100, 2)
-				to_chat(user, "<span class='notice'>You shut \the [src]'s maintenance hatch.</span>")
-			update_icon()
-			return TRUE
+
 		if(istype(C, /obj/item/stack/tile/mono) && !plated_tile)
 
 			var/ladder = (locate(/obj/structure/ladder) in loc)
@@ -115,7 +119,7 @@
 				to_chat(user, SPAN_WARNING("\The [ladder] is in the way."))
 				return TRUE
 
-			var/obj/item/stack/tile/floor/ST = C
+			var/obj/item/stack/tile/ST = C
 			if(!ST.in_use)
 				to_chat(user, "<span class='notice'>Placing tile...</span>")
 				ST.in_use = 1
@@ -131,10 +135,23 @@
 						var/decl/flooring/F = decls[flooring_type]
 						if(!F.build_type)
 							continue
-						if(ispath(C.type, F.build_type))
+						if(istype(C, F.build_type) && (!F.build_material || C.material?.type == F.build_material))
 							plated_tile = F
 							break
 					update_icon()
+
+/obj/structure/catwalk/handle_default_crowbar_attackby(mob/user, obj/item/crowbar)
+	if(plated_tile)
+		hatch_open = !hatch_open
+		if(hatch_open)
+			playsound(src, 'sound/items/Crowbar.ogg', 100, 2)
+			to_chat(user, "<span class='notice'>You pry open \the [src]'s maintenance hatch.</span>")
+		else
+			playsound(src, 'sound/items/Deconstruct.ogg', 100, 2)
+			to_chat(user, "<span class='notice'>You shut \the [src]'s maintenance hatch.</span>")
+		update_icon()
+		return TRUE
+	. = ..()
 
 /obj/structure/catwalk/hoist_act(turf/dest)
 	for(var/A in loc)
@@ -152,8 +169,8 @@
 	icon_state = "catwalk_plated"
 	density = 1
 	anchored = 1.0
-	var/activated = FALSE
 	layer = CATWALK_LAYER
+	var/activated = FALSE
 	var/plating_type = /decl/flooring/tiling/mono
 
 /obj/effect/catwalk_plated/Initialize(mapload)
@@ -179,7 +196,7 @@
 		warning("Frame Spawner: A catwalk already exists at [loc.x]-[loc.y]-[loc.z]")
 	else
 		var/obj/structure/catwalk/C = new /obj/structure/catwalk(loc)
-		C.plated_tile += new plating_type
+		C.plated_tile += GET_DECL(plating_type)
 		C.name = "plated catwalk"
 		C.update_icon()
 	activated = 1

@@ -13,9 +13,9 @@
 
 /datum/uplink_item/item/tools/ductape
 	name = "Duct Tape"
-	desc = "A roll of duct tape. changes \"HELP\" into sexy \"mmm\"."
+	desc = "A roll of duct tape. Will silence anyone, just like a particularly bad duck pun."
 	item_cost = 2
-	path = /obj/item/tape_roll
+	path = /obj/item/stack/tape_roll/duct_tape
 
 /datum/uplink_item/item/tools/money
 	name = "Operations Funding"
@@ -125,7 +125,7 @@
 
 /datum/uplink_item/item/tools/teleporter/New()
 	..()
-	antag_roles = list(MODE_MERCENARY)
+	antag_roles = list(/decl/special_role/mercenary)
 
 /datum/uplink_item/item/tools/ai_module
 	name = "Hacked AI Upload Module"
@@ -136,7 +136,7 @@
 
 /datum/uplink_item/item/tools/supply_beacon
 	name = "Hacked Supply Beacon (DANGER!)"
-	desc = "Wrench this large beacon onto an exposed power cable, in order to activate it. This will call in a \
+	desc = "Wrench this large beacon onto an exposed power cable and add some cabling, in order to activate it. This will call in a \
 	drop pod to the target location, containing a random assortment of (possibly useful) items. \
 	The ship's computer system will announce when this pod is enroute."
 	item_cost = 52
@@ -146,7 +146,7 @@
 	name = "Camera MIU"
 	desc = "Wearing this mask allows you to remotely view any cameras you currently have access to. Take the mask off to stop viewing."
 	item_cost = 60
-	antag_costs = list(MODE_MERCENARY = 30)
+	antag_costs = list(/decl/special_role/mercenary = 30)
 	path = /obj/item/clothing/mask/ai
 
 /datum/uplink_item/item/tools/interceptor
@@ -159,5 +159,5 @@
 	name = "Binary Gas Bomb"
 	item_cost = 30
 	path = /obj/effect/spawner/newbomb/traitor
-	desc = "A remote-activated phoron-oxygen bomb assembly with an included signaler. \
+	desc = "A remote-activated hydrogen-oxygen bomb assembly with an included signaler. \
 			A flashing disclaimer begins with the warning 'SOME DISASSEMBLY/REASSEMBLY REQUIRED.'"

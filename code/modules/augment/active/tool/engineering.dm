@@ -1,11 +1,11 @@
 
 
 /obj/item/organ/internal/augment/active/polytool/engineer
-	name = "\improper Engineering toolset"
+	name = "engineering toolset"
 	action_button_name = "Deploy Engineering Tool"
 	desc = "A lightweight augmentation for the engineer on-the-go. This one comes with a series of common tools."
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
 	paths = list(
 		/obj/item/screwdriver/finger,
 		/obj/item/wrench/finger,
@@ -14,25 +14,21 @@
 		/obj/item/wirecutters/finger,
 		/obj/item/multitool/finger
 	)
+	origin_tech = "{'materials':4,'magnets':3,'engineering':3}"
 
 /obj/item/weldingtool/finger
 	name = "digital welder"
 	desc = "A precise, high quality welding tool."
-	icon_state = "welder_finger"
-	icon = 'icons/obj/augment_tools.dmi'
-
-
-/obj/item/weldingtool/finger/on_update_icon()
-	icon_state = welding ? "welder_finger_on" : "welder_finger"
+	icon = 'icons/obj/items/tool/welders/welder_finger.dmi'
 
 /obj/item/wirecutters/finger
 	name = "digital splicer"
 	desc = "A small embedded cutter in your finger."
 	icon_state = "wirecutter_finger"
 	icon = 'icons/obj/augment_tools.dmi'
-	on_mob_icon = null
 
 /obj/item/wirecutters/finger/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE)
 	return
 
 /obj/item/screwdriver/finger
@@ -40,9 +36,9 @@
 	desc = "A nifty powertool at your literal fingertips."
 	icon_state = "screwdriver_finger"
 	icon = 'icons/obj/augment_tools.dmi'
-	on_mob_icon = null
 
 /obj/item/screwdriver/finger/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE)
 	return
 
 /obj/item/crowbar/finger
@@ -50,9 +46,9 @@
 	desc = "A somewhat awkward to use prybar. It doubles as bottle opener."
 	icon_state = "prybar_finger"
 	icon = 'icons/obj/augment_tools.dmi'
-	on_mob_icon = null
 
 /obj/item/crowbar/finger/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE)
 	return
 
 /obj/item/wrench/finger
@@ -60,9 +56,9 @@
 	desc = "A rotating wrench. Don't get your hair caught in it."
 	icon_state = "wrench_finger"
 	icon = 'icons/obj/augment_tools.dmi'
-	on_mob_icon = null
 
 /obj/item/wrench/finger/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE)
 	return
 
 /obj/item/multitool/finger

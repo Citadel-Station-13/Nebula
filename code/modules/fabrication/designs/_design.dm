@@ -9,15 +9,12 @@
 	)
 	var/build_time = 5 SECONDS
 	var/max_amount = 1 // How many instances can be queued at once
-	var/ignore_materials = list(
-		MAT_WASTE = TRUE
-	)
 	var/list/required_technology
+	var/list/species_locked
 
 // Populate name and resources from the product type.
 /datum/fabricator_recipe/proc/get_product_name()
-	var/obj/O = path
-	. = initial(O.name)
+	. = atom_info_repository.get_name_for(path, amount = 1)
 
 /datum/fabricator_recipe/New()
 	..()
@@ -27,10 +24,13 @@
 		name = get_product_name()
 	if(required_technology == TRUE)
 		if(ispath(path, /obj/item))
-			var/obj/item/O = path
-			var/tech = initial(O.origin_tech)
-			if(tech)
-				required_technology = json_decode(tech)
+			var/list/res = build(null, new/datum/fabricator_build_order(src, 1))
+			if(length(res))
+				var/obj/item/O = res[1]
+				var/tech = O.get_origin_tech()
+				if(tech)
+					required_technology = cached_json_decode(tech)
+				QDEL_NULL_LIST(res)
 		if(!islist(required_technology))
 			required_technology = list()
 	if(!resources)
@@ -46,28 +46,30 @@
 			check_tech -= tech
 	return !length(check_tech)
 
+/datum/fabricator_recipe/proc/is_available_to_fab(var/obj/machinery/fabricator/fab)
+	return TRUE
+
 /datum/fabricator_recipe/proc/get_resources()
 	resources = list()
 	var/list/building_cost = atom_info_repository.get_matter_for(path)
 	for(var/mat in building_cost)
-		if(!ignore_materials[mat])
-			resources[mat] = building_cost[mat] * FABRICATOR_EXTRA_COST_FACTOR
+		resources[mat] = building_cost[mat] * FABRICATOR_EXTRA_COST_FACTOR
 
 /obj/building_cost()
 	. = ..()
 	if(length(matter))
 		for(var/material in matter)
-			var/decl/material/M = decls_repository.get_decl(material)
+			var/decl/material/M = GET_DECL(material)
 			if(istype(M))
 				.[M.type] = matter[material]
 	if(reagents && length(reagents.reagent_volumes))
 		for(var/R in reagents.reagent_volumes)
-			.[R] = REAGENT_VOLUME(reagents, R)
+			.[R] = FLOOR(REAGENT_VOLUME(reagents, R) / REAGENT_UNITS_PER_MATERIAL_UNIT)
 
-/datum/fabricator_recipe/proc/build(var/turf/location, var/amount = 1)
+/datum/fabricator_recipe/proc/build(var/turf/location, var/datum/fabricator_build_order/order)
 	. = list()
 	if(ispath(path, /obj/item/stack))
-		. += new path(location, amount)
+		. += new path(location, order.multiplier)
 	else
-		for(var/i = 1, i <= amount, i++)
+		for(var/i = 1, i <= order.multiplier, i++)
 			. += new path(location)

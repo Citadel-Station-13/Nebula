@@ -3,6 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /obj/item/chems/pill
 	name = "pill"
+	base_name = "pill"
 	desc = "A pill."
 	icon = 'icons/obj/items/chem/pill.dmi'
 	icon_state = null
@@ -12,11 +13,22 @@
 	w_class = ITEM_SIZE_TINY
 	slot_flags = SLOT_EARS
 	volume = 30
+	material = /decl/material/solid/plantmatter
+	var/static/list/colorizable_icon_states = list("pill1", "pill2", "pill3", "pill4", "pill5") // if using an icon state from here, color will be derived from reagents
 
 /obj/item/chems/pill/Initialize()
 	. = ..()
 	if(!icon_state)
-		icon_state = "pill[rand(1, 5)]" //preset pills only use colour changing or unique icons
+		icon_state = pick(colorizable_icon_states) //preset pills only use colour changing or unique icons
+	update_icon()
+
+/obj/item/chems/pill/on_update_icon()
+	. = ..()
+	if(icon_state in colorizable_icon_states)
+		color = reagents.get_color()
+		alpha = 255 // above probably reset our alpha
+	else
+		color = null
 
 /obj/item/chems/pill/attack_self(mob/user)
 	attack(user, user)
@@ -30,7 +42,7 @@
 		if(!M.can_eat(src))
 			return
 		M.visible_message(SPAN_NOTICE("[M] swallows a pill."), SPAN_NOTICE("You swallow \the [src]."), null, 2)
-		if(reagents.total_volume)
+		if(reagents?.total_volume)
 			reagents.trans_to_mob(M, reagents.total_volume, CHEM_INGEST)
 		qdel(src)
 		return 1
@@ -64,8 +76,7 @@
 
 		admin_attacker_log(user, "spiked \a [target] with a pill. Reagents: [REAGENT_LIST(src)]")
 		reagents.trans_to(target, reagents.total_volume)
-		for(var/mob/O in viewers(2, user))
-			O.show_message("<span class='warning'>[user] puts something in \the [target].</span>", 1)
+		user.visible_message(SPAN_NOTICE("\The [user] puts something in \the [target]."), range = 2)
 		qdel(src)
 	return
 
@@ -78,198 +89,170 @@
 	name = "antitoxins (25u)"
 	desc = "Neutralizes many common toxins."
 	icon_state = "pill1"
-/obj/item/chems/pill/antitox/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/antitox/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/antitoxins, 25)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/bromide
 	name = "bromide pill"
 	desc = "Highly toxic."
 	icon_state = "pill4"
 	volume = 50
-/obj/item/chems/pill/bromide/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/bromide, 50)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/bromide/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/bromide, reagents.maximum_volume)
 
 /obj/item/chems/pill/cyanide
 	name = "strange pill"
 	desc = "It's marked 'KCN'. Smells vaguely of almonds."
 	icon_state = "pillC"
 	volume = 50
-/obj/item/chems/pill/cyanide/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/cyanide, 50)
 
+/obj/item/chems/pill/cyanide/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/cyanide, reagents.maximum_volume)
 
 /obj/item/chems/pill/adminordrazine
 	name = "Adminordrazine pill"
 	desc = "It's magic. We don't have to explain it."
 	icon_state = "pillA"
 
-/obj/item/chems/pill/adminordrazine/Initialize()
-	. = ..()
+/obj/item/chems/pill/adminordrazine/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/adminordrazine, 1)
 
 /obj/item/chems/pill/stox
 	name = "sedatives (15u)"
 	desc = "Commonly used to treat insomnia."
 	icon_state = "pill3"
-/obj/item/chems/pill/stox/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/stox/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/sedatives, 15)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/burn_meds
 	name = "synthskin (15u)"
 	desc = "Used to treat burns."
 	icon_state = "pill2"
-/obj/item/chems/pill/burn_meds/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/burn_meds/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/burn_meds, 15)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/painkillers
 	name = "painkillers (15u)"
 	desc = "A simple painkiller."
 	icon_state = "pill3"
-/obj/item/chems/pill/painkillers/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/painkillers, 15)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/painkillers/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/painkillers, 15)
 
 /obj/item/chems/pill/stabilizer
 	name = "stabilizer (30u)"
 	desc = "Used to stabilize patients."
 	icon_state = "pill1"
-/obj/item/chems/pill/adrenaline/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/stabilizer, 30)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/stabilizer/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/stabilizer, 30)
 
 /obj/item/chems/pill/oxygen
 	name = "oxygen (15u)"
 	desc = "Used to treat oxygen deprivation."
 	icon_state = "pill1"
-/obj/item/chems/pill/oxygen/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/oxygen/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/oxy_meds, 15)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/antitoxins
 	name = "antitoxins (15u)"
 	desc = "A broad-spectrum anti-toxin."
 	icon_state = "pill1"
-/obj/item/chems/pill/antitoxins/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/antitoxins, 15)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/antitoxins/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/antitoxins, 15)
 
 /obj/item/chems/pill/brute_meds
 	name = "styptic (20u)"
 	desc = "Used to treat physical injuries."
 	icon_state = "pill2"
-/obj/item/chems/pill/brute_meds/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/brute_meds, 20)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/brute_meds/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/brute_meds, 20)
 
 /obj/item/chems/pill/happy
 	name = "happy pill"
 	desc = "Happy happy joy joy!"
 	icon_state = "pill4"
-/obj/item/chems/pill/happy/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/psychoactives, 15)
-	reagents.add_reagent(/decl/material/liquid/nutriment/sugar, 15)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/happy/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/psychoactives,   15)
+	reagents.add_reagent(/decl/material/liquid/nutriment/sugar, 15)
 
 /obj/item/chems/pill/zoom
 	name = "zoom pill"
 	desc = "Zoooom!"
 	icon_state = "pill4"
-/obj/item/chems/pill/zoom/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/narcotics, 5)
+
+/obj/item/chems/pill/zoom/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/narcotics,       5)
 	reagents.add_reagent(/decl/material/liquid/antidepressants, 5)
-	reagents.add_reagent(/decl/material/liquid/stimulants, 5)
-	reagents.add_reagent(/decl/material/liquid/amphetamines, 5)
-	color = reagents.get_color()
+	reagents.add_reagent(/decl/material/liquid/stimulants,      5)
+	reagents.add_reagent(/decl/material/liquid/amphetamines,    5)
 
 /obj/item/chems/pill/gleam
 	name = "strange pill"
 	desc = "The surface of this unlabelled pill crawls against your skin."
 	icon_state = "pill2"
 
-/obj/item/chems/pill/gleam/Initialize()
-	. = ..()
+/obj/item/chems/pill/gleam/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/glowsap/gleam, 10)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/antibiotics
 	name = "antibiotics (10u)"
 	desc = "Contains antibiotic agents."
 	icon_state = "pill3"
-/obj/item/chems/pill/antibiotics/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/antibiotics/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/antibiotics, 10)
-	color = reagents.get_color()
 
 //Psychiatry pills.
 /obj/item/chems/pill/stimulants
 	name = "stimulants (15u)"
 	desc = "Improves the ability to concentrate."
 	icon_state = "pill2"
-/obj/item/chems/pill/stimulants/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/stimulants, 15)
-	color = reagents.get_color()
 
+/obj/item/chems/pill/stimulants/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/stimulants, 15)
 
 /obj/item/chems/pill/antidepressants
 	name = "antidepressants (15u)"
 	desc = "Mild anti-depressant."
 	icon_state = "pill4"
-/obj/item/chems/pill/antidepressants/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/antidepressants/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/antidepressants, 15)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/antirads
 	name = "antirads (7u)"
 	desc = "Used to treat radiation poisoning."
 	icon_state = "pill1"
-/obj/item/chems/pill/antirads/Initialize()
-	. = ..()
+
+/obj/item/chems/pill/antirads/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/antirads, 7)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/antirad
 	name = "AntiRad"
 	desc = "Used to treat radiation poisoning."
 	icon_state = "yellow"
-/obj/item/chems/pill/antirad/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/antirads, 5)
-	reagents.add_reagent(/decl/material/liquid/antitoxins, 10)
 
+/obj/item/chems/pill/antirad/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/antirads,   5)
+	reagents.add_reagent(/decl/material/liquid/antitoxins, 10)
 
 /obj/item/chems/pill/sugariron
 	name = "Sugar-Iron (10u)"
 	desc = "Used to help the body naturally replenish blood."
 	icon_state = "pill1"
-/obj/item/chems/pill/sugariron/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/solid/metal/iron, 5)
+
+/obj/item/chems/pill/sugariron/populate_reagents()
+	reagents.add_reagent(/decl/material/solid/metal/iron,       5)
 	reagents.add_reagent(/decl/material/liquid/nutriment/sugar, 5)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/detergent
 	name = "detergent pod"
@@ -277,8 +260,7 @@
 	icon_state = "pod21"
 	var/smell_clean_time = 10 MINUTES
 
-/obj/item/chems/pill/detergent/Initialize()
-	. = ..()
+/obj/item/chems/pill/detergent/populate_reagents()
 	reagents.add_reagent(/decl/material/gas/ammonia, 30)
 
 /obj/item/chems/pill/pod
@@ -289,31 +271,23 @@
 /obj/item/chems/pill/pod/cream
 	name = "creamer pod"
 
-/obj/item/chems/pill/pod/cream/Initialize()
-	. = ..()
+/obj/item/chems/pill/pod/cream/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/drink/milk, 5)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/pod/cream_soy
 	name = "non-dairy creamer pod"
 
-/obj/item/chems/pill/pod/cream_soy/Initialize()
-	. = ..()
+/obj/item/chems/pill/pod/cream_soy/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/drink/milk/soymilk, 5)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/pod/orange
 	name = "orange flavorpod"
 
-/obj/item/chems/pill/pod/orange/Initialize()
-	. = ..()
+/obj/item/chems/pill/pod/orange/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/drink/juice/orange, 5)
-	color = reagents.get_color()
 
 /obj/item/chems/pill/pod/mint
 	name = "mint flavorpod"
 
-/obj/item/chems/pill/pod/mint/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/liquid/drink/syrup/mint, 1) //mint is used as a catalyst in all reactions as of writing
-	color = reagents.get_color()
+/obj/item/chems/pill/pod/mint/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/drink/syrup/mint, 1)

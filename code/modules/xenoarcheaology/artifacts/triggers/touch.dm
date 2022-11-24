@@ -5,7 +5,7 @@
 	return TRUE
 
 /datum/artifact_trigger/touch/on_touch(mob/living/M)
-	return can_touch(M, M.hand ? BP_R_HAND : BP_L_HAND)
+	return can_touch(M, M.get_active_held_item_slot())
 
 /datum/artifact_trigger/touch/on_bump(atom/movable/AM)
 	if(prob(25))
@@ -34,7 +34,7 @@
 		var/mob/living/carbon/human/H = L
 		if(H.isSynthetic())
 			return TRUE
-		var/obj/item/organ/external/E = H.get_organ(bodypart)
+		var/obj/item/organ/external/E = GET_EXTERNAL_ORGAN(H, bodypart)
 		if(E && BP_IS_PROSTHETIC(E))
 			return TRUE
 		return FALSE

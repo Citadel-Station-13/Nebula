@@ -23,21 +23,20 @@ By design, d1 is the smallest direction and d2 is the highest
 */
 
 /obj/structure/cable
-	level = 1
-	anchored =1
-	var/datum/powernet/powernet
 	name = "power cable"
 	desc = "A flexible superconducting cable for heavy-duty power transfer."
 	icon = 'icons/obj/power_cond_white.dmi'
 	icon_state = "0-1"
-	var/d1 = 0
-	var/d2 = 1
+	layer =    EXPOSED_WIRE_LAYER
+	color =    COLOR_MAROON
+	anchored = TRUE
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	level = 1
 
-	layer = EXPOSED_WIRE_LAYER
-
-	color = COLOR_MAROON
+	var/d1
+	var/d2
+	var/datum/powernet/powernet
 	var/obj/machinery/power/breakerbox/breaker_box
-
 
 /obj/structure/cable/drain_power(var/drain_check, var/surge, var/amount = 0)
 
@@ -71,19 +70,17 @@ By design, d1 is the smallest direction and d2 is the highest
 	color = COLOR_SILVER
 
 /obj/structure/cable/Initialize(var/ml)
-	. = ..(ml)
 	// ensure d1 & d2 reflect the icon_state for entering and exiting cable
-	var/dash = findtext(icon_state, "-")
-	d1 = text2num(copytext(icon_state, 1, dash))
-	d2 = text2num(copytext(icon_state, dash+1))
+	. = ..(ml)
 	var/turf/T = src.loc			// hide if turf is not intact
-	if(level==1 && T) hide(!T.is_plating())
-	cable_list += src //add it to the global cable list
+	if(level==1 && T)
+		hide(!T.is_plating())
+	global.cable_list += src //add it to the global cable list
 
 /obj/structure/cable/Destroy()     // called when a cable is deleted
 	if(powernet)
 		cut_cable_from_powernet()  // update the powernets
-	cable_list -= src              // remove it from global cable list
+	global.cable_list -= src              // remove it from global cable list
 	. = ..()                       // then go ahead and delete the cable
 
 // Ghost examining the cable -> tells him the power
@@ -92,9 +89,9 @@ By design, d1 is the smallest direction and d2 is the highest
 		user.examinate(src)
 		// following code taken from attackby (multitool)
 		if(powernet && (powernet.avail > 0))
-			to_chat(user, "<span class='warning'>[get_wattage()] in power network.</span>")
+			to_chat(user, SPAN_WARNING("[get_wattage()] in power network."))
 		else
-			to_chat(user, "<span class='warning'>The cable is not powered.</span>")
+			to_chat(user, SPAN_WARNING("\The [src] is not powered."))
 	return
 
 ///////////////////////////////////
@@ -102,15 +99,15 @@ By design, d1 is the smallest direction and d2 is the highest
 ///////////////////////////////////
 
 /obj/structure/cable/proc/get_wattage()
-	if(powernet.avail >= 1000000000)
-		return "[round(powernet.avail/1000000, 0.01)] MW"
-	if(powernet.avail >= 1000000)
-		return "[round(powernet.avail/1000, 0.01)] kW"
+	if(powernet.avail >=  1 GIGAWATTS)
+		return "[round(powernet.avail/(1 MEGAWATTS), 0.01)] MW"
+	if(powernet.avail >= 1 MEGAWATTS)
+		return "[round(powernet.avail/(1 KILOWATTS), 0.01)] kW"
 	return "[round(powernet.avail)] W"
 
 //If underfloor, hide the cable
 /obj/structure/cable/hide(var/i)
-	if(istype(loc, /turf))
+	if(isturf(loc))
 		set_invisibility(i ? 101 : 0)
 	update_icon()
 
@@ -118,6 +115,19 @@ By design, d1 is the smallest direction and d2 is the highest
 	return 1
 
 /obj/structure/cable/on_update_icon()
+	..()
+	// It is really gross to do this here but the order of icon updates to init seems
+	// unreliable and I have now had to spend hours across two PRs chasing down
+	// cable node weirdness due to the way this was handled previously. NO MORE.
+	if(isnull(d1) || isnull(d2))
+		var/dir_components = splittext(icon_state, "-")
+		if(length(dir_components) < 2)
+			CRASH("Cable segment updating dirs with invalid icon_state: [d1], [d2]")
+		d1 = text2num(dir_components[1])
+		d2 = text2num(dir_components[2])
+		if(!(d1 in global.cabledirs) || !(d2 in global.cabledirs))
+			CRASH("Cable segment updating dirs with invalid values: [d1], [d2]")
+
 	icon_state = "[d1]-[d2]"
 	alpha = invisibility ? 127 : 255
 
@@ -132,23 +142,23 @@ By design, d1 is the smallest direction and d2 is the highest
 //
 
 /obj/structure/cable/attackby(obj/item/W, mob/user)
-	if(isWirecutter(W))
+	if(IS_WIRECUTTER(W))
 		cut_wire(W, user)
 
-	else if(isCoil(W))
+	else if(IS_COIL(W))
 		var/obj/item/stack/cable_coil/coil = W
 		if (coil.get_amount() < 1)
-			to_chat(user, "Not enough cable")
+			to_chat(user, "You don't have enough cable to lay down.")
 			return
 		coil.cable_join(src, user)
 
-	else if(isMultitool(W))
+	else if(IS_MULTITOOL(W))
 
 		if(powernet && (powernet.avail > 0))		// is it powered?
-			to_chat(user, "<span class='warning'>[get_wattage()] in power network.</span>")
+			to_chat(user, SPAN_WARNING("[get_wattage()] in power network."))
 
 		else
-			to_chat(user, "<span class='warning'>The cable is not powered.</span>")
+			to_chat(user, SPAN_WARNING("\The [src] is not powered."))
 
 		shock(user, 5, 0.2)
 
@@ -158,10 +168,10 @@ By design, d1 is the smallest direction and d2 is the highest
 		var/delay_holder
 
 		if(W.force < 5)
-			visible_message("<span class='warning'>[user] starts sawing away roughly at the cable with \the [W].</span>")
+			visible_message(SPAN_WARNING("[user] starts sawing away roughly at \the [src] with \the [W]."))
 			delay_holder = 8 SECONDS
 		else
-			visible_message("<span class='warning'>[user] begins to cut through the cable with \the [W].</span>")
+			visible_message(SPAN_WARNING("[user] begins to cut through \the [src] with \the [W]."))
 			delay_holder = 3 SECONDS
 
 		if(user.do_skilled(delay_holder, SKILL_ELECTRICAL, src))
@@ -169,7 +179,7 @@ By design, d1 is the smallest direction and d2 is the highest
 			if(W.obj_flags & OBJ_FLAG_CONDUCTIBLE)
 				shock(user, 66, 0.7)
 		else
-			visible_message("<span class='warning'>[user] stops cutting before any damage is done.</span>")
+			visible_message(SPAN_WARNING("[user] stops cutting before any damage is done."))
 
 	src.add_fingerprint(user)
 
@@ -179,11 +189,11 @@ By design, d1 is the smallest direction and d2 is the highest
 		return
 
 	if(d1 == UP || d2 == UP)
-		to_chat(user, "<span class='warning'>You must cut this cable from above.</span>")
+		to_chat(user, SPAN_WARNING("You must cut this [name] from above."))
 		return
 
 	if(breaker_box)
-		to_chat(user, "<span class='warning'>This cable is connected to a nearby breaker box. Use the breaker box to interact with it.</span>")
+		to_chat(user, SPAN_WARNING("This [name] is connected to a nearby breaker box. Use the breaker box to interact with it."))
 		return
 
 	if (shock(user, 50))
@@ -191,7 +201,7 @@ By design, d1 is the smallest direction and d2 is the highest
 
 	new/obj/item/stack/cable_coil(T, (src.d1 ? 2 : 1), color)
 
-	visible_message("<span class='warning'>[user] cuts the cable.</span>")
+	visible_message(SPAN_WARNING("[user] cuts \the [src]."))
 
 	if(HasBelow(z))
 		for(var/turf/turf in GetBelow(src))
@@ -199,7 +209,7 @@ By design, d1 is the smallest direction and d2 is the highest
 				if(c.d1 == UP || c.d2 == UP)
 					qdel(c)
 
-	investigate_log("was cut by [key_name(usr, usr.client)] in [user.loc.loc]","wires")
+	investigate_log("was cut by [key_name(usr, usr.client)] in [get_area_name(user)]","wires")
 
 	qdel(src)
 
@@ -208,14 +218,14 @@ By design, d1 is the smallest direction and d2 is the highest
 	if(!prob(prb))
 		return 0
 	if (electrocute_mob(user, powernet, src, siemens_coeff))
-		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-		s.set_up(5, 1, src)
-		s.start()
-		if(usr.stunned)
+		spark_at(src, amount=5, cardinal_only = TRUE)
+		if(HAS_STATUS(usr, STAT_STUN))
 			return 1
 	return 0
 
+// TODO: generalize to matter list and parts_type.
 /obj/structure/cable/create_dismantled_products(turf/T)
+	SHOULD_CALL_PARENT(FALSE)
 	new /obj/item/stack/cable_coil(loc, (d1 ? 2 : 1), color)
 
 //explosion handling
@@ -224,7 +234,13 @@ By design, d1 is the smallest direction and d2 is the highest
 	if(. && (severity == 1 || (severity == 2 && prob(50)) || (severity == 3 && prob(25))))
 		physically_destroyed()
 
-obj/structure/cable/proc/cableColor(var/colorC)
+/obj/structure/cable/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+	var/turf/T = get_turf(src)
+	if(!T || !T.is_plating())
+		return
+	. = ..()
+
+/obj/structure/cable/proc/cableColor(var/colorC)
 	var/color_n = "#dd0000"
 	if(colorC)
 		color_n = colorC
@@ -282,7 +298,7 @@ obj/structure/cable/proc/cableColor(var/colorC)
 // merge with the powernets of power objects in the given direction
 /obj/structure/cable/proc/mergeConnectedNetworks(var/direction)
 
-	var/fdir = direction ? GLOB.reverse_dir[direction] : 0 //flip the direction, to match with the source position on its turf
+	var/fdir = direction ? global.reverse_dir[direction] : 0 //flip the direction, to match with the source position on its turf
 
 	if(!(d1 == direction || d2 == direction)) //if the cable is not pointed in this direction, do nothing
 		return
@@ -363,7 +379,7 @@ obj/structure/cable/proc/cableColor(var/colorC)
 	for(var/cable_dir in list(d1, d2))
 		if(cable_dir == 0)
 			continue
-		var/reverse = GLOB.reverse_dir[cable_dir]
+		var/reverse = global.reverse_dir[cable_dir]
 		T = get_zstep(src, cable_dir)
 		if(T)
 			for(var/obj/structure/cable/C in T)
@@ -456,27 +472,29 @@ obj/structure/cable/proc/cableColor(var/colorC)
 
 /obj/item/stack/cable_coil
 	name = "multipurpose cable coil"
-	icon = 'icons/obj/power.dmi'
-	icon_state = "coil"
+	icon = 'icons/obj/items/cable_coil.dmi'
+	icon_state = ICON_STATE_WORLD
 	randpixel = 2
 	amount = MAXCOIL
 	max_amount = MAXCOIL
 	color = COLOR_MAROON
-	desc = "A coil of wiring, for delicate electronics use aswell as the more basic cable laying."
+	desc = "A coil of wiring, suitable for both delicate electronics and heavy duty power supply."
+	singular_name = "length"
 	throwforce = 0
 	w_class = ITEM_SIZE_NORMAL
 	throw_speed = 2
 	throw_range = 5
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/copper
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	item_state = "coil"
 	attack_verb = list("whipped", "lashed", "disciplined", "flogged")
-	stacktype = /obj/item/stack/cable_coil
+	stack_merge_type = /obj/item/stack/cable_coil
+	matter_multiplier = 0.15
 
 /obj/item/stack/cable_coil/single
 	amount = 1
@@ -488,10 +506,15 @@ obj/structure/cable/proc/cableColor(var/colorC)
 	matter = null
 	uses_charge = 1
 	charge_costs = list(1)
+	health = ITEM_HEALTH_NO_DAMAGE
 
-/obj/item/stack/cable_coil/Initialize(mapload, length = MAXCOIL, var/param_color = null)
-	. = ..(mapload, length)
-	src.amount = length
+/obj/item/stack/cable_coil/Initialize(mapload, c_length = MAXCOIL, var/param_color = null)
+	. = ..(mapload, c_length)
+	set_extension(src, /datum/extension/tool/variable, list(
+		TOOL_CABLECOIL = TOOL_QUALITY_DEFAULT,
+		TOOL_SUTURES =   TOOL_QUALITY_MEDIOCRE
+	))
+	src.amount = c_length
 	if (param_color) // It should be red by default, so only recolor it if parameter was specified.
 		color = param_color
 	update_icon()
@@ -505,27 +528,28 @@ obj/structure/cable/proc/cableColor(var/colorC)
 /obj/item/stack/cable_coil/attack(var/atom/A, var/mob/living/user, var/def_zone)
 	if(ishuman(A) && user.a_intent == I_HELP)
 		var/mob/living/carbon/human/H = A
-		var/obj/item/organ/external/S = H.organs_by_name[user.zone_sel.selecting]
+		var/obj/item/organ/external/S = GET_EXTERNAL_ORGAN(H, user.zone_sel.selecting)
 
 		if (!S) return
 		if(!BP_IS_PROSTHETIC(S) || user.a_intent != I_HELP)
 			return ..()
 
 		if(BP_IS_BRITTLE(S))
-			to_chat(user, "<span class='warning'>\The [H]'s [S.name] is hard and brittle - \the [src] cannot repair it.</span>")
+			to_chat(user, SPAN_WARNING("\The [H]'s [S.name] is hard and brittle - \the [src] cannot repair it."))
 			return 1
 
-		var/use_amt = min(src.amount, ceil(S.burn_dam/3), 5)
+		var/use_amt = min(src.amount, CEILING(S.burn_dam/3), 5)
 		if(can_use(use_amt))
 			if(S.robo_repair(3*use_amt, BURN, "some damaged wiring", src, user))
 				src.use(use_amt)
 		return
 	return ..()
 
-
 /obj/item/stack/cable_coil/on_update_icon()
+	. = ..()
 	if (!color)
-		color = GLOB.possible_cable_colours[pick(GLOB.possible_cable_colours)]
+		var/list/possible_cable_colours = get_global_cable_colors()
+		color = possible_cable_colours[pick(possible_cable_colours)]
 	if(amount == 1)
 		icon_state = "coil1"
 		SetName("cable piece")
@@ -543,12 +567,13 @@ obj/structure/cable/proc/cableColor(var/colorC)
 	if(!selected_color)
 		return
 
-	var/final_color = GLOB.possible_cable_colours[selected_color]
+	var/list/possible_cable_colours = get_global_cable_colors()
+	var/final_color = possible_cable_colours[selected_color]
 	if(!final_color)
 		selected_color = "Red"
-		final_color = GLOB.possible_cable_colours[selected_color]
+		final_color = possible_cable_colours[selected_color]
 	color = final_color
-	to_chat(user, "<span class='notice'>You change \the [src]'s color to [lowertext(selected_color)].</span>")
+	to_chat(user, SPAN_NOTICE("You change \the [src]'s color to [lowertext(selected_color)]."))
 
 /obj/item/stack/cable_coil/proc/update_wclass()
 	if(amount == 1)
@@ -562,11 +587,11 @@ obj/structure/cable/proc/cableColor(var/colorC)
 		return
 
 	if(get_amount() == 1)
-		to_chat(user, "A short piece of power cable.")
+		to_chat(user, "A [singular_name] of cable.")
 	else if(get_amount() == 2)
-		to_chat(user, "A piece of power cable.")
+		to_chat(user, "Two [plural_name] of cable.")
 	else
-		to_chat(user, "A coil of power cable. There are [get_amount()] lengths of cable in the coil.")
+		to_chat(user, "A coil of power cable. There are [get_amount()] [plural_name] of cable in the coil.")
 
 
 /obj/item/stack/cable_coil/verb/make_restraint()
@@ -575,27 +600,27 @@ obj/structure/cable/proc/cableColor(var/colorC)
 	var/mob/M = usr
 
 	if(ishuman(M) && !M.incapacitated())
-		if(!istype(usr.loc,/turf)) return
+		if(!isturf(usr.loc)) return
 		if(!src.use(15))
-			to_chat(usr, "<span class='warning'>You need at least 15 lengths to make restraints!</span>")
+			to_chat(usr, SPAN_WARNING("You need at least 15 [plural_name] of cable to make restraints!"))
 			return
 		var/obj/item/handcuffs/cable/B = new /obj/item/handcuffs/cable(usr.loc)
 		B.color = color
-		to_chat(usr, "<span class='notice'>You wind some cable together to make some restraints.</span>")
+		to_chat(usr, SPAN_NOTICE("You wind some [plural_name] of cable together to make some restraints."))
 	else
-		to_chat(usr, "<span class='notice'>You cannot do that.</span>")
+		to_chat(usr, SPAN_NOTICE("You cannot do that."))
 
 /obj/item/stack/cable_coil/cyborg/verb/set_colour()
 	set name = "Change Colour"
 	set category = "Object"
 
-	var/selected_type = input("Pick new colour.", "Cable Colour", null, null) as null|anything in GLOB.possible_cable_colours
+	var/selected_type = input("Pick new colour.", "Cable Colour", null, null) as null|anything in get_global_cable_colors()
 	set_cable_color(selected_type, usr)
 
 // Items usable on a cable coil :
 //   - Wirecutters : cut them duh !
 //   - Cable coil : merge cables
-/obj/item/stack/cable_coil/proc/can_merge(var/obj/item/stack/cable_coil/C)
+/obj/item/stack/cable_coil/can_merge(var/obj/item/stack/cable_coil/C)
 	return color == C.color
 
 /obj/item/stack/cable_coil/cyborg/can_merge()
@@ -613,21 +638,21 @@ obj/structure/cable/proc/cableColor(var/colorC)
 // Cable laying procedures
 //////////////////////////////////////////////
 
-// called when cable_coil is clicked on a turf/simulated/floor
-/obj/item/stack/cable_coil/proc/turf_place(turf/simulated/F, mob/user)
+// called when cable_coil is clicked on a turf
+/obj/item/stack/cable_coil/proc/turf_place(turf/F, mob/user)
 	if(!isturf(user.loc))
 		return
 
 	if(get_amount() < 1) // Out of cable
-		to_chat(user, "There is no cable left.")
+		to_chat(user, SPAN_WARNING("There is no [plural_name] of cable left."))
 		return
 
 	if(get_dist(F,user) > 1) // Too far
-		to_chat(user, "You can't lay cable at a place that far away.")
+		to_chat(user, SPAN_WARNING("You can't lay cable at a place that far away."))
 		return
 
 	if(!F.is_plating())		// Ff floor is intact, complain
-		to_chat(user, "You can't lay cable there unless the floor tiles are removed.")
+		to_chat(user, SPAN_WARNING("You can't lay cable there unless the floor tiles are removed."))
 		return
 
 	var/dirn
@@ -637,20 +662,21 @@ obj/structure/cable/proc/cableColor(var/colorC)
 		dirn = get_dir(F, user)
 
 	var/end_dir = 0
-	if(istype(F, /turf/simulated/open))
+	if(istype(F) && F.is_open())
 		if(!can_use(2))
-			to_chat(user, "You don't have enough cable to do this!")
+			to_chat(user, SPAN_WARNING("You don't have enough [plural_name] of cable to do this!"))
 			return
 		end_dir = DOWN
 
 	for(var/obj/structure/cable/LC in F)
 		if((LC.d1 == dirn && LC.d2 == end_dir ) || ( LC.d2 == dirn && LC.d1 == end_dir))
-			to_chat(user, "<span class='warning'>There's already a cable at that position.</span>")
+			to_chat(user, SPAN_WARNING("There's already a cable at that position."))
 			return
 
 	put_cable(F, user, end_dir, dirn)
 	if(end_dir == DOWN)
 		put_cable(GetBelow(F), user, UP, 0)
+	return TRUE
 
 // called when cable_coil is click on an installed obj/cable
 // or click on a turf that already contains a "node" cable
@@ -665,19 +691,18 @@ obj/structure/cable/proc/cableColor(var/colorC)
 		return
 
 	if(get_dist(C, user) > 1)		// make sure it's close enough
-		to_chat(user, "You can't lay cable at a place that far away.")
+		to_chat(user, SPAN_WARNING("You can't lay cable at a place that far away."))
 		return
 
 	if(U == T) //if clicked on the turf we're standing on, try to put a cable in the direction we're facing
-		turf_place(T,user)
-		return
+		return turf_place(T,user)
 
 	var/dirn = get_dir(C, user)
 
 	// one end of the clicked cable is pointing towards us
 	if(C.d1 == dirn || C.d2 == dirn)
 		if(!U.is_plating())						// can't place a cable if the floor is complete
-			to_chat(user, "You can't lay cable there unless the floor tiles are removed.")
+			to_chat(user, SPAN_WARNING("You can't lay cable there unless the floor tiles are removed."))
 			return
 		else
 			// cable is pointing at us, we're standing on an open tile
@@ -687,10 +712,10 @@ obj/structure/cable/proc/cableColor(var/colorC)
 
 			for(var/obj/structure/cable/LC in U)		// check to make sure there's not a cable there already
 				if(LC.d1 == fdirn || LC.d2 == fdirn)
-					to_chat(user, "There's already a cable at that position.")
+					to_chat(user, SPAN_WARNING("There's already a cable at that position."))
 					return
 			put_cable(U,user,0,fdirn)
-			return
+			return TRUE
 
 	// exisiting cable doesn't point at our position, so see if it's a stub
 	else if(C.d1 == 0)
@@ -708,7 +733,7 @@ obj/structure/cable/proc/cableColor(var/colorC)
 			if(LC == C)			// skip the cable we're interacting with
 				continue
 			if((LC.d1 == nd1 && LC.d2 == nd2) || (LC.d1 == nd2 && LC.d2 == nd1) )	// make sure no cable matches either direction
-				to_chat(user, "There's already a cable at that position.")
+				to_chat(user, SPAN_WARNING("There's already a cable at that position."))
 				return
 
 
@@ -740,11 +765,17 @@ obj/structure/cable/proc/cableColor(var/colorC)
 				return
 
 		C.denode()// this call may have disconnected some cables that terminated on the centre of the turf, if so split the powernets.
-		return
+		return TRUE
 
-/obj/item/stack/cable_coil/proc/put_cable(turf/simulated/F, mob/user, d1, d2)
+	else if(C.d1 == UP) //Special cases for zcables, since they behave weirdly
+		. = turf_place(T, user)
+		if(.)
+			to_chat(user, SPAN_NOTICE("You connect the cable hanging from the ceiling."))
+		return .
+
+/obj/item/stack/cable_coil/proc/put_cable(turf/F, mob/user, d1, d2)
 	if(!istype(F))
-		return
+		return FALSE
 
 	var/obj/structure/cable/C = new(F)
 	C.cableColor(color)
@@ -767,11 +798,12 @@ obj/structure/cable/proc/cableColor(var/colorC)
 	if(C.d2 & (C.d2 - 1))// if the cable is layed diagonally, check the others 2 possible directions
 		C.mergeDiagonalsNetworks(C.d2)
 
-	use(1)
+	. = use(1)
 	if (C.shock(user, 50))
 		if (prob(50)) //fail
 			new/obj/item/stack/cable_coil(C.loc, 1, C.color)
 			qdel(C)
+			return FALSE
 
 //////////////////////////////
 // Misc.
@@ -807,8 +839,12 @@ obj/structure/cable/proc/cableColor(var/colorC)
 /obj/item/stack/cable_coil/white
 	color = COLOR_SILVER
 
-/obj/item/stack/cable_coil/random/Initialize()
-	color = GLOB.possible_cable_colours[pick(GLOB.possible_cable_colours)]
+/obj/item/stack/cable_coil/lime
+	color = COLOR_LIME
+
+/obj/item/stack/cable_coil/random/Initialize(mapload, c_length, param_color)
+	var/list/possible_cable_colours = get_global_cable_colors()
+	color = possible_cable_colours[pick(possible_cable_colours)]
 	. = ..()
 
 // Produces cable coil from a rig power cell.
@@ -833,8 +869,8 @@ obj/structure/cable/proc/cableColor(var/colorC)
 
 /obj/item/stack/cable_coil/fabricator/get_amount()
 	var/obj/item/cell/cell = get_cell()
-	. = (cell ? Floor(cell.charge / cost_per_cable) : 0)
+	. = (cell ? FLOOR(cell.charge / cost_per_cable) : 0)
 
 /obj/item/stack/cable_coil/fabricator/get_max_amount()
 	var/obj/item/cell/cell = get_cell()
-	. = (cell ? Floor(cell.maxcharge / cost_per_cable) : 0)
+	. = (cell ? FLOOR(cell.maxcharge / cost_per_cable) : 0)

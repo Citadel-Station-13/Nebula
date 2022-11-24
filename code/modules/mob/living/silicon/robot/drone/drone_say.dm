@@ -10,11 +10,14 @@
 		if (stat == DEAD)
 			return say_dead(message)
 
-		if(copytext(message,1,2) == "*")
+		if(findlasttextEx(message, get_prefix_key(/decl/prefix/custom_emote)) == 1)
 			return emote(copytext(message,2))
 
+		if(findlasttextEx(message, get_prefix_key(/decl/prefix/visible_emote)) == 1)
+			return custom_emote(1, copytext(message,2))
+
 		if(copytext(message,1,2) == ";")
-			var/decl/language/L = decls_repository.get_decl(/decl/language/binary/drone)
+			var/decl/language/L = GET_DECL(/decl/language/binary/drone)
 			if(istype(L))
 				return L.broadcast(src,trim(copytext(message,2)))
 
@@ -29,10 +32,10 @@
 			if(D.client && D.local_transmit)
 				to_chat(D, "<b>[src]</b> transmits, \"[message]\"")
 
-		for (var/mob/M in GLOB.player_list)
+		for (var/mob/M in global.player_list)
 			if (istype(M, /mob/new_player))
 				continue
-			else if(M.stat == DEAD && M.get_preference_value(/datum/client_preference/ghost_ears) == GLOB.PREF_ALL_SPEECH)
+			else if(M.stat == DEAD && M.get_preference_value(/datum/client_preference/ghost_ears) == PREF_ALL_SPEECH)
 				if(M.client) to_chat(M, "<b>[src]</b> transmits, \"[message]\"")
 		return 1
 	return ..(message, 0)

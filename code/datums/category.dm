@@ -16,7 +16,7 @@
 			category = new category(src)
 			categories += category
 			categories_by_name[category.name] = category
-	categories = dd_sortedObjectList(categories)
+	categories = sortTim(categories, /proc/cmp_category_groups)
 
 /datum/category_collection/Destroy()
 	for(var/category in categories)
@@ -29,6 +29,7 @@
 ******************/
 /datum/category_group
 	var/name = ""
+	var/sort_order = 0                          // Sort order of categories, higher is later
 	var/category_item_type                      // Type of items to initialize
 	var/list/datum/category_item/items          // List of initialized items
 	var/list/datum/category_item/items_by_name  // Associative list of initialized items, by name
@@ -58,7 +59,7 @@
 	collection = null
 	return ..()
 
-datum/category_group/dd_SortValue()
+/datum/category_group/dd_SortValue()
 	return name
 
 
@@ -77,5 +78,5 @@ datum/category_group/dd_SortValue()
 	category = null
 	return ..()
 
-datum/category_item/dd_SortValue()
+/datum/category_item/dd_SortValue()
 	return name

@@ -16,30 +16,28 @@
 	unexplored space. Work together with the Acting Captain and what's left of the crew, and maybe you'll be able \
 	to survive long enough to be rescued."
 
-#define BEARCAT_OUTFIT_JOB_NAME(job_name) ("Bearcat - Job - " + job_name)
-
 /decl/hierarchy/outfit/job/bearcat
-	hierarchy_type = /decl/hierarchy/outfit/job/bearcat
+	abstract_type = /decl/hierarchy/outfit/job/bearcat
 	pda_type = /obj/item/modular_computer/pda
-	pda_slot = slot_l_store
+	pda_slot = slot_l_store_str
 	r_pocket = /obj/item/radio
 	l_ear = null
 	r_ear = null
 
 /decl/hierarchy/outfit/job/bearcat/crew
-	name = BEARCAT_OUTFIT_JOB_NAME("Crew")
+	name = "Bearcat - Job - FTU Crew"
 	id_type = /obj/item/card/id/bearcat
 
 /decl/hierarchy/outfit/job/bearcat/captain
-	name = BEARCAT_OUTFIT_JOB_NAME("Captain")
-	uniform = /obj/item/clothing/under/casual_pants/classicjeans
+	name = "Bearcat - Job - FTU Captain"
+	uniform = /obj/item/clothing/pants/baggy/casual/classicjeans
 	shoes = /obj/item/clothing/shoes/color/black
-	pda_type = /obj/item/modular_computer/pda/captain
+	pda_type = /obj/item/modular_computer/pda/heads/captain
 	id_type = /obj/item/card/id/bearcat_captain
 
 /decl/hierarchy/outfit/job/bearcat/captain/post_equip(var/mob/living/carbon/human/H)
 	..()
-	var/obj/item/clothing/uniform = H.w_uniform
+	var/obj/item/clothing/uniform = H.get_equipped_item(slot_w_uniform_str)
 	if(uniform)
 		var/obj/item/clothing/accessory/toggleable/hawaii/random/eyegore = new()
 		if(uniform.can_attach_accessory(eyegore))
@@ -47,10 +45,8 @@
 		else
 			qdel(eyegore)
 
-#undef BEARCAT_OUTFIT_JOB_NAME
-
-/obj/effect/submap_landmark/spawnpoint/captain
+/obj/abstract/submap_landmark/spawnpoint/captain
 	name = "Independant Captain"
 
-/obj/effect/submap_landmark/spawnpoint/crewman
+/obj/abstract/submap_landmark/spawnpoint/crewman
 	name = "Independant Crewman"

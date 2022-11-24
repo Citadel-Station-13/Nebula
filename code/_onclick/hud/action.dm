@@ -13,13 +13,13 @@
 
 /datum/action
 	var/name = "Generic Action"
+	var/desc = null
 	var/action_type = AB_ITEM
 	var/procname = null
 	var/atom/movable/target = null
 	var/check_flags = 0
-	var/processing = 0
 	var/active = 0
-	var/obj/screen/movable/action_button/button = null
+	var/obj/screen/action_button/button = null
 	var/button_icon = 'icons/obj/action_buttons/actions.dmi'
 	var/button_icon_state = "default"
 	var/background_icon_state = "bg_default"
@@ -100,7 +100,7 @@
 		if(owner.restrained())
 			return 0
 	if(check_flags & AB_CHECK_STUNNED)
-		if(owner.stunned)
+		if(HAS_STATUS(owner, STAT_STUN))
 			return 0
 	if(check_flags & AB_CHECK_LYING)
 		if(owner.lying)
@@ -116,21 +116,20 @@
 /datum/action/proc/UpdateName()
 	return name
 
-/obj/screen/movable/action_button
+/datum/action/proc/UpdateDesc()
+	return desc
+
+/obj/screen/action_button
 	var/datum/action/owner
 	screen_loc = "LEFT,TOP"
 
-/obj/screen/movable/action_button/Click(location,control,params)
-	var/list/modifiers = params2list(params)
-	if(modifiers["shift"])
-		moved = 0
-		return 1
-	if(usr.next_move >= world.time) // Is this needed ?
-		return
-	owner.Trigger()
-	return 1
+/obj/screen/action_button/Click(location,control,params)
+	if(owner && usr && usr.next_move < world.time)
+		owner.Trigger()
+		return TRUE
+	return FALSE
 
-/obj/screen/movable/action_button/proc/UpdateIcon()
+/obj/screen/action_button/proc/UpdateIcon()
 	if(!owner)
 		return
 	icon = owner.button_icon
@@ -152,14 +151,26 @@
 	else
 		color = rgb(255,255,255,255)
 
+/obj/screen/action_button/MouseEntered(location, control, params)
+	openToolTip(user = usr, tip_src = src, params = params, title = name, content = desc)
+	..()
+
+/obj/screen/action_button/MouseDown()
+	closeToolTip(usr)
+	..()
+
+/obj/screen/action_button/MouseExited()
+	closeToolTip(usr)
+	..()
+
 //Hide/Show Action Buttons ... Button
-/obj/screen/movable/action_button/hide_toggle
+/obj/screen/action_button/hide_toggle
 	name = "Hide Buttons"
 	icon = 'icons/obj/action_buttons/actions.dmi'
 	icon_state = "bg_default"
 	var/hidden = 0
 
-/obj/screen/movable/action_button/hide_toggle/Click()
+/obj/screen/action_button/hide_toggle/Click()
 	usr.hud_used.action_buttons_hidden = !usr.hud_used.action_buttons_hidden
 
 	hidden = usr.hud_used.action_buttons_hidden
@@ -171,7 +182,7 @@
 	usr.update_action_buttons()
 
 
-/obj/screen/movable/action_button/hide_toggle/proc/InitialiseIcon(var/mob/living/user)
+/obj/screen/action_button/hide_toggle/proc/InitialiseIcon(var/mob/living/user)
 	if(isalien(user))
 		icon_state = "bg_alien"
 	else
@@ -179,7 +190,7 @@
 	UpdateIcon()
 	return
 
-/obj/screen/movable/action_button/hide_toggle/UpdateIcon()
+/obj/screen/action_button/hide_toggle/UpdateIcon()
 	overlays.Cut()
 	var/image/img = image(icon,src,hidden?"show":"hide")
 	overlays += img

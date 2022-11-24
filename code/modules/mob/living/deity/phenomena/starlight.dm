@@ -34,7 +34,7 @@
 	var/mob/living/carbon/human/H = a
 	if(!istype(H))
 		return FALSE
-	var/obj/item/I = H.get_equipped_item(slot_wear_suit)
+	var/obj/item/I = H.get_equipped_item(slot_wear_suit_str)
 	if(I)
 		var/datum/extension/deity_be_near/dbn = get_extension(I, /datum/extension/deity_be_near)
 		if(dbn)
@@ -62,15 +62,15 @@
 		var/type = form["armor"]
 		var/obj/item/I = new type(T)
 		var/datum/extension/deity_be_near/extension = set_extension(I, form["extension"], linked)
-		L.equip_to_slot_or_store_or_drop(I, slot_wear_suit)
+		L.equip_to_slot_or_store_or_drop(I, slot_wear_suit_str)
 		if(form["helm"])
 			var/h_type = form["helm"]
 			var/obj/item/helm = new h_type(T)
-			L.equip_to_slot_or_store_or_drop(helm, slot_head)
+			L.equip_to_slot_or_store_or_drop(helm, slot_head_str)
 			extension.expected_helmet = helm.type //We only do by type because A. its easier to manage and B the chances of it being non-unique in a normal game is very small
 		if(form["weapon"])
 			var/w_type = form["weapon"]
-			L.equip_to_slot_or_store_or_drop(new w_type(T), slot_r_hand)
+			L.put_in_hands_or_store_or_drop(new w_type(T))
 		if(form["spells"])
 			for(var/s in form["spells"])
 				var/spell/S = new s
@@ -139,13 +139,13 @@
 	to_chat(L, "<span class='cult'>[whisper_from ? "The [whisper_from] speaks to you" : "You hear a whisper say"] \"[message]\"</span>")
 
 	linked.eyenet.add_source(L)
-	GLOB.destroyed_event.register(L, src, .proc/deactivate_look)
+	events_repository.register(/decl/observ/destroyed, L, src, .proc/deactivate_look)
 	addtimer(CALLBACK(src, .proc/deactivate_look, L), 30 SECONDS)
 
 /datum/phenomena/flickering_whisper/proc/deactivate_look(var/mob/viewer)
 	if(!linked.is_follower(viewer)) //Don't remove if they are follower
 		linked.eyenet.remove_source(viewer)
-	GLOB.destroyed_event.unregister(viewer, src)
+	events_repository.unregister(/decl/observ/destroyed, viewer, src)
 
 /datum/phenomena/burning_glare
 	name = "Burning Glare"
@@ -182,7 +182,7 @@
 		to_chat(linked, "<span class='warning'>You do not have enough gateways activated.</span>")
 		return FALSE
 
-	var/obj/O = L.get_equipped_item(slot_wear_suit)
+	var/obj/O = L.get_equipped_item(slot_wear_suit_str)
 	if(O && has_extension(O, /datum/extension/deity_be_near))
 		var/datum/extension/deity_be_near/dbn = get_extension(O, /datum/extension/deity_be_near)
 		if(dbn.wearing_full())
@@ -195,12 +195,12 @@
 	to_chat(L, "<span class='cult'>Your soul is ripped from your body as your master prepares to possess it.</span>")
 	to_chat(linked, "<span class='cult'>You prepare the body for possession. Keep it safe. If it is totally destroyed, you will die.</span>")
 	L.ghostize()
-	L.Weaken(1)
+	SET_STATUS_MAX(L, STAT_WEAK, 1)
 	new /obj/aura/starborn(L)
 	L.status_flags |= GODMODE
-	GLOB.destroyed_event.register(L,src,.proc/fail_ritual)
+	events_repository.register(/decl/observ/destroyed, L,src,.proc/fail_ritual)
 	addtimer(CALLBACK(src, .proc/succeed_ritual, L), 600 SECONDS) //6 minutes
-	for(var/mob/living/player in GLOB.player_list)
+	for(var/mob/living/player in global.player_list)
 		sound_to(player, 'sound/effects/cascade.ogg')
 		if(player?.mind?.assigned_job?.is_holy)
 			to_chat(player, "<span class='cult'>Something bad is coming.... you know you don't have much time. Find and destroy the vessel, before its too late.</span>")
@@ -214,7 +214,7 @@
 
 /datum/phenomena/divine_right/proc/succeed_ritual(var/mob/living/L)
 	to_chat(linked, "<span class='cult'>You have been reborn! Your power is limited here, focused on your body, but in return you are both eternal and physical.</span>")
-	for(var/mob/living/player in GLOB.player_list)
+	for(var/mob/living/player in global.player_list)
 		sound_to(player, 'sound/effects/cascade.ogg')
 		to_chat(player, "<span class='cult'>\The [linked] has been born into flesh. Kneel to its authority or else.</span>")
 	linked.mind.transfer_to(L)

@@ -60,8 +60,8 @@
 
 //These procs convert to/from static save-data formats.
 /datum/category_item/player_setup_item/occupation/proc/load_skills()
-	if(!length(GLOB.skills))
-		decls_repository.get_decl(/decl/hierarchy/skill)
+	if(!length(global.skills))
+		GET_DECL(/decl/hierarchy/skill)
 
 	pref.skills_allocated = list()
 	for(var/job_type in SSjobs.types_to_datums)
@@ -69,7 +69,7 @@
 		if("[job.type]" in pref.skills_saved)
 			var/S = pref.skills_saved["[job.type]"]
 			var/L = list()
-			for(var/decl/hierarchy/skill/skill in GLOB.skills)
+			for(var/decl/hierarchy/skill/skill in global.skills)
 				if("[skill.type]" in S)
 					L[skill] = S["[skill.type]"]
 			if(length(L))
@@ -88,7 +88,7 @@
 //Sets up skills_allocated
 /datum/preferences/proc/sanitize_skills(var/list/input)
 	. = list()
-	var/datum/species/S = get_species_by_key(species)
+	var/decl/species/S = get_species_by_key(species)
 	for(var/job_name in SSjobs.titles_to_datums)
 		var/datum/job/job = SSjobs.get_by_title(job_name)
 		var/input_skills = list()
@@ -98,7 +98,7 @@
 		var/L = list()
 		var/sum = 0
 
-		for(var/decl/hierarchy/skill/skill in GLOB.skills)
+		for(var/decl/hierarchy/skill/skill in global.skills)
 			if(skill in input_skills)
 				var/min = get_min_skill(job, skill)
 				var/max = get_max_skill(job, skill)
@@ -108,21 +108,24 @@
 					L[skill] = level
 					sum += spent
 
-		points_by_job[job] = job.skill_points							//We compute how many points we had.
+		points_by_job[job] = job.skill_points                            // We compute how many points we had.
 		if(!job.no_skill_buffs)
-			points_by_job[job] += S.skills_from_age(age)				//Applies the species-appropriate age modifier.
-			points_by_job[job] += S.job_skill_buffs[job.type]			//Applies the per-job species modifier, if any.
+			points_by_job[job] += S.skills_from_age(get_character_age()) // Applies the species-appropriate age modifier.
+			points_by_job[job] += S.job_skill_buffs[job.type]            // Applies the per-job species modifier, if any.
 
 		if((points_by_job[job] >= sum) && sum)				//we didn't overspend, so use sanitized imported data
 			.[job] = L
 			points_by_job[job] -= sum						//if we overspent, or did no spending, default to not including the job at all
 		purge_skills_missing_prerequisites(job)
 
+/datum/preferences/proc/get_character_age()
+	return appearance_descriptors["age"] || 30
+
 /datum/preferences/proc/check_skill_prerequisites(datum/job/job, decl/hierarchy/skill/S)
 	if(!S.prerequisites)
 		return TRUE
 	for(var/skill_type in S.prerequisites)
-		var/decl/hierarchy/skill/prereq = decls_repository.get_decl(skill_type)
+		var/decl/hierarchy/skill/prereq = GET_DECL(skill_type)
 		var/value = get_min_skill(job, prereq) + LAZYACCESS(skills_allocated[job], prereq)
 		if(value < S.prerequisites[skill_type])
 			return FALSE
@@ -187,7 +190,7 @@
 	dat += "</center></tt>"
 
 	dat += "<table>"
-	var/decl/hierarchy/skill/skill = decls_repository.get_decl(/decl/hierarchy/skill)
+	var/decl/hierarchy/skill/skill = GET_DECL(/decl/hierarchy/skill)
 	for(var/decl/hierarchy/skill/cat in skill.children)
 		dat += "<tr><th colspan = 4><b>[cat.name]</b>"
 		dat += "</th></tr>"
@@ -211,7 +214,7 @@
 	return JOINTEXT(dat)
 
 /datum/category_item/player_setup_item/occupation/proc/open_skill_setup(mob/user, datum/job/job)
-	panel = new(user, "Skill Selection: [job.title]", "Skill Selection: [job.title]", 770, 850, src)
+	panel = new(user, "skill-selection", "Skill Selection: [job.title]", 770, 850, src)
 	panel.set_content(generate_skill_content(job))
 	panel.open()
 

@@ -35,10 +35,10 @@ Right Click       - List/Create Area
 		return
 	if (parameters["ctrl"] || parameters["middle"])
 		selected_area = R
-		to_chat(user, "Picked area [selected_area.name]")
+		to_chat(user, "Picked area [selected_area.proper_name]")
 	else if (selected_area)
 		ChangeArea(T, selected_area)
-		to_chat(user, "Set area of turf [T.name] to [selected_area.name]")
+		to_chat(user, "Set area of turf [T.name] to [selected_area.proper_name]")
 	else
 		to_chat(user, "Pick or create an area first")
 
@@ -47,10 +47,10 @@ Right Click       - List/Create Area
 	if (mode == "Pick")
 		var/area/path = select_subpath((selected_area?.type || /area/space), /area)
 		if (path)
-			for (var/area/R in world)
+			for (var/area/R in global.areas)
 				if (R.type == path)
 					SelectArea(R)
-					to_chat(user, "Picked area [selected_area.name]")
+					to_chat(user, "Picked area [selected_area.proper_name]")
 					break
 	else if (mode == "Create")
 		var/new_name = input("New area name:", "Build Mode: Areas") as text|null
@@ -64,7 +64,7 @@ Right Click       - List/Create Area
 		new_area.always_unpowered = 0
 		SelectArea(new_area)
 		user.client.debug_variables(selected_area)
-		to_chat(user, "Created area [new_area.name]")
+		to_chat(user, "Created area [new_area.proper_name]")
 
 /datum/build_mode/areas/TimerEvent()
 	user.client.images -= vision_images
@@ -73,7 +73,7 @@ Right Click       - List/Create Area
 	var/used_colors = 0
 	var/list/max_colors = length(distinct_colors)
 	var/list/vision_colors = list()
-	for (var/turf/T in range(get_effective_view(user.client), user))
+	for (var/turf/T in range(user?.client?.view || world.view, user))
 		var/image/I = new('icons/turf/overlays.dmi', T, "whiteOverlay")
 		var/ref = "\ref[T.loc]"
 		if (!vision_colors[ref])
@@ -82,7 +82,8 @@ Right Click       - List/Create Area
 			else
 				vision_colors[ref] = distinct_colors[used_colors]
 		I.color = vision_colors[ref]
-		I.plane = EFFECTS_ABOVE_LIGHTING_PLANE
+		I.plane = ABOVE_LIGHTING_PLANE
+		I.layer = ABOVE_LIGHTING_LAYER
 		I.appearance_flags = RESET_COLOR|RESET_ALPHA|RESET_TRANSFORM|NO_CLIENT_COLOR|KEEP_APART
 		vision_images.Add(I)
 	user.client.images += vision_images
@@ -96,12 +97,12 @@ Right Click       - List/Create Area
 		return
 	UnselectArea()
 	selected_area = A
-	GLOB.destroyed_event.register(selected_area, src, .proc/UnselectArea)
+	events_repository.register(/decl/observ/destroyed, selected_area, src, .proc/UnselectArea)
 
 /datum/build_mode/areas/proc/UnselectArea()
 	if(!selected_area)
 		return
-	GLOB.destroyed_event.unregister(selected_area, src, .proc/UnselectArea)
+	events_repository.unregister(/decl/observ/destroyed, selected_area, src, .proc/UnselectArea)
 
 	var/has_turf = FALSE
 	for(var/turf/T in selected_area)

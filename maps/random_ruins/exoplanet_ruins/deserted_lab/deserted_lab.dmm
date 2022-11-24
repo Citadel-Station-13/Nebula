@@ -23,7 +23,7 @@
 /area/template_noop)
 "af" = (
 /obj/structure/anomaly_container,
-/obj/effect/landmark/clear,
+/obj/abstract/landmark/clear,
 /turf/template_noop,
 /area/template_noop)
 "ag" = (
@@ -40,7 +40,7 @@
 /area/template_noop)
 "ai" = (
 /obj/machinery/floodlight,
-/obj/effect/landmark/clear,
+/obj/abstract/landmark/clear,
 /turf/template_noop,
 /area/template_noop)
 "aj" = (
@@ -70,7 +70,7 @@
 /area/template_noop)
 "ap" = (
 /obj/structure/closet/crate,
-/obj/effect/landmark/clear,
+/obj/abstract/landmark/clear,
 /turf/template_noop,
 /area/template_noop)
 "aq" = (
@@ -79,24 +79,24 @@
 /area/template_noop)
 "ar" = (
 /obj/structure/closet/crate/trashcart,
-/obj/effect/landmark/clear,
+/obj/abstract/landmark/clear,
 /turf/template_noop,
 /area/template_noop)
 "as" = (
 /obj/structure/closet/crate/freezer/rations,
-/obj/effect/landmark/clear,
+/obj/abstract/landmark/clear,
 /turf/template_noop,
 /area/template_noop)
 "at" = (
 /obj/random/loot,
-/mob/living/simple_animal/hostile/voxslug,
+/mob/living/simple_animal/hostile/slug,
 /turf/simulated/floor/tiled/steel_ridged,
 /area/template_noop)
 "au" = (
 /turf/simulated/floor/tiled/steel_ridged,
 /area/template_noop)
 "av" = (
-/obj/structure/table/standard{
+/obj/structure/table{
 	name = "plastic table frame"
 	},
 /obj/random/contraband,
@@ -110,11 +110,11 @@
 /area/template_noop)
 "ax" = (
 /obj/structure/bed/chair/office/light,
-/obj/structure/closet/walllocker/emerglocker/east,
+/obj/structure/emergency_dispenser/east,
 /turf/simulated/floor/tiled/white,
 /area/template_noop)
 "ay" = (
-/obj/structure/table/standard{
+/obj/structure/table{
 	name = "plastic table frame"
 	},
 /turf/simulated/floor/tiled/white,
@@ -170,14 +170,14 @@
 /area/template_noop)
 "aK" = (
 /obj/effect/decal/cleanable/spiderling_remains,
-/obj/structure/table/standard{
+/obj/structure/table{
 	name = "plastic table frame"
 	},
 /obj/machinery/reagentgrinder,
 /turf/simulated/floor/carpet/blue2,
 /area/template_noop)
 "aL" = (
-/obj/structure/table/rack,
+/obj/structure/rack,
 /obj/random/firstaid,
 /obj/random/advdevice,
 /obj/random/advdevice,
@@ -234,8 +234,8 @@
 /turf/simulated/floor/carpet/blue2,
 /area/template_noop)
 "aV" = (
-/obj/item/material/harpoon,
-/obj/effect/landmark/corpse/scientist,
+/obj/item/harpoon,
+/obj/abstract/landmark/corpse/scientist,
 /obj/effect/decal/cleanable/blood,
 /turf/simulated/floor/tiled/white,
 /area/template_noop)
@@ -265,7 +265,7 @@
 /turf/simulated/floor/carpet/blue2,
 /area/template_noop)
 "bb" = (
-/obj/structure/table/rack,
+/obj/structure/rack,
 /obj/random/powercell,
 /obj/random/voidsuit,
 /obj/random/voidhelmet,
@@ -294,14 +294,14 @@
 /area/template_noop)
 "bg" = (
 /obj/random/trash,
-/obj/structure/filingcabinet/wallcabinet{
+/obj/structure/filing_cabinet/wall{
 	pixel_y = -32
 	},
 /obj/effect/decal/cleanable/blood/drip,
 /turf/simulated/floor/tiled/white,
 /area/template_noop)
 "za" = (
-/obj/effect/landmark/clear,
+/obj/abstract/landmark/clear,
 /turf/template_noop,
 /area/template_noop)
 

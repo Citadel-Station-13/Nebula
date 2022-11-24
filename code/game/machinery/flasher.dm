@@ -3,8 +3,10 @@
 /obj/machinery/flasher
 	name = "mounted flash"
 	desc = "A wall-mounted flashbulb device."
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/flash_mounted.dmi'
 	icon_state = "mflash1"
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'EAST':{'x':32}, 'WEST':{'x':-32}}"
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
 	var/range = 2 //this is roughly the size of brig cell
 	var/disable = 0
 	var/last_flash = 0 //Don't want it getting spammed like regular flashes
@@ -34,7 +36,7 @@
 
 //Don't want to render prison breaks impossible
 /obj/machinery/flasher/attackby(obj/item/W, mob/user)
-	if(isWirecutter(W))
+	if(IS_WIRECUTTER(W))
 		add_fingerprint(user, 0, W)
 		src.disable = !src.disable
 		if (src.disable)
@@ -52,7 +54,7 @@
 		return
 
 /obj/machinery/flasher/proc/flash()
-	if (!(powered()))
+	if (stat & NOPOWER)
 		return
 
 	if ((src.disable) || (src.last_flash && world.time < src.last_flash + 150))
@@ -76,10 +78,8 @@
 				flash_time = round(H.getFlashMod() * flash_time)
 				if(flash_time <= 0)
 					return
-				var/obj/item/organ/internal/eyes/E = H.internal_organs_by_name[H.species.vision_organ]
-				if(!E)
-					return
-				if(E.is_bruised() && prob(E.damage + 50))
+				var/obj/item/organ/internal/E = GET_INTERNAL_ORGAN(H, H.species.vision_organ)
+				if(E && E.is_bruised() && prob(E.damage + 50))
 					H.flash_eyes()
 					E.damage += rand(1, 5)
 
@@ -88,10 +88,10 @@
 
 /obj/machinery/flasher/proc/do_flash(var/mob/living/victim, var/flash_time)
 	victim.flash_eyes()
-	victim.eye_blurry += flash_time
-	victim.confused += (flash_time + 2)
-	victim.Stun(flash_time / 2)
-	victim.Weaken(3)
+	ADJ_STATUS(victim, STAT_BLURRY, flash_time)
+	ADJ_STATUS(victim, STAT_CONFUSE, flash_time + 2)
+	SET_STATUS_MAX(victim, STAT_STUN, flash_time / 2)
+	SET_STATUS_MAX(victim, STAT_WEAK, 3)
 
 /obj/machinery/flasher/emp_act(severity)
 	if(stat & (BROKEN|NOPOWER))
@@ -105,25 +105,25 @@
 	name = "portable flasher"
 	desc = "A portable flashing device. Wrench to activate and deactivate. Cannot detect slow movements."
 	icon_state = "pflash1"
+	icon = 'icons/obj/machines/flash_portable.dmi'
 	strength = 8
 	anchored = 0
 	base_state = "pflash"
 	density = 1
 
 /obj/machinery/flasher/portable/HasProximity(atom/movable/AM)
-	if(!anchored || disable || last_flash && world.time < last_flash + 150)
+	. = ..()
+	if(!. || !anchored || disable || last_flash && world.time < last_flash + 150)
 		return
-
 	if(istype(AM, /mob/living/carbon))
 		var/mob/living/carbon/M = AM
 		if(!MOVING_DELIBERATELY(M))
 			flash()
-	
 	if(isanimal(AM))
 		flash()
 
 /obj/machinery/flasher/portable/attackby(obj/item/W, mob/user)
-	if(isWrench(W))
+	if(IS_WRENCH(W))
 		add_fingerprint(user)
 		src.anchored = !src.anchored
 

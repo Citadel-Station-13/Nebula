@@ -4,10 +4,10 @@
 	icon_state = "signaller"
 	item_state = "signaler"
 	origin_tech = "{'magnets':1}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_WASTE = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/copper = MATTER_AMOUNT_TRACE
 	)
 	wires = WIRE_RECEIVE | WIRE_PULSE | WIRE_RADIO_PULSE | WIRE_RADIO_RECEIVE
 
@@ -15,8 +15,6 @@
 
 	var/code = 30
 	var/frequency = 1457
-	var/delay = 0
-	var/airlock_wire = null
 	var/datum/wires/connected = null
 	var/datum/radio_frequency/radio_connection
 	var/deadman = 0
@@ -35,9 +33,9 @@
 	return 1
 
 /obj/item/assembly/signaler/on_update_icon()
+	. = ..()
 	if(holder)
 		holder.update_icon()
-	return
 
 /obj/item/assembly/signaler/interact(mob/user, flag1)
 	var/t1 = "-------"
@@ -66,7 +64,7 @@
 	return
 
 
-/obj/item/assembly/signaler/Topic(href, href_list, state = GLOB.physical_state)
+/obj/item/assembly/signaler/Topic(href, href_list, state = global.physical_topic_state)
 	if((. = ..()))
 		close_browser(usr, "window=radio")
 		onclose(usr, "radio")
@@ -102,15 +100,6 @@
 	signal.encryption = code
 	signal.data["message"] = "ACTIVATE"
 	radio_connection.post_signal(src, signal)
-	return
-/*
-	for(var/obj/item/assembly/signaler/S in world)
-		if(!S)	continue
-		if(S == src)	continue
-		if((S.frequency == src.frequency) && (S.code == src.code))
-			spawn(0)
-				if(S)	S.pulse(0)
-	return 0*/
 
 
 /obj/item/assembly/signaler/pulse(var/radio = 0)
@@ -128,12 +117,8 @@
 	if(signal.encryption != code)	return 0
 	if(!(src.wires & WIRE_RADIO_RECEIVE))	return 0
 	pulse(1)
-
 	if(!holder)
-		for(var/mob/O in hearers(1, src.loc))
-			O.show_message(text("\icon[] *beep* *beep*", src), 3, "*beep* *beep*", 2)
-	return
-
+		audible_message(SPAN_NOTICE("[html_icon(src)] *beep* *beep*"), null, 3)
 
 /obj/item/assembly/signaler/proc/set_frequency(new_frequency)
 	set waitfor = 0

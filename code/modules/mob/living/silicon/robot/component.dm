@@ -154,28 +154,14 @@
 	external_type = /obj/item/robot_parts/robot_component/camera
 	idle_usage = 10
 	max_damage = 40
-	var/obj/machinery/camera/camera
-
-/datum/robot_component/camera/New(mob/living/silicon/robot/R)
-	..()
-	camera = R.camera
 
 /datum/robot_component/camera/update_power_state()
-	..()
-	if (camera)
-		camera.status = powered
-
-/datum/robot_component/camera/install()
-	if (camera)
-		camera.status = 1
-
-/datum/robot_component/camera/uninstall()
-	if (camera)
-		camera.status = 0
+	. = ..()
+	cameranet.update_visibility(owner, FALSE)
 
 /datum/robot_component/camera/destroy()
-	if (camera)
-		camera.status = 0
+	. = ..()
+	cameranet.update_visibility(owner, FALSE)
 
 // SELF DIAGNOSIS MODULE
 // Analyses cyborg's modules, providing damage readouts and basic information
@@ -224,7 +210,7 @@
 /obj/item/robot_parts/robot_component
 	icon = 'icons/obj/robot_component.dmi'
 	icon_state = "working"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 	var/brute = 0
 	var/burn = 0
@@ -232,9 +218,15 @@
 	var/total_dam = 0
 	var/max_dam = 30
 
-/obj/item/robot_parts/robot_component/proc/take_damage(var/brute_amt, var/burn_amt)
-	brute += brute_amt
-	burn += burn_amt
+/obj/item/robot_parts/robot_component/take_damage(amount, damtype, silent)
+	switch(damtype)
+		if(BURN || ELECTROCUTE)
+			burn += amount
+		if(BRUTE)
+			brute += amount
+		else
+			return 0 //Only care about burn and brute
+
 	total_dam = brute+burn
 	if(total_dam >= max_dam)
 		var/obj/item/stock_parts/circuitboard/broken/broken_device = new (get_turf(src))
@@ -265,7 +257,7 @@
 
 /obj/item/robot_parts/robot_component/armour/light
 	name = "light-weight armour plating"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/robot_parts/robot_component/camera
 	name = "camera"

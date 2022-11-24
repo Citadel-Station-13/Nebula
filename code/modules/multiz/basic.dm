@@ -1,25 +1,8 @@
 // If you add a more comprehensive system, just untick this file.
-var/list/z_levels = list()// Each bit re... haha just kidding this is a list of bools now
+var/global/list/z_levels = list() // Each Z-level is associated with the relevant map data landmark
 
-// If the height is more than 1, we mark all contained levels as connected.
-// This is in New because it is an auxiliary effect specifically needed pre-init.
-/obj/effect/landmark/map_data/New(turf/loc, _height)
-	..()
-	if(!istype(loc)) // Using loc.z is safer when using the maploader and New.
-		return
-	if(_height)
-		height = _height
-	for(var/i = (loc.z - height + 1) to (loc.z-1))
-		if (z_levels.len <i)
-			z_levels.len = i
-		z_levels[i] = TRUE
-
-	if (length(SSzcopy.zstack_maximums))
-		SSzcopy.calculate_zstack_limits()
-
-/obj/effect/landmark/map_data/Initialize()
-	..()
-	return INITIALIZE_HINT_QDEL
+/proc/get_map_data(z)
+	return z > 0 && z_levels.len >= z ? z_levels[z] : null
 
 // Thankfully, no bitwise magic is needed here.
 /proc/GetAbove(var/atom/atom)
@@ -36,18 +19,25 @@ var/list/z_levels = list()// Each bit re... haha just kidding this is a list of 
 
 /proc/GetConnectedZlevels(z)
 	. = list(z)
+	// Traverse up and down to get the multiz stack.
 	for(var/level = z, HasBelow(level), level--)
 		. |= level-1
 	for(var/level = z, HasAbove(level), level++)
 		. |= level+1
 
-var/list/connected_z_cache = list()
+	// Check stack for any laterally connected neighbors.
+	for(var/tz in .)
+		var/obj/abstract/level_data/level = global.levels_by_z["[tz]"]
+		if(level)
+			level.find_connected_levels(.)
+
+var/global/list/connected_z_cache = list()
 /proc/AreConnectedZLevels(var/zA, var/zB)
 	if (zA <= 0 || zB <= 0 || zA > world.maxz || zB > world.maxz)
 		return FALSE
 	if (zA == zB)
 		return TRUE
-	if (global.connected_z_cache.len >= zA && global.connected_z_cache[zA])
+	if (length(global.connected_z_cache) >= zA && length(global.connected_z_cache[zA]) >= zB)
 		return global.connected_z_cache[zA][zB]
 	var/list/levels = GetConnectedZlevels(zA)
 	var/list/new_entry = new(world.maxz)

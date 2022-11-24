@@ -1,28 +1,26 @@
+var/global/list/default_initial_tech_levels
+/proc/get_default_initial_tech_levels()
+	if(!global.default_initial_tech_levels)
+		global.default_initial_tech_levels = list()
+		var/list/research_fields = decls_repository.get_decls_of_subtype(/decl/research_field)
+		for(var/field in research_fields)
+			var/decl/research_field/field_decl = research_fields[field]
+			global.default_initial_tech_levels[field_decl.id] = field_decl.initial_tech_level
+	return global.default_initial_tech_levels.Copy()
+
 /obj/machinery/design_database
 	name = "fabricator design database"
-	icon = 'icons/obj/machines/server.dmi'
-	icon_state = "server-off"
+	icon = 'icons/obj/machines/tcomms/blackbox.dmi'
+	icon_state = "blackbox"
 	density = TRUE
 	anchored = TRUE
 
 	var/initial_network_id
 	var/initial_network_key
-	var/list/tech_levels = list(
-		TECH_MATERIAL =    0,
-		TECH_ENGINEERING = 0,
-		TECH_EXOTIC_MATTER =      0,
-		TECH_POWER =       0,
-		TECH_BLUESPACE =   0,
-		TECH_BIO =         0,
-		TECH_COMBAT =      0,
-		TECH_MAGNET =      0,
-		TECH_DATA =        0,
-		TECH_ESOTERIC =    0
-	)
-
+	var/list/tech_levels
 	var/need_disk_operation = FALSE
 	var/obj/item/disk/tech_disk/disk
-	var/sync_policy = SYNC_PULL_NETWORK|SYNC_PULL_DISK
+	var/sync_policy = SYNC_PULL_NETWORK|SYNC_PUSH_NETWORK|SYNC_PULL_DISK
 
 /obj/machinery/design_database/proc/toggle_sync_policy_flag(var/sync_flag)
 	if(sync_policy & sync_flag)
@@ -40,7 +38,7 @@
 		var/list/tech_data = list()
 		for(var/tech in disk.stored_tech)
 			var/decl/research_field/field = SSfabrication.get_research_field_by_id(tech)
-			tech_data += list(list("field" = field.name, "level" = "[disk.stored_tech[tech]].0 GQ"))
+			tech_data += list(list("field" = field.name, "desc" = field.desc, "level" = "[disk.stored_tech[tech]].0 GQ"))
 		data["disk_tech"] = tech_data
 	else
 		data["disk_name"] = "no disk loaded"
@@ -48,7 +46,7 @@
 	var/list/show_tech_levels = list()
 	for(var/tech in tech_levels)
 		var/decl/research_field/field = SSfabrication.get_research_field_by_id(tech)
-		show_tech_levels += list(list("field" = field.name, "level" = "[tech_levels[tech]].0 GQ"))
+		show_tech_levels += list(list("field" = field.name, "desc" = field.desc, "level" = "[tech_levels[tech]].0 GQ"))
 	data["tech_levels"] = show_tech_levels
 
 	data["network_push"] = (sync_policy & SYNC_PUSH_NETWORK) ? "on" : "off"
@@ -77,8 +75,7 @@
 			eject_disk(user)
 			return TOPIC_REFRESH
 		if(href_list["wipe_database"])
-			for(var/tech in tech_levels)
-				tech_levels[tech] = 0
+			tech_levels = get_default_initial_tech_levels()
 			return TOPIC_REFRESH
 		if(href_list["settings"])
 			var/datum/extension/network_device/D = get_extension(src, /datum/extension/network_device)
@@ -86,14 +83,33 @@
 			return TOPIC_REFRESH
 
 /obj/machinery/design_database/Initialize()
-	. = ..()
+	if(!tech_levels)
+		tech_levels = get_default_initial_tech_levels()
+	..()
 	design_databases += src
-	set_extension(src, /datum/extension/network_device, initial_network_id, initial_network_key, NETWORK_CONNECTION_WIRED)
+	set_extension(src, /datum/extension/network_device, initial_network_id, initial_network_key, RECEIVER_STRONG_WIRELESS)
 	update_icon()
+	. = INITIALIZE_HINT_LATELOAD
+
+/obj/machinery/design_database/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(initial_network_id, map_hash)
+
+/obj/machinery/design_database/handle_post_network_connection()
+	..()
+	sync_design_consoles()
+
+/obj/machinery/design_database/proc/sync_design_consoles()
+	var/datum/extension/network_device/device = get_extension(src, /datum/extension/network_device)
+	var/datum/computer_network/network = device.get_network()
+	for(var/obj/machinery/computer/design_console/dc in network?.get_devices_by_type(/obj/machinery/computer/design_console))
+		if(!(dc.stat & (BROKEN|NOPOWER)))
+			dc.sync_network()
+			return TRUE
 
 /obj/machinery/design_database/Process()
 	..()
-	if((stat & BROKEN) || (stat & NOPOWER) || !use_power || !powered())
+	if((stat & BROKEN) || (stat & NOPOWER) || !use_power)
 		return
 
 	// Read or write from a loaded disk.
@@ -106,17 +122,8 @@
 					new_tech = TRUE
 			if(new_tech)
 				visible_message(SPAN_NOTICE("\The [src] clicks and chirps as it reads from \the [disk]."))
-				if(sync_policy & SYNC_PUSH_NETWORK)
-					var/synced
-					var/datum/extension/network_device/device = get_extension(src, /datum/extension/network_device)
-					var/datum/computer_network/network = device.get_network()
-					for(var/obj/machinery/computer/design_console/dc in network?.get_devices_by_type(/obj/machinery/computer/design_console))
-						if(!(dc.stat & (BROKEN|NOPOWER)))
-							dc.sync_network(tech_levels)
-							synced = TRUE
-							break
-					if(!synced)
-						visible_message(SPAN_WARNING("\The [src] flashes an error light from its network interface."))
+				if((sync_policy & SYNC_PUSH_NETWORK) && !sync_design_consoles())
+					visible_message(SPAN_WARNING("\The [src] flashes an error light from its network interface."))
 
 		if(sync_policy & SYNC_PUSH_DISK)
 			var/new_tech
@@ -130,10 +137,11 @@
 		need_disk_operation = FALSE
 
 /obj/machinery/design_database/on_update_icon()
-	if(!(stat & NOPOWER) && !(stat & BROKEN) && use_power > 0)
-		icon_state = "server"
-	else
-		icon_state = "server-off"
+	icon_state = initial(icon_state)
+	if(panel_open)
+		icon_state = "[icon_state]_o"
+	if((stat & NOPOWER) || (stat & BROKEN) || !use_power)
+		icon_state = "[icon_state]_off"
 
 /obj/machinery/design_database/Destroy()
 	design_databases -= src
@@ -167,7 +175,19 @@
 		return TRUE
 	return FALSE
 
-/obj/machinery/design_database/AltClick(mob/user)
-	if(disk)
-		eject_disk(user)
+/obj/machinery/design_database/get_alt_interactions(var/mob/user)
 	. = ..()
+	LAZYADD(., /decl/interaction_handler/remove_disk/designs)
+
+/decl/interaction_handler/remove_disk/designs
+	expected_target_type = /obj/machinery/design_database
+
+/decl/interaction_handler/remove_disk/designs/is_possible(atom/target, mob/user, obj/item/prop)
+	. = ..()
+	if(.)
+		var/obj/machinery/design_database/D = target
+		. = !!D.disk
+
+/decl/interaction_handler/remove_disk/designs/invoked(atom/target, mob/user, obj/item/prop)
+	var/obj/machinery/design_database/D = target
+	D.eject_disk(user)

@@ -3,12 +3,12 @@
 	display_name = "Illegal"
 	hide_on_manifest = 1
 	upgrade_locked = TRUE
-	sprites = list(
-		"Dread" = "securityrobot"
+	module_sprites = list(
+		"Dread" = 'icons/mob/robots/robot_security.dmi'
 	)
 	equipment = list(
 		/obj/item/flash,
-		/obj/item/melee/energy/sword,
+		/obj/item/energy_blade/sword,
 		/obj/item/gun/energy/laser,
 		/obj/item/crowbar,
 		/obj/item/card/emag,
@@ -17,7 +17,7 @@
 	var/id
 
 /obj/item/robot_module/syndicate/Initialize()
-	for(var/decl/hierarchy/skill/skill in GLOB.skills)
+	for(var/decl/hierarchy/skill/skill in global.skills)
 		skills[skill.type] = SKILL_EXPERT
 	. = ..()
 

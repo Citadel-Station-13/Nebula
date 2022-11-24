@@ -9,25 +9,34 @@
 
 /obj/structure/skele_stand/Initialize()
 	. = ..()
-	gender = pick(MALE, FEMALE)
+	gender = pick(MALE, FEMALE, PLURAL)
 
 /obj/structure/skele_stand/proc/rattle_bones(mob/user, atom/thingy)
 	if((world.time - cooldown) <= 1 SECOND)
 		return //reduces spam.
+
+	var/decl/pronouns/G = get_pronouns()
 	if(user)
-		visible_message("\The [user] pushes on [src][thingy?" with \the [thingy]":""], giving the bones a good rattle.")
+		if(thingy)
+			visible_message(SPAN_NOTICE("\The [user] pushes \the [src] with \the [thingy], giving the bones a good rattle."))
+		else
+			visible_message(SPAN_NOTICE("\The [user] pushes \the [src], giving the bones a good rattle."))
 	else
-		visible_message("\The [src] rattles on \his stand upon hitting [thingy?"\the [thingy]":"something"].")
+		if(thingy)
+			visible_message(SPAN_NOTICE("\The [src] rattles on [G.his] stand as [G.he] [G.is] hit by \the [thingy]."))
+		else
+			visible_message(SPAN_NOTICE("\The [src] rattles on [G.his] stand."))
+
 	cooldown = world.time
 	playsound(loc, 'sound/effects/bonerattle.ogg', 40)
 
 /obj/structure/skele_stand/attack_hand(mob/user)
 	if(swag.len)
-		var/obj/item/clothing/C = input("What piece of clothing do you want to remove?", "Skeleton undressing") as null|anything in list_values(swag)
+		var/obj/item/clothing/C = input("What piece of clothing do you want to remove?", "Skeleton Undressing") as null|anything in list_values(swag)
 		if(C)
 			swag -= get_key_by_value(swag, C)
 			user.put_in_hands(C)
-			to_chat(user,"<span class='notice'>You take \the [C] off \the [src]</span>")
+			to_chat(user, SPAN_NOTICE("You take \the [C] off \the [src]."))
 			update_icon()
 	else
 		rattle_bones(user, null)
@@ -45,7 +54,7 @@
 		to_chat(user,"[gender == MALE ? "He" : "She"] is wearing [english_list(swagnames)].")
 
 /obj/structure/skele_stand/attackby(obj/item/W, mob/user)
-	if(istype(W,/obj/item/pen))
+	if(IS_PEN(W))
 		var/nuname = sanitize(input(user,"What do you want to name this skeleton as?","Skeleton Christening",name) as text|null)
 		if(nuname && CanPhysicallyInteract(user))
 			SetName(nuname)
@@ -79,7 +88,8 @@
 	. = ..()
 
 /obj/structure/skele_stand/on_update_icon()
-	overlays.Cut()
+	..()
 	for(var/slot in swag)
 		var/obj/item/I = swag[slot]
-		overlays += I.get_mob_overlay(null, slot)
+		if(I)
+			add_overlay(I.get_mob_overlay(null, slot))

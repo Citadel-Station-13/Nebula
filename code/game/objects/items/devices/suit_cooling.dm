@@ -3,8 +3,7 @@
 	desc = "A large portable heat sink with liquid cooled radiator packaged into a modified backpack."
 	w_class = ITEM_SIZE_LARGE
 	icon = 'icons/obj/items/suitcooler.dmi'
-	icon_state = "suitcooler0"
-	item_state = "coolingpack"			// beautiful codersprites until someone makes a prettier one.
+	icon_state = ICON_STATE_WORLD
 	slot_flags = SLOT_BACK
 
 	//copied from tank.dm
@@ -15,8 +14,8 @@
 	throw_range = 4
 	action_button_name = "Toggle Heatsink"
 
-	material = MAT_ALUMINIUM
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/aluminium
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
 	origin_tech = "{'magnets':2,'materials':2}"
 
 	var/on = 0								//is it turned on?
@@ -69,8 +68,7 @@
 	var/mob/living/carbon/human/H = loc
 	if(!istype(H))
 		return 0
-
-	return (H.back == src) || (H.s_store == src)
+	return H.get_equipped_item(slot_back_str) == src || H.get_equipped_item(slot_s_store_str) == src
 
 /obj/item/suit_cooling_unit/proc/turn_on()
 	if(!cell)
@@ -111,7 +109,7 @@
 	to_chat(user, "<span class='notice'>You switch \the [src] [on ? "on" : "off"].</span>")
 
 /obj/item/suit_cooling_unit/attackby(obj/item/W, mob/user)
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		if(cover_open)
 			cover_open = 0
 			to_chat(user, "You screw the panel into place.")
@@ -136,33 +134,29 @@
 	return ..()
 
 /obj/item/suit_cooling_unit/on_update_icon()
-	overlays.Cut()
-	if (cover_open)
-		if (cell)
-			icon_state = "suitcooler1"
-		else
-			icon_state = "suitcooler2"
+	. = ..()
+	if(cover_open)
+		add_overlay("[icon_state]-open")
+		if(cell)
+			add_overlay("[icon_state]-cell")
 		return
-
-	icon_state = "suitcooler0"
 
 	if(!cell || !on)
 		return
 
 	switch(round(cell.percent()))
 		if(86 to INFINITY)
-			overlays.Add("battery-0")
+			add_overlay("[icon_state]-battery-0")
 		if(69 to 85)
-			overlays.Add("battery-1")
+			add_overlay("[icon_state]-battery-1")
 		if(52 to 68)
-			overlays.Add("battery-2")
+			add_overlay("[icon_state]-battery-2")
 		if(35 to 51)
-			overlays.Add("battery-3")
+			add_overlay("[icon_state]-battery-3")
 		if(18 to 34)
-			overlays.Add("battery-4")
+			add_overlay("[icon_state]-battery-4")
 		if(-INFINITY to 17)
-			overlays.Add("battery-5")
-
+			add_overlay("[icon_state]-battery-5")
 
 /obj/item/suit_cooling_unit/examine(mob/user, distance)
 	. = ..()

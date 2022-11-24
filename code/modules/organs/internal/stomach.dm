@@ -2,7 +2,6 @@
 	name = "stomach"
 	desc = "Gross. This is hard to stomach."
 	icon_state = "stomach"
-	dead_icon = "stomach"
 	organ_tag = BP_STOMACH
 	parent_organ = BP_GROIN
 	var/stomach_capacity
@@ -13,20 +12,29 @@
 	QDEL_NULL(ingested)
 	. = ..()
 
-/obj/item/organ/internal/stomach/Initialize()
+/obj/item/organ/internal/stomach/set_species(species_name)
+	if(species?.gluttonous)
+		verbs -= /obj/item/organ/internal/stomach/proc/throw_up
 	. = ..()
-	ingested = new/datum/reagents/metabolism(240, (owner || src), CHEM_INGEST)
-	if(!ingested.my_atom)
-		ingested.my_atom = src
 	if(species.gluttonous)
 		verbs |= /obj/item/organ/internal/stomach/proc/throw_up
+	if(species && !stomach_capacity)
+		stomach_capacity = species.stomach_capacity
 
-/obj/item/organ/internal/stomach/removed()
+/obj/item/organ/internal/stomach/initialize_reagents(populate)
+	if(!ingested)
+		ingested = new/datum/reagents/metabolism(240, (owner || src), CHEM_INGEST)
+	if(!ingested.my_atom)
+		ingested.my_atom = src
 	. = ..()
-	ingested.my_atom = src
-	ingested.parent = null
 
-/obj/item/organ/internal/stomach/replaced()
+/obj/item/organ/internal/stomach/do_uninstall(in_place, detach, ignore_children)
+	. = ..()
+	if(ingested) //Don't bother if we're destroying
+		ingested.my_atom = src
+		ingested.parent = null
+
+/obj/item/organ/internal/stomach/do_install()
 	. = ..()
 	ingested.my_atom = owner
 	ingested.parent = owner
@@ -35,7 +43,7 @@
 	return !isnull(get_devour_time(food))
 
 /obj/item/organ/internal/stomach/proc/is_full(var/atom/movable/food)
-	var/total = Floor(ingested.total_volume / 10)
+	var/total = FLOOR(ingested.total_volume / 10)
 	for(var/a in contents + food)
 		if(ismob(a))
 			var/mob/M = a
@@ -45,7 +53,7 @@
 			total += I.get_storage_cost()
 		else
 			continue
-		if(total > species.stomach_capacity)
+		if(total > stomach_capacity)
 			return TRUE
 	return FALSE
 
@@ -70,7 +78,7 @@
 				return DEVOUR_FAST
 
 
-obj/item/organ/internal/stomach/proc/throw_up()
+/obj/item/organ/internal/stomach/proc/throw_up()
 	set name = "Empty Stomach"
 	set category = "IC"
 	set src in usr
@@ -80,14 +88,8 @@ obj/item/organ/internal/stomach/proc/throw_up()
 /obj/item/organ/internal/stomach/return_air()
 	return null
 
-// This call needs to be split out to make sure that all the ingested things are metabolised
-// before the process call is made on any of the other organs
-/obj/item/organ/internal/stomach/proc/metabolize()
-	if(is_usable())
-		ingested.metabolize()
-	
 #define STOMACH_VOLUME 65
-	
+
 /obj/item/organ/internal/stomach/Process()
 	..()
 
@@ -115,14 +117,14 @@ obj/item/organ/internal/stomach/proc/throw_up()
 			owner.custom_pain("Your stomach cramps agonizingly!",1)
 
 		var/alcohol_volume = REAGENT_VOLUME(ingested, /decl/material/liquid/ethanol)
-		
+
 		var/alcohol_threshold_met = alcohol_volume > STOMACH_VOLUME / 2
 		if(alcohol_threshold_met && (owner.disabilities & EPILEPSY) && prob(20))
 			owner.seizure()
-		
+
 		// Alcohol counts as double volume for the purposes of vomit probability
 		var/effective_volume = ingested.total_volume + alcohol_volume
-		
+
 		// Just over the limit, the probability will be low. It rises a lot such that at double ingested it's 64% chance.
 		var/vomit_probability = (effective_volume / STOMACH_VOLUME) ** 6
 		if(prob(vomit_probability))

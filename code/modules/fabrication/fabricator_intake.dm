@@ -9,11 +9,14 @@
 	for(var/R in thing.reagents.reagent_volumes)
 		if(!base_storage_capacity[R])
 			continue
-		var/taking_reagent = min(REAGENT_VOLUME(thing.reagents, R), storage_capacity[R] - stored_material[R])
+		var/taking_reagent = min(REAGENT_VOLUME(thing.reagents, R), FLOOR((storage_capacity[R] - stored_material[R]) * REAGENT_UNITS_PER_MATERIAL_UNIT))
 		if(taking_reagent <= 0)
 			continue
+		var/reagent_matter = round(taking_reagent / REAGENT_UNITS_PER_MATERIAL_UNIT)
+		if(reagent_matter <= 0)
+			continue
 		thing.reagents.remove_reagent(R, taking_reagent)
-		stored_material[R] += taking_reagent
+		stored_material[R] += reagent_matter
 		// If we're destroying this, take everything.
 		if(destructive)
 			. = SUBSTANCE_TAKEN_ALL
@@ -29,23 +32,34 @@
 
 /obj/machinery/fabricator/proc/take_materials(var/obj/item/thing, var/mob/user)
 	. = SUBSTANCE_TAKEN_NONE
-	var/stacks_used = 1
+
+	var/obj/item/stack/stack_ref = istype(thing, /obj/item/stack) && thing
+	var/stack_matter_div = stack_ref ? max(1, CEILING(SHEET_MATERIAL_AMOUNT * stack_ref.matter_multiplier)) : 1
+	var/stacks_used = 0
+
 	var/mat_colour = thing.color
 	for(var/mat in thing.matter)
-		var/decl/material/material_def = decls_repository.get_decl(mat)
+
+		var/decl/material/material_def = GET_DECL(mat)
 		if(!material_def || !base_storage_capacity[material_def.type])
 			continue
+
 		var/taking_material = min(thing.matter[mat], storage_capacity[material_def.type] - stored_material[material_def.type])
 		if(taking_material <= 0)
 			continue
+
 		if(!mat_colour)
 			mat_colour = material_def.color
+
 		stored_material[material_def.type] += taking_material
-		stacks_used = max(stacks_used, ceil(taking_material/SHEET_MATERIAL_AMOUNT))
+		if(stack_ref)
+			stacks_used = max(stacks_used, CEILING(taking_material/stack_matter_div))
+
 		if(storage_capacity[material_def.type] == stored_material[material_def.type])
 			. = SUBSTANCE_TAKEN_FULL
 		else if(. != SUBSTANCE_TAKEN_FULL)
 			. = SUBSTANCE_TAKEN_ALL
+
 	if(. != SUBSTANCE_TAKEN_NONE)
 		if(mat_colour)
 			var/image/adding_mat_overlay = image(icon, "[base_icon_state]_mat")
@@ -53,15 +67,18 @@
 			material_overlays += adding_mat_overlay
 			update_icon()
 			addtimer(CALLBACK(src, /obj/machinery/fabricator/proc/remove_mat_overlay, adding_mat_overlay), 1 SECOND)
-		if(istype(thing, /obj/item/stack))
-			var/obj/item/stack/S = thing
-			S.use(stacks_used)
-			if(S.amount <= 0 || QDELETED(S))
+
+		if(stack_ref && stacks_used)
+			stack_ref.use(stacks_used)
+			if(stack_ref.amount <= 0 || QDELETED(stack_ref))
 				. = SUBSTANCE_TAKEN_ALL
 			else if(. != SUBSTANCE_TAKEN_FULL)
 				. = SUBSTANCE_TAKEN_SOME
 
-/obj/machinery/fabricator/proc/show_intake_message(var/mob/user, var/value, var/obj/item/thing)
+/obj/machinery/fabricator/proc/can_ingest(var/obj/item/thing)
+	. = (has_recycler || istype(thing, /obj/item/stack/material))
+
+/obj/machinery/fabricator/proc/show_intake_message(var/mob/user, var/value, var/thing)
 	if(value == SUBSTANCE_TAKEN_FULL)
 		to_chat(user, SPAN_NOTICE("You fill \the [src] to capacity with \the [thing]."))
 	else if(value == SUBSTANCE_TAKEN_SOME)
@@ -74,10 +91,10 @@
 /obj/machinery/fabricator/attackby(var/obj/item/O, var/mob/user)
 	if(component_attackby(O, user))
 		return TRUE
-	if(panel_open && (isMultitool(O) || isWirecutter(O)))
+	if(panel_open && (IS_MULTITOOL(O) || IS_WIRECUTTER(O)))
 		attack_hand(user)
 		return TRUE
-	if((obj_flags & OBJ_FLAG_ANCHORABLE) && isWrench(O))
+	if((obj_flags & OBJ_FLAG_ANCHORABLE) && IS_WRENCH(O))
 		return ..()
 	if(stat & (NOPOWER | BROKEN))
 		return
@@ -86,7 +103,7 @@
 	if(user.a_intent != I_HURT)
 
 		// Set or update our local network.
-		if(isMultitool(O))
+		if(IS_MULTITOOL(O))
 			var/datum/extension/local_network_member/fabnet = get_extension(src, /datum/extension/local_network_member)
 			fabnet.get_new_tag(user)
 			return
@@ -106,15 +123,16 @@
 			return
 
 	// Take reagents, if any are applicable.
+	var/atom_name = O.name
 	var/reagents_taken = take_reagents(O, user)
-	if(reagents_taken != SUBSTANCE_TAKEN_NONE && !has_recycler)
-		show_intake_message(user, reagents_taken, O)
+	if(reagents_taken != SUBSTANCE_TAKEN_NONE)
+		show_intake_message(user, reagents_taken, atom_name)
 		updateUsrDialog()
 		return TRUE
 	// Take everything if we have a recycler.
-	if(has_recycler && !is_robot_module(O) && user.unEquip(O))
+	if(can_ingest(O) && !is_robot_module(O) && user.unEquip(O))
 		var/result = max(take_materials(O, user), max(reagents_taken, take_reagents(O, user, TRUE)))
-		show_intake_message(user, result, O)
+		show_intake_message(user, result, atom_name)
 		if(result == SUBSTANCE_TAKEN_NONE)
 			user.put_in_active_hand(O)
 			return TRUE
@@ -137,5 +155,5 @@
 	if((fab_status_flags & FAB_DISABLED) && !panel_open)
 		to_chat(user, SPAN_WARNING("\The [src] is disabled!"))
 		return TRUE
-	interact(user)
+	ui_interact(user)
 	return TRUE

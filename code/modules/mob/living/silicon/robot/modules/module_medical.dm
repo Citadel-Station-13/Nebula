@@ -3,8 +3,8 @@
 	channels = list(
 		"Medical" = TRUE
 	)
-	networks = list(
-		NETWORK_MEDICAL
+	camera_channels = list(
+		CAMERA_CHANNEL_MEDICAL
 	)
 	software = list(
 		/datum/computer_file/program/crew_manifest
@@ -18,18 +18,19 @@
 /obj/item/robot_module/medical/surgeon
 	name = "surgeon robot module"
 	display_name = "Surgeon"
-	sprites = list(
-		"Basic" = "Medbot",
-		"Standard" = "surgeon",
-		"Advanced Droid" = "droid-medical",
-		"Needles" = "medicalrobot"
-		)
+	module_sprites = list(
+		"Basic"          = 'icons/mob/robots/robot_medical_old_alt.dmi',
+		"Standard"       = 'icons/mob/robots/robot_surgeon.dmi',
+		"Advanced Droid" = 'icons/mob/robots/robot_droid_medical.dmi',
+		"Needles"        = 'icons/mob/robots/robot_medical_old.dmi'
+	)
 	equipment = list(
 		/obj/item/flash,
 		/obj/item/borg/sight/hud/med,
 		/obj/item/scanner/health,
+		/obj/item/scanner/breath,
 		/obj/item/chems/borghypo/surgeon,
-		/obj/item/scalpel/manager,
+		/obj/item/incision_manager,
 		/obj/item/hemostat,
 		/obj/item/retractor,
 		/obj/item/cautery,
@@ -74,7 +75,7 @@
 
 /obj/item/robot_module/medical/surgeon/finalize_synths()
 	. = ..()
-	var/datum/matter_synth/medicine/medicine = locate() in synths 
+	var/datum/matter_synth/medicine/medicine = locate() in synths
 	for(var/thing in list(
 		 /obj/item/stack/nanopaste,
 		 /obj/item/stack/medical/advanced/bruise_pack
@@ -91,17 +92,18 @@
 /obj/item/robot_module/medical/crisis
 	name = "crisis robot module"
 	display_name = "Crisis"
-	sprites = list(
-		"Basic" = "Medbot",
-		"Standard" = "surgeon",
-		"Advanced Droid" = "droid-medical",
-		"Needles" = "medicalrobot"
+	module_sprites = list(
+		"Basic"          = 'icons/mob/robots/robot_medical_old_alt.dmi',
+		"Standard"       = 'icons/mob/robots/robot_surgeon.dmi',
+		"Advanced Droid" = 'icons/mob/robots/robot_droid_medical.dmi',
+		"Needles"        = 'icons/mob/robots/robot_medical_old.dmi'
 	)
 	equipment = list(
 		/obj/item/crowbar,
 		/obj/item/flash,
 		/obj/item/borg/sight/hud/med,
 		/obj/item/scanner/health,
+		/obj/item/scanner/breath,
 		/obj/item/scanner/reagent/adv,
 		/obj/item/robot_rack/body_bag,
 		/obj/item/chems/borghypo/crisis,
@@ -109,8 +111,8 @@
 		/obj/item/chems/dropper/industrial,
 		/obj/item/chems/syringe,
 		/obj/item/gripper/chemistry,
-		/obj/item/extinguisher/mini,
-		/obj/item/taperoll/medical,
+		/obj/item/chems/spray/extinguisher/mini,
+		/obj/item/stack/tape_roll/barricade_tape/medical,
 		/obj/item/inflatable_dispenser/robot,
 		/obj/item/stack/medical/ointment,
 		/obj/item/stack/medical/bruise_pack,
@@ -125,8 +127,7 @@
 		SKILL_ANATOMY     = SKILL_BASIC,
 		SKILL_MEDICAL     = SKILL_PROF,
 		SKILL_CHEMISTRY   = SKILL_ADEPT,
-		SKILL_EVA         = SKILL_EXPERT,
-		SKILL_MECH        = HAS_PERK
+		SKILL_EVA         = SKILL_EXPERT
 	)
 
 /obj/item/robot_module/medical/crisis/finalize_equipment()

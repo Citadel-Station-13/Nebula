@@ -1,41 +1,25 @@
-/datum/unit_test/material_chemical_composition_shall_equal_one
-	name = "MATERIALS: Material Chemical Composition Will Equal Exactly 1"
-
-/datum/unit_test/material_chemical_composition_shall_equal_one/start_test()
-	var/list/failed = list()
-	var/list/passed = list()
-	for(var/mat in SSmaterials.materials_by_name)
-		var/decl/material/mat_datum = decls_repository.get_decl(mat)
-		var/list/checking = list(
-			"dissolves" = mat_datum.dissolves_into,
-			"heats" = mat_datum.heating_products,
-			"chills" = mat_datum.chilling_products
-		)
-		for(var/field in checking)
-			var/list/checking_list = checking[field]
-			if(length(checking_list))
-				var/total = 0
-				for(var/chem in checking_list)
-					total += checking_list[chem]
-				if(total != 1)
-					failed += "[mat_datum.type] - [field] - [total]"
-				else
-					passed += "[mat_datum.type] - [field]"
-	if(length(failed))
-		fail("[length(failed)] material lists have total makeup not equal to 1: [jointext(failed, "\n")].")
-	else
-		pass("[length(passed)] material lists had chemical makeup exactly equal to 1.")
-	return 1 
-
 /datum/unit_test/crafting_recipes_shall_not_have_inconsistent_materials
 	name = "MATERIALS: Crafting Recipes Shall Not Have Inconsistent Materials"
 
 /datum/unit_test/crafting_recipes_shall_not_have_inconsistent_materials/start_test()
-	var/list/failed_designs = list()
-	var/list/passed_designs = list()
-	for(var/owner_mat in SSmaterials.materials_by_name)
-		var/decl/material/mat_datum = decls_repository.get_decl(owner_mat)
-		for(var/datum/stack_recipe/recipe in mat_datum.get_recipes())
+
+	var/list/seen_design_types = list()
+	var/list/failed_designs =    list()
+	var/list/passed_designs =    list()
+	var/failed_count = 0
+
+	for(var/decl/material/mat_datum as anything in SSmaterials.materials)
+
+		var/list/recipes = list()
+		for(var/thing in mat_datum.get_recipes())
+			if(istype(thing, /datum/stack_recipe))
+				recipes += thing
+			else if(istype(thing, /datum/stack_recipe_list))
+				var/datum/stack_recipe_list/recipe_stack = thing
+				if(length(recipe_stack.recipes))
+					recipes |= recipe_stack.recipes
+
+		for(var/datum/stack_recipe/recipe as anything in recipes)
 			var/obj/product = recipe.spawn_result()
 			var/failed
 			if(!product)
@@ -48,22 +32,25 @@
 					if(length(product.matter))
 						failed = "unsupplied material types"
 				else if(recipe.use_material && (product.matter[recipe.use_material]/SHEET_MATERIAL_AMOUNT) > recipe.req_amount)
-					failed = "excessive base material ([recipe.req_amount]/[ceil(product.matter[recipe.use_material]/SHEET_MATERIAL_AMOUNT)])"
+					failed = "excessive base material ([recipe.req_amount]/[CEILING(product.matter[recipe.use_material]/SHEET_MATERIAL_AMOUNT)])"
 				else if(recipe.use_reinf_material && (product.matter[recipe.use_reinf_material]/SHEET_MATERIAL_AMOUNT) > recipe.req_amount)
-					failed = "excessive reinf material ([recipe.req_amount]/[ceil(product.matter[recipe.use_reinf_material]/SHEET_MATERIAL_AMOUNT)])"
+					failed = "excessive reinf material ([recipe.req_amount]/[CEILING(product.matter[recipe.use_reinf_material]/SHEET_MATERIAL_AMOUNT)])"
 				else
 					for(var/mat in product.matter)
 						if(mat != recipe.use_material && mat != recipe.use_reinf_material)
 							failed = "extra material type ([mat])"
-			if(failed)
-				failed_designs += "[owner_mat] - [recipe.type] - [failed]"
+			if(failed) // Try to prune out some duplicate error spam, we have too many materials now
+				if(!(recipe.type in seen_design_types))
+					failed_designs += "[mat_datum.type] - [recipe.type] - [failed]"
+					seen_design_types += recipe.type
+				failed_count++
 			else
 				passed_designs += recipe
 			if(!QDELETED(product))
 				qdel(product)
 
-	if(length(failed_designs))
-		fail("[length(failed_designs)] crafting recipes had inconsistent output materials: [jointext(failed_designs, "\n")].")
+	if(failed_count)
+		fail("[failed_count] crafting recipes had inconsistent output materials: [jointext(failed_designs, "\n")].")
 	else
 		pass("[length(passed_designs)] crafting recipes had consistent output materials.")
-	return 1 
+	return 1

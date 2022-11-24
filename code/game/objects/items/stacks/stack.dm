@@ -12,7 +12,10 @@
 /obj/item/stack
 	gender = PLURAL
 	origin_tech = "{'materials':1}"
-
+	health = 32      //Stacks should take damage even if no materials
+	max_health = 32
+	/// A copy of initial matter list when this atom initialized. Stack matter should always assume a single tile.
+	var/list/matter_per_piece
 	var/singular_name
 	var/plural_name
 	var/base_state
@@ -22,23 +25,24 @@
 	var/list/initial_matter
 	var/matter_multiplier = 1
 	var/max_amount //also see stack recipes initialisation, param "max_res_amount" must be equal to this max_amount
-	var/stacktype  //determines whether different stack types can merge
+	var/stack_merge_type  //determines whether different stack types can merge
 	var/build_type //used when directly applied to a turf
 	var/uses_charge
 	var/list/charge_costs
 	var/list/datum/matter_synth/synths
-	var/list/datum/stack_recipe/recipes
 
 /obj/item/stack/Initialize(mapload, amount, material)
 
 	if(ispath(amount, /decl/material))
-		crash_with("Stack initialized with material ([amount]) instead of amount.")
+		PRINT_STACK_TRACE("Stack initialized with material ([amount]) instead of amount.")
 		material = amount
 	if (isnum(amount) && amount >= 1)
 		src.amount = amount
 	. = ..(mapload, material)
-	if (!stacktype)
-		stacktype = type
+	if(!stack_merge_type)
+		stack_merge_type = type
+	if(!singular_name)
+		singular_name = "sheet"
 	if(!plural_name)
 		plural_name = "[singular_name]s"
 
@@ -57,14 +61,42 @@
 		else
 			to_chat(user, "There is enough charge for [get_amount()].")
 
+/obj/item/stack/on_update_icon()
+	. = ..()
+	if(!isturf(loc))
+		var/image/I = image(null)
+		I.plane = HUD_PLANE
+		I.layer = HUD_ABOVE_ITEM_LAYER
+		I.appearance_flags |= (RESET_COLOR|RESET_TRANSFORM)
+		I.maptext_x = 2
+		I.maptext_y = 2
+		I.maptext = STYLE_SMALLFONTS_OUTLINE(get_amount(), 6, (color || COLOR_WHITE), COLOR_BLACK)
+		add_overlay(I)
+
+/obj/item/stack/Move()
+	var/on_turf = isturf(loc)
+	. = ..()
+	if(. && on_turf != isturf(loc))
+		update_icon()
+
+/obj/item/stack/forceMove()
+	var/on_turf = isturf(loc)
+	. = ..()
+	if(. && on_turf != isturf(loc))
+		update_icon()
+
 /obj/item/stack/attack_self(mob/user)
 	list_recipes(user)
 
 /obj/item/stack/get_matter_amount_modifier()
 	. = amount * matter_multiplier
 
+/obj/item/stack/proc/get_recipes()
+	return
+
 /obj/item/stack/proc/list_recipes(mob/user, recipes_sublist)
-	if (!recipes)
+	var/list/recipes = get_recipes()
+	if(!islist(recipes) || !length(recipes))
 		return
 	if (!src || get_amount() <= 0)
 		close_browser(user, "window=stack")
@@ -99,7 +131,7 @@
 			title+= " ([R.req_amount] [src.singular_name]\s)"
 			var/skill_label = ""
 			if(!user.skill_check(SKILL_CONSTRUCTION, R.difficulty))
-				var/decl/hierarchy/skill/S = decls_repository.get_decl(SKILL_CONSTRUCTION)
+				var/decl/hierarchy/skill/S = GET_DECL(SKILL_CONSTRUCTION)
 				skill_label = "<font color='red'>\[[S.levels[R.difficulty]]]</font>"
 			if (can_build)
 				t1 +="[skill_label]<A href='?src=\ref[src];sublist=[recipes_sublist];make=[i];multiplier=1'>[title]</A>"
@@ -111,9 +143,9 @@
 				var/list/multipliers = list(5,10,25)
 				for (var/n in multipliers)
 					if (max_multiplier>=n)
-						t1 += " <A href='?src=\ref[src];make=[i];multiplier=[n]'>[n*R.res_amount]x</A>"
+						t1 += " <A href='?src=\ref[src];make=[i];sublist=[recipes_sublist];multiplier=[n]'>[n*R.res_amount]x</A>"
 				if (!(max_multiplier in multipliers))
-					t1 += " <A href='?src=\ref[src];make=[i];multiplier=[max_multiplier]'>[max_multiplier*R.res_amount]x</A>"
+					t1 += " <A href='?src=\ref[src];make=[i];sublist=[recipes_sublist];multiplier=[max_multiplier]'>[max_multiplier*R.res_amount]x</A>"
 
 	t1 += "</TT></body></HTML>"
 	show_browser(user, JOINTEXT(t1), "window=stack")
@@ -148,7 +180,7 @@
 			user.put_in_hands(O)
 
 /obj/item/stack/Topic(href, href_list)
-	..()
+	. = ..()
 	if ((usr.restrained() || usr.stat || usr.get_active_hand() != src))
 		return
 
@@ -158,7 +190,7 @@
 	if (href_list["make"])
 		if (src.get_amount() < 1) qdel(src) //Never should happen
 
-		var/list/recipes_list = recipes
+		var/list/recipes_list = get_recipes()
 		if (href_list["sublist"])
 			var/datum/stack_recipe_list/srl = recipes_list[text2num(href_list["sublist"])]
 			recipes_list = srl.recipes
@@ -176,55 +208,63 @@
 			return
 	return
 
-//Return 1 if an immediate subsequent call to use() would succeed.
-//Ensures that code dealing with stacks uses the same logic
+/**
+ * Return 1 if an immediate subsequent call to use() would succeed.
+ * Ensures that code dealing with stacks uses the same logic.
+*/
 /obj/item/stack/proc/can_use(var/used)
-	if (get_amount() < used)
-		return 0
-	return 1
+	return get_amount() >= used
 
 /obj/item/stack/create_matter()
-	..()
-	initial_matter = matter?.Copy()
+	matter_per_piece = matter?.Copy() // this is used for refreshing matter amount in update_matter()
+	if(istype(material))
+		LAZYINITLIST(matter_per_piece)
+		matter_per_piece[material.type] = max(matter_per_piece[material.type], round(MATTER_AMOUNT_PRIMARY * matter_multiplier))
+	. = ..()
 
 /obj/item/stack/proc/update_matter()
-	matter = initial_matter?.Copy()
-	create_matter()
+	matter = list()
+	for(var/mat in matter_per_piece)
+		matter[mat] = (matter_per_piece[mat] * amount)
 
 /obj/item/stack/proc/use(var/used)
 	if (!can_use(used))
-		return 0
+		return FALSE
 	if(!uses_charge)
 		amount -= used
 		if (amount <= 0)
-			qdel(src) //should be safe to qdel immediately since if someone is still using this stack it will persist for a little while longer
+			on_used_last()
 		else
 			update_icon()
 			update_matter()
-		return 1
+		return TRUE
 	else
 		if(get_amount() < used)
-			return 0
+			return FALSE
 		for(var/i = 1 to charge_costs.len)
 			var/datum/matter_synth/S = synths[i]
 			S.use_charge(charge_costs[i] * used) // Doesn't need to be deleted
-		return 1
+		update_icon()
+		return TRUE
+
+/obj/item/stack/proc/on_used_last()
+	qdel(src) //should be safe to qdel immediately since if someone is still using this stack it will persist for a little while longer
 
 /obj/item/stack/proc/add(var/extra)
 	if(!uses_charge)
 		if(amount + extra > get_max_amount())
-			return 0
+			return FALSE
 		else
 			amount += extra
 			update_icon()
 			update_matter()
-			return 1
 	else if(!synths || synths.len < uses_charge)
-		return 0
+		return FALSE
 	else
 		for(var/i = 1 to uses_charge)
 			var/datum/matter_synth/S = synths[i]
 			S.add_charge(charge_costs[i] * extra)
+	return TRUE
 
 /*
 	The transfer and split procs work differently than use() and add().
@@ -233,10 +273,10 @@
 */
 
 //attempts to transfer amount to S, and returns the amount actually transferred
-/obj/item/stack/proc/transfer_to(obj/item/stack/S, var/tamount=null, var/type_verified)
-	if (!get_amount())
+/obj/item/stack/proc/transfer_to(obj/item/stack/S, var/tamount=null)
+	if (!get_amount() || !istype(S))
 		return 0
-	if ((stacktype != S.stacktype) && !type_verified)
+	if (stack_merge_type != S.stack_merge_type)
 		return 0
 	if (isnull(tamount))
 		tamount = src.get_amount()
@@ -253,16 +293,14 @@
 
 //creates a new stack with the specified amount
 /obj/item/stack/proc/split(var/tamount, var/force=FALSE)
-	if (!amount)
-		return null
-	if(uses_charge && !force)
+	if (!can_split() || !amount || (uses_charge && !force))
 		return null
 
 	var/transfer = max(min(tamount, src.amount, initial(max_amount)), 0)
 
 	var/orig_amount = src.amount
 	if (transfer && src.use(transfer))
-		var/obj/item/stack/newstack = new src.type(loc, transfer)
+		var/obj/item/stack/newstack = new src.type(loc, transfer, material?.type)
 		newstack.copy_from(src)
 		if (prob(transfer/orig_amount * 100))
 			transfer_fingerprints_to(newstack)
@@ -299,14 +337,14 @@
 	return max_amount
 
 /obj/item/stack/proc/add_to_stacks(mob/user, check_hands)
+	if(!can_merge())
+		return
 	var/list/stacks = list()
 	if(check_hands && user)
-		if(isstack(user.l_hand))
-			stacks += user.l_hand
-		if(isstack(user.r_hand))
-			stacks += user.r_hand
+		for(var/obj/item/stack/item in user.get_held_items())
+			stacks |= item
 	for (var/obj/item/stack/item in user?.loc)
-		stacks += item
+		stacks |= item
 	for (var/obj/item/stack/item in stacks)
 		if (item==src)
 			continue
@@ -319,10 +357,10 @@
 /obj/item/stack/get_storage_cost()	//Scales storage cost to stack size
 	. = ..()
 	if (amount < max_amount)
-		. = ceil(. * amount / max_amount)
+		. = CEILING(. * amount / max_amount)
 
 /obj/item/stack/attack_hand(mob/user)
-	if (user.get_inactive_hand() == src)
+	if(user.is_holding_offhand(src) && can_split())
 		var/N = input("How many stacks of [src] would you like to split off?", "Split stacks", 1) as num|null
 		if(N)
 			var/obj/item/stack/F = src.split(N)
@@ -333,19 +371,29 @@
 				spawn(0)
 					if (src && usr.machine==src)
 						src.interact(usr)
-	else
-		..()
-	return
+				return TRUE
+		return FALSE
+	return ..()
+
 
 /obj/item/stack/attackby(obj/item/W, mob/user)
-	if (istype(W, /obj/item/stack))
+	if (istype(W, /obj/item/stack) && can_merge())
 		var/obj/item/stack/S = W
-		src.transfer_to(S)
+		. = src.transfer_to(S)
 
 		spawn(0) //give the stacks a chance to delete themselves if necessary
 			if (S && usr.machine==S)
 				S.interact(usr)
 			if (src && usr.machine==src)
 				src.interact(usr)
-	else
-		return ..()
+		return
+
+	return ..()
+
+/**Whether a stack has the capability to be split. */
+/obj/item/stack/proc/can_split()
+	return !(uses_charge && !force) //#TODO: The !force was a hacky way to tell if its a borg or rigsuit module. Probably would be good to find a better way..
+
+/**Whether a stack type has the capability to be merged. */
+/obj/item/stack/proc/can_merge()
+	return !(uses_charge && !force)

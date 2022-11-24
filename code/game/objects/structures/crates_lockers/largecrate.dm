@@ -5,6 +5,7 @@
 	icon_state = "densecrate"
 	density = 1
 	atom_flags = ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_CLIMBABLE
+	material = /decl/material/solid/wood
 
 /obj/structure/largecrate/Initialize()
 	. = ..()
@@ -14,64 +15,34 @@
 		I.forceMove(src)
 
 /obj/structure/largecrate/attack_hand(mob/user)
-	to_chat(user, "<span class='notice'>You need a crowbar to pry this open!</span>")
-	return
+	to_chat(user, SPAN_WARNING("You need a crowbar to pry this open!"))
 
 /obj/structure/largecrate/attackby(obj/item/W, mob/user)
-	if(isCrowbar(W))
-		new /obj/item/stack/material/wood(src)
-		var/turf/T = get_turf(src)
-		for(var/atom/movable/AM in contents)
-			if(AM.simulated) AM.forceMove(T)
-		user.visible_message("<span class='notice'>[user] pries \the [src] open.</span>", \
-							 "<span class='notice'>You pry open \the [src].</span>", \
-							 "<span class='notice'>You hear splitting wood.</span>")
-		qdel(src)
-	else
-		return attack_hand(user)
-
-/obj/structure/largecrate/mule
-	name = "MULE crate"
+	if(IS_CROWBAR(W))
+		user.visible_message(
+			SPAN_NOTICE("\The [user] pries \the [src] open."),
+			SPAN_NOTICE("You pry open \the [src]."),
+			SPAN_NOTICE("You hear splitting wood.")
+		)
+		physically_destroyed()
+		return TRUE
+	return attack_hand(user)
 
 /obj/structure/largecrate/animal
-	icon_state = "mulecrate"
-	var/held_count = 1
-	var/held_type
+	name = "animal crate"
+	var/animal_type
 
 /obj/structure/largecrate/animal/Initialize()
 	. = ..()
-	if(held_type)
-		for(var/i = 1;i<=held_count;i++)
-			new held_type(src)
-
-/obj/structure/largecrate/animal/mulebot
-	name = "Mulebot crate"
-	held_type = /mob/living/bot/mulebot
-
-/obj/structure/largecrate/animal/corgi
-	name = "corgi carrier"
-	held_type = /mob/living/simple_animal/corgi
-
-/obj/structure/largecrate/animal/cow
-	name = "cow crate"
-	held_type = /mob/living/simple_animal/cow
-
-/obj/structure/largecrate/animal/goat
-	name = "goat crate"
-	held_type = /mob/living/simple_animal/hostile/retaliate/goat
-
-/obj/structure/largecrate/animal/goose
-	name = "goose containment unit"
-	held_type = /mob/living/simple_animal/hostile/retaliate/goose
+	if(animal_type)
+		var/mob/critter = new animal_type(src)
+		name = "[name] ([critter.name])"
 
 /obj/structure/largecrate/animal/cat
-	name = "cat carrier"
-	held_type = /mob/living/simple_animal/cat
+	animal_type = /mob/living/simple_animal/cat
 
-/obj/structure/largecrate/animal/cat/bones
-	held_type = /mob/living/simple_animal/cat/fluff/bones
+/obj/structure/largecrate/animal/cow
+	animal_type = /mob/living/simple_animal/cow
 
-/obj/structure/largecrate/animal/chick
-	name = "chicken crate"
-	held_count = 5
-	held_type = /mob/living/simple_animal/chick
+/obj/structure/largecrate/animal/corgi
+	animal_type = /mob/living/simple_animal/corgi

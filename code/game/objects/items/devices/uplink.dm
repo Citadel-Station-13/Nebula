@@ -13,15 +13,20 @@
 /obj/item/uplink
 	name = "hidden uplink"
 	desc = "There is something wrong if you're examining this."
+	health = ITEM_HEALTH_NO_DAMAGE
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/metal/copper    = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/silicon         = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_REINFORCEMENT,
+	)
+	is_spawnable_type = FALSE
 	var/active = 0
 	var/datum/uplink_category/category 	= 0		// The current category we are in
 	var/exploit_id								// Id of the current exploit record we are viewing
 
 	var/welcome = "Welcome, Operative"	// Welcoming menu message
 	var/uses 							// Numbers of crystals
-	var/list/ItemsCategory				// List of categories with lists of items
-	var/list/ItemsReference				// List of references with an associated item
-	var/list/nanoui_items				// List of items for NanoUI use
 	var/nanoui_menu = 0					// The current menu we are in
 	var/list/nanoui_data = new 			// Additional data for NanoUI use
 
@@ -114,7 +119,7 @@
 /*
 	NANO UI FOR UPLINK WOOP WOOP
 */
-/obj/item/uplink/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/uistate = GLOB.inventory_state)
+/obj/item/uplink/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/uistate = global.inventory_topic_state)
 	var/title = "Remote Uplink"
 	var/data[0]
 
@@ -186,13 +191,13 @@
 		nanoui_data["items"] = items
 	else if(nanoui_menu == 2)
 		var/permanentData[0]
-		for(var/datum/computer_file/report/crew_record/L in GLOB.all_crew_records)
-			permanentData[++permanentData.len] = list(Name = L.get_name(),"id" = L.uid, "exploit" = length(L.get_antagRecord()))
+		for(var/datum/computer_file/report/crew_record/L in global.all_crew_records)
+			permanentData[++permanentData.len] = list(Name = L.get_name(),"id" = L.uid, "exploit" = length(L.get_antag_record()))
 		nanoui_data["exploit_records"] = permanentData
 	else if(nanoui_menu == 21)
 		nanoui_data["exploit_exists"] = 0
 
-		for(var/datum/computer_file/report/crew_record/L in GLOB.all_crew_records)
+		for(var/datum/computer_file/report/crew_record/L in global.all_crew_records)
 			if(L.uid == exploit_id)
 				nanoui_data["exploit"] = L.generate_nano_data()
 				nanoui_data["exploit_exists"] = 1
@@ -216,29 +221,25 @@
 // Includes normal radio uplink, multitool uplink,
 // implant uplink (not the implant tool) and a preset headset uplink.
 
-/obj/item/radio/uplink/Initialize(mapload, var/owner, var/amount)
-	. = ..()
-	hidden_uplink = new(src, owner, amount)
-	icon_state = "radio"
-
 /obj/item/radio/uplink/attack_self(mob/user)
+	if(!hidden_uplink && user.mind)
+		hidden_uplink = new(src, user.mind, DEFAULT_TELECRYSTAL_AMOUNT)
 	if(hidden_uplink)
 		hidden_uplink.trigger(user)
 
-/obj/item/multitool/uplink/Initialize(mapload, var/owner)
-	. = ..()
-	hidden_uplink = new(src, owner)
-
 /obj/item/multitool/uplink/attack_self(mob/user)
+	if(!hidden_uplink && user.mind)
+		hidden_uplink = new(src, user.mind, DEFAULT_TELECRYSTAL_AMOUNT)
 	if(hidden_uplink)
 		hidden_uplink.trigger(user)
 
 /obj/item/radio/headset/uplink
 	traitor_frequency = 1445
 
-/obj/item/radio/headset/uplink/Initialize()
+/obj/item/radio/headset/uplink/attack_self(mob/user)
+	if(!hidden_uplink && user.mind)
+		hidden_uplink = new(src, user.mind, DEFAULT_TELECRYSTAL_AMOUNT)
 	. = ..()
-	hidden_uplink = new(src)
 
-/obj/item/uplink/contained/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/uistate = GLOB.contained_state)
+/obj/item/uplink/contained/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/uistate = global.contained_topic_state)
 	return ..()

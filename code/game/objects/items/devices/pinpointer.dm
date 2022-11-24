@@ -1,12 +1,11 @@
 /obj/item/pinpointer
 	name = "pinpointer"
 	icon = 'icons/obj/items/device/pinpointer.dmi'
-	icon_state = "pinoff"
+	icon_state = ICON_STATE_WORLD
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	w_class = ITEM_SIZE_SMALL
-	item_state = "electronic"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	var/weakref/target
 	var/active = 0
 	var/beeping = 2
@@ -74,35 +73,35 @@
 		beeping--
 
 /obj/item/pinpointer/on_update_icon()
-	overlays.Cut()
+	. = ..()
 	if(!active)
 		return
 	if(!target || !target.resolve())
-		overlays += image(icon,"pin_invalid")
+		add_overlay("[icon_state]-invalid")
 		return
 
 	var/turf/here = get_turf(src)
 	var/turf/there = get_turf(target.resolve())
 	if(!istype(there))
-		overlays += image(icon,"pin_invalid")
+		add_overlay("[icon_state]-invalid")
 		return
 
 	if(here == there)
-		overlays += image(icon,"pin_here")
+		add_overlay("[icon_state]-here")
 		return
 
 	if(!(there.z in GetConnectedZlevels(here.z)))
-		overlays += image(icon,"pin_invalid")
+		add_overlay("[icon_state]-invalid")
 		return
 	if(here.z > there.z)
-		overlays += image(icon,"pin_down")
+		add_overlay("[icon_state]-down")
 		return
 	if(here.z < there.z)
-		overlays += image(icon,"pin_up")
+		add_overlay("[icon_state]-up")
 		return
 
 	set_dir(get_dir(here, there))
-	var/image/pointer = image(icon,"pin_point")
+	var/image/pointer = image(icon,"[icon_state]-point")
 	var/distance = get_dist(here,there)
 	if(distance < world.view)
 		pointer.color = COLOR_LIME
@@ -110,21 +109,21 @@
 		pointer.color = COLOR_RED
 	else
 		pointer.color = COLOR_YELLOW
-	overlays += pointer
+	add_overlay(pointer)
 
 //Radio beacon locator
 /obj/item/pinpointer/radio
 	name = "locator device"
 	desc = "Used to scan and locate signals on a particular frequency."
-	material = MAT_ALUMINIUM
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/aluminium
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
 	var/tracking_freq = PUB_FREQ
 
 /obj/item/pinpointer/radio/acquire_target()
 	var/turf/T = get_turf(src)
 	var/zlevels = GetConnectedZlevels(T.z)
 	var/cur_dist = world.maxx+world.maxy
-	for(var/obj/item/radio/beacon/R in world)
+	for(var/obj/item/radio/beacon/R in global.radio_beacons)
 		if(!R.functioning)
 			continue
 		if((R.z in zlevels) && R.frequency == tracking_freq)
@@ -194,13 +193,13 @@
 			var/turf/Z = get_turf(src)
 			var/turf/location = locate(locationx,locationy,Z.z)
 
-			to_chat(usr, "You set the pinpointer to locate [locationx],[locationy]")
+			to_chat(usr, "You set the pinpointer to locate [locationx],[locationy].")
 
 			target = weakref(location)
 
 		if("Other Signature")
 
-			var/itemlist = GLOB.using_map.get_theft_targets() | GLOB.using_map.get_special_theft_targets()
+			var/itemlist = global.using_map.get_theft_targets() | global.using_map.get_special_theft_targets()
 			var/targetitem = input("Select item to search for.", "Item Mode Select","") as null|anything in itemlist
 			if(!targetitem)
 				return
@@ -208,7 +207,7 @@
 			if(!item)
 				to_chat(usr, "Failed to locate [targetitem]!")
 				return
-			to_chat(usr, "You set the pinpointer to locate [targetitem]")
+			to_chat(usr, "You set the pinpointer to locate [targetitem].")
 			target = weakref(item)
 
 		if("DNA")

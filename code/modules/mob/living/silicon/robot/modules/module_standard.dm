@@ -1,19 +1,19 @@
 /obj/item/robot_module/standard
 	name = "standard robot module"
 	display_name = "Standard"
-	sprites = list(
-		"Basic" = "robot_old",
-		"Android" = "droid",
-		"Default" = "robot"
+	module_sprites = list(
+		"Basic" =   'icons/mob/robots/robot_old.dmi',
+		"Android" = 'icons/mob/robots/robot_droid.dmi',
+		"Default" = 'icons/mob/robots/robot.dmi'
 	)
 	equipment = list(
 		/obj/item/flash,
-		/obj/item/extinguisher,
+		/obj/item/chems/spray/extinguisher,
 		/obj/item/wrench,
 		/obj/item/crowbar,
 		/obj/item/scanner/health
 	)
-	emag = /obj/item/melee/energy/sword
+	emag = /obj/item/energy_blade/sword
 	skills = list(
 		SKILL_LITERACY     = SKILL_ADEPT,
 		SKILL_COMBAT       = SKILL_ADEPT,

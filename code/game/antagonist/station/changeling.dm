@@ -1,32 +1,31 @@
-GLOBAL_DATUM_INIT(changelings, /datum/antagonist/changeling, new)
-
-/datum/antagonist/changeling
-	id = MODE_CHANGELING
-	role_text = "Changeling"
-	role_text_plural = "Changelings"
-	feedback_tag = "changeling_objective"
-	blacklisted_jobs = list(/datum/job/ai, /datum/job/cyborg, /datum/job/submap)
-	welcome_text = "Use say \"#g message\" to communicate with your fellow changelings. Remember: you get all of their absorbed DNA if you absorb them."
+/decl/special_role/changeling
+	name = "Changeling"
+	name_plural = "Changelings"
+	blacklisted_jobs = list(/datum/job/submap)
+	welcome_text = "Use say \"%LANGUAGE_PREFIX%g message\" to communicate with your fellow changelings. Remember: you get all of their absorbed DNA if you absorb them."
 	flags = ANTAG_SUSPICIOUS | ANTAG_RANDSPAWN | ANTAG_VOTABLE
 	antaghud_indicator = "hudchangeling"
-
+	blocked_job_event_categories = list(ASSIGNMENT_ROBOT, ASSIGNMENT_COMPUTER)
 	faction = "changeling"
 
-/datum/antagonist/changeling/get_special_objective_text(var/datum/mind/player)
+/decl/special_role/changeling/get_welcome_text(mob/recipient)
+	return replacetext(welcome_text, "%LANGUAGE_PREFIX%", recipient?.get_prefix_key(/decl/prefix/language) || ",")
+
+/decl/special_role/changeling/get_special_objective_text(var/datum/mind/player)
 	return "<br><b>Changeling ID:</b> [player.changeling.changelingID].<br><b>Genomes Absorbed:</b> [player.changeling.absorbedcount]"
 
-/datum/antagonist/changeling/update_antag_mob(var/datum/mind/player)
+/decl/special_role/changeling/update_antag_mob(var/datum/mind/player)
 	..()
 	player.current.make_changeling()
 
-/datum/antagonist/changeling/remove_antagonist(var/datum/mind/player, var/show_message, var/implanted)
+/decl/special_role/changeling/remove_antagonist(var/datum/mind/player, var/show_message, var/implanted)
 	. = ..()
 	if(. && player && player.current)
 		player.current.remove_changeling_powers()
 		player.current.verbs -= /datum/changeling/proc/EvolutionMenu
 		QDEL_NULL(player.changeling)
 
-/datum/antagonist/changeling/create_objectives(var/datum/mind/changeling)
+/decl/special_role/changeling/create_objectives(var/datum/mind/changeling)
 	if(!..())
 		return
 
@@ -63,22 +62,25 @@ GLOBAL_DATUM_INIT(changelings, /datum/antagonist/changeling, new)
 				changeling.objectives += survive_objective
 	return
 
-/datum/antagonist/changeling/can_become_antag(var/datum/mind/player, var/ignore_role)
+/decl/special_role/changeling/can_become_antag(var/datum/mind/player, var/ignore_role)
 	if(..())
 		if(player.current)
 			if(ishuman(player.current))
 				var/mob/living/carbon/human/H = player.current
 				if(H.isSynthetic())
-					return 0
+					return FALSE
 				if(H.species.species_flags & SPECIES_FLAG_NO_SCAN)
-					return 0
-				return 1
+					return FALSE
+				var/obj/item/organ/external/E = GET_EXTERNAL_ORGAN(H, BP_CHEST)
+				if(istype(E) && (BP_IS_PROSTHETIC(E) || BP_IS_CRYSTAL(E)))
+					return FALSE
+				return TRUE
 			else if(isnewplayer(player.current))
 				if(player.current.client && player.current.client.prefs)
-					var/datum/species/S = get_species_by_key(player.current.client.prefs.species)
+					var/decl/species/S = get_species_by_key(player.current.client.prefs.species)
 					if(S && (S.species_flags & SPECIES_FLAG_NO_SCAN))
-						return 0
-					if(player.current.client.prefs.organ_data[BP_CHEST] == "cyborg") // Full synthetic.
-						return 0
-					return 1
- 	return 0
+						return FALSE
+					return TRUE
+ 	return FALSE
+
+

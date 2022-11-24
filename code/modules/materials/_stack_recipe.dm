@@ -14,6 +14,7 @@
 	var/use_reinf_material
 	var/difficulty = 1 // higher difficulty requires higher skill level to make.
 	var/apply_material_name = 1 //Whether the recipe will prepend a material name to the title - 'steel clipboard' vs 'clipboard'
+	var/set_dir_on_spawn = TRUE
 
 /datum/stack_recipe/New(decl/material/material, var/reinforce_material)
 	if(material)
@@ -30,17 +31,17 @@
 		var/list/materials = atom_info_repository.get_matter_for(result_type, use_material, res_amount)
 		for(var/mat in materials)
 			req_amount += round(materials[mat]/res_amount)
-		req_amount = Clamp(ceil(((req_amount*CRAFTING_EXTRA_COST_FACTOR)/SHEET_MATERIAL_AMOUNT) * res_amount), 1, 50)
+		req_amount = clamp(CEILING(((req_amount*CRAFTING_EXTRA_COST_FACTOR)/SHEET_MATERIAL_AMOUNT) * res_amount), 1, 50)
 
 #undef CRAFTING_EXTRA_COST_FACTOR
 
 /datum/stack_recipe/proc/display_name()
 	if(!use_material || !apply_material_name)
 		return title
-	var/decl/material/material = decls_repository.get_decl(use_material)
+	var/decl/material/material = GET_DECL(use_material)
 	. = "[material.solid_name] [title]"
 	if(use_reinf_material)
-		material = decls_repository.get_decl(use_reinf_material)
+		material = GET_DECL(use_reinf_material)
 		. = "[material.solid_name]-reinforced [.]"
 
 /datum/stack_recipe/proc/spawn_result(mob/user, location, amount)
@@ -53,7 +54,7 @@
 			O = new result_type(location, use_material, use_reinf_material)
 	else
 		O = new result_type(location)
-	if(user)
+	if(user && set_dir_on_spawn)
 		O.set_dir(user?.dir)
 
 	// Temp block pending material/matter rework
@@ -87,4 +88,4 @@
 
 /datum/stack_recipe_list/New(title, recipes)
 	src.title = title
-	src.recipes = recipes 
+	src.recipes = recipes

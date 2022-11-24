@@ -5,6 +5,7 @@
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "target_h"
 	density = 0
+	material = /decl/material/solid/plastic
 	var/obj/structure/target_stake/stake
 	var/hp = 1800
 	var/icon/virtualIcon
@@ -16,9 +17,9 @@
 		stake.set_target(null)
 
 /obj/item/target/attackby(var/obj/item/W, var/mob/user)
-	if(isWelder(W))
+	if(IS_WELDER(W))
 		var/obj/item/weldingtool/WT = W
-		if(WT.remove_fuel(0, user))
+		if(WT.weld(0, user))
 			overlays.Cut()
 			bulletholes.Cut()
 			hp = initial(hp)
@@ -56,9 +57,7 @@
 
 		hp -= Proj.damage
 		if(hp <= 0)
-			for(var/mob/O in oviewers())
-				if ((O.client && !( O.blinded )))
-					to_chat(O, "<span class='warning'>\The [src] breaks into tiny pieces and collapses!</span>")
+			visible_message(SPAN_WARNING("\The [src] breaks into tiny pieces and collapses!"))
 			qdel(src)
 
 		// Create a temporary object to represent the damage

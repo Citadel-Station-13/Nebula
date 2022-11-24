@@ -1,9 +1,8 @@
 /obj/item/disk/botany
 	name = "flora data disk"
 	desc = "A small disk used for carrying data on plant genetics."
-	icon = 'icons/obj/hydroponics/hydroponics_machines.dmi'
-	icon_state = "disk"
-	w_class = ITEM_SIZE_TINY
+	color = COLOR_GREEN
+	label = "label_dna"
 
 	var/list/genes = list()
 	var/genesource = "unknown"
@@ -21,7 +20,9 @@
 /obj/item/storage/box/botanydisk
 	name = "flora disk box"
 	desc = "A box of flora data disks, apparently."
-	startswith = list(/obj/item/disk/botany = 14)
+	
+/obj/item/storage/box/botanydisk/WillContain()
+	return list(/obj/item/disk/botany = 14)
 
 /obj/machinery/botany
 	icon = 'icons/obj/hydroponics/hydroponics_machines.dmi'
@@ -54,15 +55,15 @@
 	active = 0
 	if(failed_task)
 		failed_task = 0
-		visible_message("\icon[src] [src] pings unhappily, flashing a red warning light.")
+		visible_message("[html_icon(src)] [src] pings unhappily, flashing a red warning light.")
 	else
-		visible_message("\icon[src] [src] pings happily.")
+		visible_message("[html_icon(src)] [src] pings happily.")
 
 	if(eject_disk)
 		eject_disk = 0
 		if(loaded_disk)
 			loaded_disk.dropInto(loc)
-			visible_message("\icon[src] [src] beeps and spits out [loaded_disk].")
+			visible_message("[html_icon(src)] [src] beeps and spits out [loaded_disk].")
 			loaded_disk = null
 
 /obj/machinery/botany/attackby(obj/item/W, mob/user)
@@ -78,13 +79,13 @@
 			to_chat(user, "You load [W] into [src].")
 		return
 
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		open = !open
 		to_chat(user, "<span class='notice'>You [open ? "open" : "close"] the maintenance panel.</span>")
 		return
 
 	if(open)
-		if(isCrowbar(W))
+		if(IS_CROWBAR(W))
 			dismantle()
 			return
 
@@ -168,19 +169,19 @@
 		seed.dropInto(loc)
 
 		if(seed.seed.name == "new line" || isnull(SSplants.seeds[seed.seed.name]))
-			seed.seed.uid = SSplants.seeds.len + 1
+			seed.seed.uid = sequential_id(/datum/seed/)
 			seed.seed.name = "[seed.seed.uid]"
 			SSplants.seeds[seed.seed.name] = seed.seed
 
 		seed.update_seed()
-		visible_message("\icon[src] [src] beeps and spits out [seed].")
+		visible_message("[html_icon(src)] [src] beeps and spits out [seed].")
 
 		seed = null
 
 	if(href_list["eject_disk"])
 		if(!loaded_disk) return
 		loaded_disk.dropInto(loc)
-		visible_message("\icon[src] [src] beeps and spits out [loaded_disk].")
+		visible_message("[html_icon(src)] [src] beeps and spits out [loaded_disk].")
 		loaded_disk = null
 
 	usr.set_machine(src)

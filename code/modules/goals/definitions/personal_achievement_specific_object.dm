@@ -28,7 +28,12 @@
 	completion_message = "Ahh, that was just what you needed."
 
 /datum/goal/achievement/specific_object/food/New()
-	possible_objects = subtypesof(/obj/item/chems/food/snacks)
+	possible_objects = subtypesof(/obj/item/chems/food)
+	blacklisted_objects = blacklisted_objects || list()
+	blacklisted_objects |= typesof(/obj/item/chems/food/amanita_pie)
+	blacklisted_objects |= typesof(/obj/item/chems/food/amanitajelly)
+	blacklisted_objects |= typesof(/obj/item/chems/food/can/caviar/true)
+	blacklisted_objects |= typesof(/obj/item/chems/food/old)
 	..()
 
 /datum/goal/achievement/specific_object/food/update_strings()
@@ -40,7 +45,7 @@
 	completion_message = "Ahh, that hit the spot!"
 
 /datum/goal/achievement/specific_object/drink/New()
-	possible_objects = subtypesof(/decl/material/liquid/drink)
+	possible_objects = decls_repository.get_decl_paths_of_subtype(/decl/material/liquid/drink)
 	..()
 
 /datum/goal/achievement/specific_object/drink/update_strings()

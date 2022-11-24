@@ -2,6 +2,7 @@
 	var/name
 	var/desc
 	var/id
+	var/initial_tech_level = 1
 
 /decl/research_field/material
 	name = "Materials Science"
@@ -17,16 +18,18 @@
 	name = "Exotic Matter"
 	desc = "The study of wormholes, non-baryonic matter, and the manipulation of spacetime."
 	id = TECH_EXOTIC_MATTER
+	initial_tech_level = 0
 
 /decl/research_field/power
 	name = "Power Storage"
 	desc = "The study of miniaturized high-density power storage systems."
 	id = TECH_POWER
 
-/decl/research_field/bluespace
-	name = "Bluespace"
-	desc = "The study of the parallel realm that lies adjacent to realspace."
-	id = TECH_BLUESPACE
+/decl/research_field/wormholes
+	name = "Wormholes"
+	desc = "The study of the realm that lies beyond the singularity."
+	id = TECH_WORMHOLES
+	initial_tech_level = 0
 
 /decl/research_field/biotech
 	name = "Biotechnology"
@@ -37,6 +40,7 @@
 	name = "Weapon Development"
 	desc = "The study of new and more effective weapon systems."
 	id = TECH_COMBAT
+	initial_tech_level = 0
 
 /decl/research_field/magnets
 	name = "Magnetic Fields"
@@ -52,3 +56,4 @@
 	name = "Esoteria"
 	desc = "The study of mysterious pseudoscientific anomalies."
 	id = TECH_ESOTERIC
+	initial_tech_level = 0

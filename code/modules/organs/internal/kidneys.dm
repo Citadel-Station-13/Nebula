@@ -1,6 +1,7 @@
 /obj/item/organ/internal/kidneys
 	name = "kidneys"
 	icon_state = "kidneys"
+	prosthetic_icon = "kidneys-prosthetic"
 	gender = PLURAL
 	organ_tag = BP_KIDNEYS
 	parent_organ = BP_GROIN
@@ -8,10 +9,6 @@
 	min_broken_damage = 45
 	max_damage = 70
 	relative_size = 10
-
-/obj/item/organ/internal/kidneys/robotize()
-	. = ..()
-	icon_state = "kidneys-prosthetic"
 
 /obj/item/organ/internal/kidneys/Process()
 	..()
@@ -36,7 +33,7 @@
 			owner.reagents.add_reagent(/decl/material/solid/potassium, REM*2)
 
 	//If your kidneys aren't working, your body's going to have a hard time cleaning your blood.
-	if(!owner.chem_effects[CE_ANTITOX])
+	if(!GET_CHEMICAL_EFFECT(owner, CE_ANTITOX))
 		if(prob(33))
 			if(is_broken())
 				owner.adjustToxLoss(0.5)

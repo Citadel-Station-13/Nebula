@@ -1,11 +1,11 @@
 /spell/targeted/projectile/dumbfire/fireball
 	name = "Fireball"
-	desc = "This spell fires a fireball at a target and does not require wizard garb."
+	desc = "A classic spell, grants you the ability to throw an exploding ball of flame in any direction. Does not require wizard garb."
 	feedback = "FB"
 	proj_type = /obj/item/projectile/spell_projectile/fireball
 
 	school = "conjuration"
-	charge_max = 100
+	charge_max = 10 SECONDS
 	spell_flags = 0
 	invocation = "Oni-Soma!"
 	invocation_type = SpI_SHOUT
@@ -47,6 +47,7 @@
 	return "The spell [src] now has a larger explosion."
 
 /spell/targeted/projectile/dumbfire/fireball/tower
+	desc = "Imbue yourself with the power of exploding fire."
 	charge_max = 2
 
 //PROJECTILE

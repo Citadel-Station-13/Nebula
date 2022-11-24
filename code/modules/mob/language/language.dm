@@ -5,25 +5,45 @@
 */
 
 /decl/language
-	var/name                          // Fluff name of language if any.
-	var/desc = "You should not have this language." // Short description for 'Check Languages'.
-	var/speech_verb = "says"          // 'says', 'hisses', 'farts'.
-	var/ask_verb = "asks"             // Used when sentence ends in a ?
-	var/exclaim_verb = "exclaims"     // Used when sentence ends in a !
-	var/whisper_verb                  // Optional. When not specified speech_verb + quietly/softly is used instead.
-	var/signlang_verb = list("signs", "gestures") // list of emotes that might be displayed if this language has NONVERBAL or SIGNLANG flags
-	var/colour = "body"               // CSS style to use for strings in this language.
-	var/key = ""                      // Character used to speak in language
-	var/flags = 0                     // Various language flags.
-	var/native                        // If set, non-native speakers will have trouble speaking.
-	var/list/syllables                // Used when scrambling text for a non-speaker.
-	var/list/space_chance = 55        // Likelihood of getting a space in the random scramble string
-	var/machine_understands = 1       // Whether machines can parse and understand this language
-	var/shorthand = "???"			  // Shorthand that shows up in chat for this language.
-	var/list/partial_understanding				  // List of languages that can /somehwat/ understand it, format is: name = chance of understanding a word
-	var/warning = ""
-	var/hidden_from_codex			  // If it should not show up in Codex
-	var/category = /decl/language    // Used to point at root language types that shouldn't be visible
+	abstract_type = /decl/language    // Used to point at root language types that shouldn't be visible
+
+	// Short description for 'Check Languages'.
+	var/desc = "You should not have this language."
+	// list of emotes that might be displayed if this language has LANG_FLAG_NONVERBAL or LANG_FLAG_SIGNLANG flags
+	var/signlang_verb = list("signs", "gestures")
+
+	var/name                            // Fluff name of language if any.
+	var/speech_verb = "says"            // 'says', 'hisses', 'farts'.
+	var/ask_verb = "asks"               // Used when sentence ends in a ?
+	var/exclaim_verb = "exclaims"       // Used when sentence ends in a !
+	var/whisper_verb                    // Optional. When not specified speech_verb + quietly/softly is used instead.
+	var/colour = "body"                 // CSS style to use for strings in this language.
+	var/key = ""                        // Character used to speak in language
+	var/flags = 0                       // Various language flags.
+	var/list/syllables                  // Used when scrambling text for a non-speaker.
+	var/list/space_chance = 55          // Likelihood of getting a space in the random scramble string
+	var/machine_understands = 1         // Whether machines can parse and understand this language
+	var/shorthand = "???"               // Shorthand that shows up in chat for this language.
+	var/list/partial_understanding      // List of languages that can /somehwat/ understand it, format is: name = chance of understanding a word
+	var/hidden_from_codex               // If it should not show up in Codex
+	var/list/scramble_cache = list()    // Cached syllable strings for masking when heard by a non-speaker
+	var/list/speech_sounds              // List of sounds to randomly play.
+	var/allow_repeated_syllables = TRUE // Control for handling some of the random lang/name gen.
+
+/decl/language/proc/can_be_understood_by(var/mob/living/speaker, var/mob/living/listener)
+	if(flags & LANG_FLAG_INNATE)
+		return TRUE
+	for(var/decl/language/L in listener.languages)
+		if(name == L.name)
+			return TRUE
+	return FALSE
+
+/decl/language/proc/get_spoken_sound()
+	if(speech_sounds)
+		var/list/result[2]
+		result[1] = pick(speech_sounds)
+		result[2] = 40
+		return result
 
 /decl/language/proc/can_be_spoken_properly_by(var/mob/speaker)
 	return TRUE
@@ -32,27 +52,23 @@
 	return message
 
 /decl/language/proc/get_random_name(var/gender, name_count=2, syllable_count=4, syllable_divisor=2)
-	if(!syllables || !syllables.len)
+	if(!length(syllables))
 		if(gender==FEMALE)
-			return capitalize(pick(GLOB.first_names_female)) + " " + capitalize(pick(GLOB.last_names))
+			return capitalize(pick(global.first_names_female)) + " " + capitalize(pick(global.last_names))
 		else
-			return capitalize(pick(GLOB.first_names_male)) + " " + capitalize(pick(GLOB.last_names))
+			return capitalize(pick(global.first_names_male)) + " " + capitalize(pick(global.last_names))
 
-	var/full_name = ""
-	var/new_name = ""
-
+	var/possible_syllables = allow_repeated_syllables ? syllables : syllables.Copy()
 	for(var/i = 0;i<name_count;i++)
-		new_name = ""
-		for(var/x = rand(Floor(syllable_count/syllable_divisor),syllable_count);x>0;x--)
-			new_name += pick(syllables)
-		full_name += " [capitalize(lowertext(new_name))]"
+		var/new_name = ""
+		for(var/x = rand(FLOOR(syllable_count/syllable_divisor),syllable_count);x>0;x--)
+			if(!length(possible_syllables))
+				break
+			new_name += allow_repeated_syllables ? pick(possible_syllables) : pick_n_take(possible_syllables)
+		LAZYADD(., capitalize(lowertext(new_name)))
+	. = "[trim(jointext(., " "))]"
 
-	return "[trim(full_name)]"
-
-/decl/language
-	var/list/scramble_cache = list()
-
-/decl/language/proc/scramble(var/input, var/list/known_languages)
+/decl/language/proc/scramble(mob/living/speaker, input, list/known_languages)
 
 	var/understand_chance = 0
 	for(var/decl/language/L in known_languages)
@@ -116,7 +132,7 @@
 	scramble_cache[input] = scrambled_text
 	if(scramble_cache.len > SCRAMBLE_CACHE_LEN)
 		scramble_cache.Cut(1, scramble_cache.len-SCRAMBLE_CACHE_LEN-1)
-	
+
 	return scrambled_text
 
 /decl/language/proc/format_message(message, verb)
@@ -136,9 +152,8 @@
 	log_say("[key_name(speaker)] : ([name]) [message]")
 
 	if(!speaker_mask) speaker_mask = speaker.name
-	message = format_message(message, get_spoken_verb(message))
-
-	for(var/mob/player in GLOB.player_list)
+	message = format_message(message, get_spoken_verb(speaker, message))
+	for(var/mob/player in global.player_list)
 		player.hear_broadcast(src, speaker, speaker_mask, message)
 
 /mob/proc/hear_broadcast(var/decl/language/language, var/mob/speaker, var/speaker_name, var/message)
@@ -158,7 +173,7 @@
 /decl/language/proc/check_special_condition(var/mob/other)
 	return 1
 
-/decl/language/proc/get_spoken_verb(var/msg_end)
+/decl/language/proc/get_spoken_verb(mob/living/speaker, msg_end)
 	switch(msg_end)
 		if("!")
 			return exclaim_verb
@@ -171,19 +186,19 @@
 
 // Language handling.
 /mob/proc/add_language(var/language)
-	var/decl/language/new_language = decls_repository.get_decl(language)
+	var/decl/language/new_language = GET_DECL(language)
 	if(!istype(new_language) || (new_language in languages))
 		return 0
 	languages.Add(new_language)
 	return 1
 
 /mob/proc/remove_language(var/rem_language)
-	var/decl/language/L = decls_repository.get_decl(rem_language)
+	var/decl/language/L = GET_DECL(rem_language)
 	. = (L in languages)
 	languages.Remove(L)
 
 /mob/living/remove_language(rem_language)
-	var/decl/language/L = decls_repository.get_decl(rem_language)
+	var/decl/language/L = GET_DECL(rem_language)
 	if(default_language == L)
 		default_language = null
 	return ..()
@@ -193,10 +208,10 @@
 	if(!speaking)
 		return 0
 
-	if (only_species_language && speaking != decls_repository.get_decl(species_language))
+	if (only_species_language && speaking != GET_DECL(species_language))
 		return 0
 
-	return (speaking.can_speak_special(src) && (universal_speak || (speaking && speaking.flags & INNATE) || (speaking in src.languages)))
+	return (speaking.can_speak_special(src) && (universal_speak || (speaking && speaking.flags & LANG_FLAG_INNATE) || (speaking in src.languages)))
 
 /mob/proc/get_language_prefix()
 	return get_prefix_key(/decl/prefix/language)
@@ -213,7 +228,7 @@
 	var/dat = "<b><font size = 5>Known Languages</font></b><br/><br/>"
 
 	for(var/decl/language/L in languages)
-		if(!(L.flags & NONGLOBAL))
+		if(!(L.flags & LANG_FLAG_NONGLOBAL))
 			dat += "<b>[L.name]([L.shorthand]) ([get_language_prefix()][L.key])</b><br/>[L.desc]<br/><br/>"
 
 	show_browser(src, dat, "window=checklanguage")
@@ -223,11 +238,11 @@
 	var/dat = "<b><font size = 5>Known Languages</font></b><br/><br/>"
 
 	if(default_language)
-		var/decl/language/lang = decls_repository.get_decl(default_language)
+		var/decl/language/lang = GET_DECL(default_language)
 		dat += "Current default language: [lang.name] - <a href='byond://?src=\ref[src];default_lang=reset'>reset</a><br/><br/>"
 
 	for(var/decl/language/L in languages)
-		if(!(L.flags & NONGLOBAL))
+		if(!(L.flags & LANG_FLAG_NONGLOBAL))
 			if(L == default_language)
 				dat += "<b>[L.name]([L.shorthand]) ([get_language_prefix()][L.key])</b> - default - <a href='byond://?src=\ref[src];default_lang=reset'>reset</a><br/>[L.desc]<br/><br/>"
 			else if (can_speak(L))

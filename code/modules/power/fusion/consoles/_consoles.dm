@@ -14,6 +14,10 @@
 		fusion.set_tag(null, initial_id_tag)
 	. = ..()
 
+/obj/machinery/computer/fusion/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(initial_id_tag, map_hash)
+
 /obj/machinery/computer/fusion/get_codex_value()
 	return name
 	
@@ -23,7 +27,7 @@
 	return fusion.get_local_network()
 
 /obj/machinery/computer/fusion/attackby(var/obj/item/thing, var/mob/user)
-	if(isMultitool(thing))
+	if(IS_MULTITOOL(thing))
 		var/datum/extension/local_network_member/fusion = get_extension(src, /datum/extension/local_network_member)
 		fusion.get_new_tag(user)
 		return

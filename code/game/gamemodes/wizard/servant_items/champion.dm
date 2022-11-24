@@ -1,7 +1,8 @@
 /obj/item/clothing/head/champhelm
 	name = "champion's crown"
 	desc = "A spiky, golden crown. It's probably worth more than your bank account."
-	icon_state = "champhelm"
+
+	icon = 'icons/clothing/head/champion.dmi'
 	armor = list(
 		melee = ARMOR_MELEE_VERY_HIGH,
 		bullet = ARMOR_BALLISTIC_AP,
@@ -10,14 +11,14 @@
 		bomb = ARMOR_BOMB_RESISTANT,
 		bio = ARMOR_BIO_MINOR
 		)
-	bodytype_restricted = list(BODYTYPE_HUMANOID)
+	bodytype_equip_flags = BODY_FLAG_HUMANOID
 
 /obj/item/clothing/suit/champarmor
 	name = "champion's armor"
 	desc = "A mighty suit of silver and gold armor, with a gleaming blue crystal inlaid into its left gaunlet."
-	icon_state = "champarmor"
+	icon = 'icons/clothing/suit/wizard/servant/champion.dmi'
 	siemens_coefficient = 0.5
-	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|FEET|ARMS|HANDS
+	body_parts_covered = SLOT_UPPER_BODY|SLOT_LOWER_BODY|SLOT_LEGS|SLOT_FEET|SLOT_ARMS|SLOT_HANDS
 	armor = list(
 		melee = ARMOR_MELEE_VERY_HIGH,
 		bullet = ARMOR_BALLISTIC_AP,
@@ -30,18 +31,18 @@
 /obj/item/clothing/under/bluetunic
 	name = "blue tunic"
 	desc = "A royal blue tunic. Beautifully archaic."
-	icon_state = "bluetunic"
+	icon = 'icons/clothing/under/tunic.dmi'
 	siemens_coefficient = 0.8
-	body_parts_covered = UPPER_TORSO|LOWER_TORSO
+	body_parts_covered = SLOT_UPPER_BODY|SLOT_LOWER_BODY
 	armor = list(
 		melee = ARMOR_MELEE_MINOR
 	)
-	bodytype_restricted = list(BODYTYPE_HUMANOID)
+	bodytype_equip_flags = BODY_FLAG_HUMANOID
 
 /obj/item/clothing/shoes/jackboots/medievalboots
 	name = "leather boots"
 	desc = "Old-fashioned leather boots. Probably not something you want to get kicked with."
-	material = MAT_LEATHER_GENERIC
+	material = /decl/material/solid/leather
 	force = 5
 	armor = list(
 		melee = ARMOR_MELEE_RESISTANT,
@@ -52,29 +53,27 @@
 	)
 	artificail_shine = 0
 
-/obj/item/material/sword/excalibur
+/obj/item/sword/excalibur
 	name = "champion's blade"
 	desc = "<i>For at his belt hung Excalibur, the finest sword that there was, which sliced through iron as through wood.</i>"
-	on_mob_icon = 'icons/obj/items/weapon/swords/excalibur.dmi'
+	icon = 'icons/obj/items/weapon/swords/excalibur.dmi'
 	attack_verb = list("slashed", "stabbed", "sliced", "torn", "ripped", "cleaved", "sundered")
 	applies_material_colour = FALSE
 	applies_material_name = FALSE
 
-/obj/item/material/sword/excalibur/pickup(var/mob/living/user)
+/obj/item/sword/excalibur/pickup(var/mob/living/user)
 	if(user.mind)
-		if(!GLOB.wizards.is_antagonist(user.mind) || user.mind.special_role != ANTAG_SERVANT)
+		var/decl/special_role/wizard/wizards = GET_DECL(/decl/special_role/wizard)
+		if(!wizards.is_antagonist(user.mind) || user.mind.assigned_special_role != "Spellbound Servant")
 			START_PROCESSING(SSobj, src)
 			to_chat(user,"<span class='danger'>\The [src] heats up in your hands, burning you!</span>")
 
-/obj/item/material/sword/excalibur/Process()
-	if(istype(loc, /mob/living))
-		if(istype(loc, /mob/living/carbon/human))
+/obj/item/sword/excalibur/Process()
+	if(isliving(loc))
+		if(ishuman(loc))
 			var/mob/living/carbon/human/H = loc
-			var/hand = BP_R_HAND
-			if(H.l_hand == src)
-				hand = BP_L_HAND
-			var/obj/item/organ/external/E = H.get_organ(hand)
-			E.take_external_damage(burn=2,used_weapon="stovetop")
+			var/obj/item/organ/external/E = GET_EXTERNAL_ORGAN(H, H.get_active_held_item_slot())
+			E?.take_external_damage(burn=2,used_weapon="stovetop")
 		else
 			var/mob/living/M = loc
 			M.adjustFireLoss(2)
@@ -82,5 +81,6 @@
 			to_chat(loc,"<span class='danger'>\The [src] is burning you!</span>")
 	return 1
 
-/obj/item/material/sword/excalibur/dropped()
+/obj/item/sword/excalibur/dropped()
+	. = ..()
 	STOP_PROCESSING(SSobj, src)

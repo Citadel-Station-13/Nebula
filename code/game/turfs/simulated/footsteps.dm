@@ -1,10 +1,10 @@
 /proc/get_footstep(var/footstep_type, var/mob/caller)
 	. = caller && caller.get_footstep(footstep_type)
 	if(!.)
-		var/decl/footsteps/FS = decls_repository.get_decl(footstep_type)
+		var/decl/footsteps/FS = GET_DECL(footstep_type)
 		. = pick(FS.footstep_sounds)
 
-/turf/simulated/proc/get_footstep_sound(var/mob/caller)
+/turf/get_footstep_sound(var/mob/caller)
 	for(var/obj/structure/S in contents)
 		if(S.footstep_type)
 			return get_footstep(S.footstep_type, caller)
@@ -26,16 +26,11 @@
 		else
 			return get_footstep(flooring.footstep_type, caller)
 
-/turf/simulated/Entered(var/mob/living/carbon/human/H)
-	..()
-	if(istype(H))
-		H.handle_footsteps()
-		H.step_count++
-
 /mob/living/carbon/human/proc/has_footsteps()
 	if(species.silent_steps || buckled || lying || throwing)
 		return //people flying, lying down or sitting do not step
 
+	var/obj/item/shoes = get_equipped_item(slot_shoes_str)
 	if(shoes && (shoes.item_flags & ITEM_FLAG_SILENT))
 		return // quiet shoes
 
@@ -45,6 +40,7 @@
 	return TRUE
 
 /mob/living/carbon/human/proc/handle_footsteps()
+	step_count++
 	if(!has_footsteps())
 		return
 
@@ -56,8 +52,8 @@
 	if((step_count % 3) && !has_gravity())
 		return
 
-	var/turf/simulated/T = get_turf(src)
-	if(istype(T))
+	var/turf/T = get_turf(src)
+	if(T)
 		var/footsound = T.get_footstep_sound(src)
 		if(footsound)
 			var/range = -(world.view - 2)
@@ -65,7 +61,7 @@
 			if(MOVING_DELIBERATELY(src))
 				volume -= 45
 				range -= 0.333
-			if(!shoes)
+			if(!get_equipped_item(slot_shoes_str))
 				volume -= 60
 				range -= 0.333
 			playsound(T, footsound, volume, 1, range)

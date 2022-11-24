@@ -8,6 +8,12 @@
 
 /obj/item/ai_verbs
 	name = "AI verb holder"
+	is_spawnable_type = FALSE // Do not manually spawn this, it will runtime/break.
+
+/obj/item/ai_verbs/Initialize(ml, material_key)
+	if(!istype(loc, /obj/item/rig_module/ai_container))
+		return INITIALIZE_HINT_QDEL
+	. = ..()
 
 /obj/item/ai_verbs/verb/hardsuit_interface()
 	set category = "Hardsuit"
@@ -23,7 +29,7 @@
 		to_chat(usr, "Your module is not installed in a hardsuit.")
 		return
 
-	module.holder.ui_interact(usr, nano_state = GLOB.contained_state)
+	module.holder.ui_interact(usr, nano_state = global.contained_topic_state)
 
 /obj/item/rig_module/ai_container
 
@@ -42,11 +48,11 @@
 	interface_name = "integrated intelligence system"
 	interface_desc = "A socket that supports a range of artificial intelligence systems."
 
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE,
-		MAT_GOLD = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE
 	)
 	origin_tech = "{'programming':6,'materials':5,'engineering':6}"
 
@@ -153,7 +159,7 @@
 	if(!target)
 		if(ai_card)
 			if(istype(ai_card,/obj/item/aicard))
-				ai_card.ui_interact(H, state = GLOB.deep_inventory_state)
+				ai_card.ui_interact(H, state = global.deep_inventory_topic_state)
 			else
 				eject_ai(H)
 		update_verb_holder()
@@ -335,11 +341,11 @@
 	interface_desc = "Colloquially known as a power siphon, this module drains power through the suit hands into the suit battery."
 
 	origin_tech = "{'powerstorage':6,'engineering':6}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GOLD = MATTER_AMOUNT_TRACE,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 	var/atom/interfaced_with // Currently draining power from this device.
@@ -387,7 +393,7 @@
 	interfaced_with = target
 	drain_loc = interfaced_with.loc
 
-	holder.spark_system.start()
+	spark_at(holder, 5, holder = holder)
 	playsound(H.loc, 'sound/effects/sparks2.ogg', 50, 1)
 
 	return 1
@@ -411,7 +417,7 @@
 	if(!H || !istype(H))
 		return 0
 
-	holder.spark_system.start()
+	spark_at(holder, 5, holder = holder)
 	playsound(H.loc, 'sound/effects/sparks2.ogg', 50, 1)
 
 	if(!holder.cell)
@@ -443,9 +449,9 @@
 /obj/item/rig_module/power_sink/proc/drain_complete(var/mob/living/M)
 
 	if(!interfaced_with)
-		if(M) to_chat(M, "<font color='blue'><b>Total power drained:</b> [round(total_power_drained*CELLRATE)] Wh.</font>")
+		if(M) to_chat(M, SPAN_BLUE("<b>Total power drained:</b> [round(total_power_drained*CELLRATE)] Wh."))
 	else
-		if(M) to_chat(M, "<font color='blue'><b>Total power drained from [interfaced_with]:</b> [round(total_power_drained*CELLRATE)] Wh.</font>")
+		if(M) to_chat(M, SPAN_BLUE("<b>Total power drained from [interfaced_with]:</b> [round(total_power_drained*CELLRATE)] Wh."))
 		interfaced_with.drain_power(0,1,0) // Damage the victim.
 
 	drain_loc = null

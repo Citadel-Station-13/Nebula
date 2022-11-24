@@ -36,7 +36,7 @@
 	var/turf/home
 	var/homeName
 
-	var/global/amount = 0
+	var/static/amount = 0
 
 /mob/living/bot/mulebot/Initialize()
 	. = ..()
@@ -52,14 +52,11 @@
 	suffix = num2text(++amount)
 	name = "Mulebot #[suffix]"
 
-/mob/living/bot/mulebot/MouseDrop_T(var/atom/movable/C, var/mob/user)
-	if(user.stat)
-		return
-
-	if(!istype(C) || C.anchored || get_dist(user, src) > 1 || get_dist(src, C) > 1 )
-		return
-
-	load(C)
+/mob/living/bot/mulebot/receive_mouse_drop(var/atom/dropping, var/mob/user)
+	. = ..()
+	if(!.)
+		load(dropping)
+		return TRUE
 
 /mob/living/bot/mulebot/GetInteractTitle()
 	. = "<head><title>Mulebot [suffix ? "([suffix])" : ""]</title></head>"
@@ -121,7 +118,7 @@
 
 /mob/living/bot/mulebot/attackby(var/obj/item/O, var/mob/user)
 	..()
-	update_icons()
+	update_icon()
 
 /mob/living/bot/mulebot/proc/obeyCommand(var/command)
 	switch(command)
@@ -152,7 +149,8 @@
 	playsound(loc, 'sound/effects/sparks1.ogg', 100, 0)
 	return 1
 
-/mob/living/bot/mulebot/update_icons()
+/mob/living/bot/mulebot/on_update_icon()
+	..()
 	if(open)
 		icon_state = "mulebot-hatch"
 		return
@@ -164,7 +162,7 @@
 /mob/living/bot/mulebot/handleRegular()
 	if(!safety && prob(1))
 		flick("mulebot-emagged", src)
-	update_icons()
+	update_icon()
 
 /mob/living/bot/mulebot/handleFrustrated()
 	custom_emote(2, "makes a sighing buzz.")
@@ -203,8 +201,8 @@
 /mob/living/bot/mulebot/Bump(var/mob/living/carbon/human/M)
 	if(!safety && istype(M))
 		visible_message("<span class='warning'>[src] knocks over [M]!</span>")
-		M.Stun(8)
-		M.Weaken(5)
+		SET_STATUS_MAX(M, STAT_STUN, 8)
+		SET_STATUS_MAX(M, STAT_WEAK, 5)
 	..()
 
 /mob/living/bot/mulebot/proc/runOver(var/mob/living/carbon/human/H)
@@ -233,13 +231,10 @@
 
 	var/turf/Tsec = get_turf(src)
 	new /obj/item/assembly/prox_sensor(Tsec)
-	new /obj/item/stack/material/rods(Tsec)
-	new /obj/item/stack/material/rods(Tsec)
 	new /obj/item/stack/cable_coil/cut(Tsec)
+	SSmaterials.create_object(/decl/material/solid/metal/steel, get_turf(src), 2, /obj/item/stack/material/rods)
 
-	var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	spark_at(src, cardinal_only = TRUE)
 
 	new /obj/effect/decal/cleanable/blood/oil(Tsec)
 	..()
@@ -254,7 +249,7 @@
 	return beaconlist
 
 /mob/living/bot/mulebot/proc/load(var/atom/movable/C)
-	if(busy || load || get_dist(C, src) > 1 || !isturf(C.loc))
+	if(busy || load || get_dist(C, src) > 1 || !isturf(C.loc) || C.anchored)
 		return
 
 	for(var/obj/structure/plasticflaps/P in src.loc)//Takes flaps into account
@@ -326,3 +321,8 @@
 				M.client.perspective = MOB_PERSPECTIVE
 				M.client.eye = src
 	busy = 0
+
+/mob/living/bot/mulebot/get_mob()
+	if(load && istype(load, /mob/living))
+		return list(src, load)
+	return src

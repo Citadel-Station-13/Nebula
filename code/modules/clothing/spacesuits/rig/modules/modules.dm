@@ -13,10 +13,10 @@
 	desc = "It looks pretty sciency."
 	icon = 'icons/obj/rig_modules.dmi'
 	icon_state = "module"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_PLASTIC = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE
+		/decl/material/solid/plastic = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE
 	)
 
 	var/damage = 0
@@ -49,7 +49,6 @@
 	var/suit_overlay
 	var/suit_overlay_active             // If set, drawn over icon and mob when effect is active.
 	var/suit_overlay_inactive           // As above, inactive.
-	var/suit_overlay_used               // As above, when engaged.
 
 	//Display fluff
 	var/interface_name = "hardsuit upgrade"
@@ -89,7 +88,7 @@
 		paste.use(1)
 		return
 
-	else if(isCoil(W))
+	else if(IS_COIL(W))
 
 		switch(damage)
 			if(0)
@@ -164,7 +163,7 @@
 		to_chat(usr, "<span class='warning'>The suit is not initialized.</span>")
 		return 0
 
-	if(usr.lying || usr.stat || usr.stunned || usr.paralysis || usr.weakened)
+	if(usr.lying || usr.incapacitated(INCAPACITATION_DISRUPTED))
 		to_chat(usr, "<span class='warning'>You cannot use the suit in this state.</span>")
 		return 0
 
@@ -267,8 +266,8 @@
 /mob/living/carbon/human/Stat()
 	. = ..()
 
-	if(. && istype(back,/obj/item/rig))
-		var/obj/item/rig/R = back
+	var/obj/item/rig/R = get_equipped_item(slot_back_str)
+	if(. && istype(R))
 		SetupStat(R)
 
 /mob/proc/SetupStat(var/obj/item/rig/R)
@@ -284,6 +283,10 @@
 		else
 			air_tank = "NOT FOUND"
 		stat("Tank Pressure:", air_tank)
+		for(var/obj/item/rig_module/maneuvering_jets/M in R.installed_modules)
+			if(M.jets)
+				var/prop_tank_pressure = "[round(M.jets.air_contents.return_pressure())] kPa"
+				stat("Propellant Tank Pressure:", prop_tank_pressure)
 		for(var/obj/item/rig_module/module in R.installed_modules)
 			for(var/stat_rig_module/SRM in module.stat_modules)
 				if(SRM.CanUse())

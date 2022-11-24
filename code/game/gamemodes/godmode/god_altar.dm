@@ -20,10 +20,10 @@
 	if(istype(I, /obj/item/grab))
 		var/obj/item/grab/G = I
 		if(G.force_danger())
-			var/mob/affecting_mob = G.get_affecting_mob()
-			if(affecting_mob)
+			var/mob/living/affecting_mob = G.get_affecting_mob()
+			if(istype(affecting_mob))
 				affecting_mob.dropInto(loc)
-				affecting_mob.Weaken(1)
+				SET_STATUS_MAX(affecting_mob, STAT_WEAK, 1)
 				user.visible_message("<span class='warning'>\The [user] throws \the [affecting_mob] onto \the [src]!</span>")
 				qdel(G)
 				return
@@ -41,7 +41,8 @@
 	cycles_before_converted--
 	if(!cycles_before_converted)
 		src.visible_message("For one thundering moment, \the [target] cries out in pain before going limp and broken.")
-		GLOB.godcult.add_antagonist_mind(target.mind,1, "Servant of [linked_god]","Your loyalty may be faulty, but you know that it now has control over you...", specific_god=linked_god)
+		var/decl/special_role/godcultist/godcult = GET_DECL(/decl/special_role/godcultist)
+		godcult.add_antagonist_mind(target.mind,1, "Servant of [linked_god]","Your loyalty may be faulty, but you know that it now has control over you...", specific_god=linked_god)
 		remove_target()
 		return
 
@@ -66,15 +67,15 @@
 	START_PROCESSING(SSobj, src)
 	target = L
 	update_icon()
-	GLOB.destroyed_event.register(L,src,/obj/structure/deity/altar/proc/remove_target)
-	GLOB.moved_event.register(L, src, /obj/structure/deity/altar/proc/remove_target)
-	GLOB.death_event.register(L, src, /obj/structure/deity/altar/proc/remove_target)
+	events_repository.register(/decl/observ/destroyed, L,src,/obj/structure/deity/altar/proc/remove_target)
+	events_repository.register(/decl/observ/moved, L, src, /obj/structure/deity/altar/proc/remove_target)
+	events_repository.register(/decl/observ/death, L, src, /obj/structure/deity/altar/proc/remove_target)
 
 /obj/structure/deity/altar/proc/remove_target()
 	STOP_PROCESSING(SSobj, src)
-	GLOB.destroyed_event.unregister(target, src)
-	GLOB.moved_event.unregister(target, src)
-	GLOB.death_event.unregister(target, src)
+	events_repository.unregister(/decl/observ/destroyed, target, src)
+	events_repository.unregister(/decl/observ/moved, target, src)
+	events_repository.unregister(/decl/observ/death, target, src)
 	target = null
 	update_icon()
 
@@ -95,6 +96,6 @@
 		return TOPIC_REFRESH
 
 /obj/structure/deity/altar/on_update_icon()
-	overlays.Cut()
+	..()
 	if(target)
-		overlays += image('icons/effects/effects.dmi', icon_state =  "summoning")
+		add_overlay(image('icons/effects/effects.dmi', icon_state =  "summoning"))

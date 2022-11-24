@@ -20,10 +20,10 @@
 	update_icon()
 
 /obj/item/robot_parts/robot_suit/on_update_icon()
-	overlays.Cut()
+	. = ..()
 	for(var/part in required_parts)
 		if(parts[part])
-			overlays += "[part]+o"
+			add_overlay("[part]+o")
 
 /obj/item/robot_parts/robot_suit/proc/check_completion()
 	for(var/part in required_parts)
@@ -35,7 +35,7 @@
 /obj/item/robot_parts/robot_suit/attackby(obj/item/W, mob/user)
 
 	// Uninstall a robotic part.
-	if(isCrowbar(W))
+	if(IS_CROWBAR(W))
 		if(!parts.len)
 			to_chat(user, SPAN_WARNING("\The [src] has no parts to remove."))
 			return
@@ -63,7 +63,7 @@
 	// Install an MMI/brain.
 	else if(istype(W, /obj/item/mmi) || istype(W, /obj/item/organ/internal/posibrain))
 
-		if(!istype(loc,/turf))
+		if(!isturf(loc))
 			to_chat(user, SPAN_WARNING("You can't put \the [W] in without the frame being on the ground."))
 			return
 
@@ -83,7 +83,7 @@
 			to_chat(user, SPAN_WARNING("Sticking an empty [W.name] into the frame would sort of defeat the purpose."))
 			return
 
-		if(jobban_isbanned(B, "Robot"))
+		if(jobban_isbanned(B, ASSIGNMENT_ROBOT))
 			to_chat(user, SPAN_WARNING("\The [W] does not seem to fit."))
 			return
 
@@ -94,7 +94,7 @@
 		var/ghost_can_reenter = 0
 		if(B.mind)
 			if(!B.key)
-				for(var/mob/observer/ghost/G in GLOB.player_list)
+				for(var/mob/observer/ghost/G in global.player_list)
 					if(G.can_reenter_corpse && G.mind == B.mind)
 						ghost_can_reenter = 1
 						break
@@ -120,7 +120,7 @@
 		if(O.mind && O.mind.assigned_role)
 			O.job = O.mind.assigned_role
 		else
-			O.job = "Robot"
+			O.job = ASSIGNMENT_ROBOT
 
 		var/obj/item/robot_parts/chest/chest = parts[BP_CHEST]
 		chest.cell.forceMove(O)
@@ -137,8 +137,8 @@
 		O.Namepick()
 		qdel(src)
 
-	else if(istype(W, /obj/item/pen))
-		var/t = sanitizeSafe(input(user, "Enter new robot name", src.name, src.created_name), MAX_NAME_LEN)
+	else if(IS_PEN(W))
+		var/t = sanitize_safe(input(user, "Enter new robot name", src.name, src.created_name), MAX_NAME_LEN)
 		if(t && (in_range(src, user) || loc == user))
 			created_name = t
 	else

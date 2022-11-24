@@ -1,7 +1,6 @@
 /obj/effect/overlay
 	name = "overlay"
 	unacidable = 1
-	var/i_attached//Added for possible image attachments to objects. For hallucinations and the like.
 
 /obj/effect/overlay/beam//Not actually a projectile, just an effect.
 	name="beam"
@@ -35,7 +34,7 @@
 	icon_state = "coconuts"
 
 /obj/effect/overlay/bluespacify
-	name = "Bluespace"
+	name = "subspace"
 	icon = 'icons/turf/space.dmi'
 	icon_state = "bluespacify"
 	layer = SUPERMATTER_WALL_LAYER

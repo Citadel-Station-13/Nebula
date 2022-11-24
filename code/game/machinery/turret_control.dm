@@ -13,6 +13,8 @@
 	icon_state = "control_standby"
 	anchored = 1
 	density = 0
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'EAST':{'x':32}, 'WEST':{'x':-32}}"
 	var/enabled = 0
 	var/lethal = 0
 	var/locked = 1
@@ -49,7 +51,7 @@
 	if(!control_area)
 		control_area = get_area(src)
 	else if(istext(control_area))
-		for(var/area/A in world)
+		for(var/area/A in global.areas)
 			if(A.name && A.name==control_area)
 				control_area = A
 				break
@@ -169,7 +171,7 @@
 			check_anomalies = value
 
 		if(!isnull(log_action))
-			log_and_message_admins("has [log_action]", 1)
+			log_and_message_admins("has [log_action]", usr, loc)
 
 		updateTurrets()
 		return 1
@@ -200,13 +202,13 @@
 	else if (enabled)
 		if (lethal)
 			icon_state = "control_kill"
-			set_light(1, 0.5, 2, 2, "#990000")
+			set_light(1.5, 1,"#990000")
 		else
 			icon_state = "control_stun"
-			set_light(1, 0.5, 2, 2, "#ff9900")
+			set_light(1.5, 1,"#ff9900")
 	else
 		icon_state = "control_standby"
-		set_light(1, 0.5, 2, 2, "#003300")
+		set_light(1.5, 1,"#003300")
 
 /obj/machinery/turretid/emp_act(severity)
 	if(enabled)

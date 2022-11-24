@@ -8,28 +8,27 @@
 	item_state = "analyzer"
 	desc = "A hand-held scanner able to diagnose robotic injuries."
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	throwforce = 3
 	w_class = ITEM_SIZE_SMALL
 	throw_speed = 5
 	throw_range = 10
 	origin_tech = "{'magnets':2,'biotech':1,'engineering':2}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
-	var/mode = 1;
 
 /obj/item/robotanalyzer/attack(mob/living/M, mob/living/user)
 	if((MUTATION_CLUMSY in user.mutations) && prob(50))
-		to_chat(user, text("<span class='warning'>You try to analyze the floor's vitals!</span>"))
-		for(var/mob/O in viewers(M, null))
-			O.show_message(text("<span class='warning'>[user] has analyzed the floor's vitals!</span>"), 1)
-		user.show_message(text("<span class='notice'>Analyzing Results for The floor:\n\t Overall Status: Healthy</span>"), 1)
-		user.show_message(text("<span class='notice'>\t Damage Specifics: [0]-[0]-[0]-[0]</span>"), 1)
-		user.show_message("<span class='notice'>Key: Suffocation/Toxin/Burns/Brute</span>", 1)
-		user.show_message("<span class='notice'>Body Temperature: ???</span>", 1)
+		user.visible_message(
+			SPAN_WARNING("\The [user] has analyzed the floor's vitals!"),
+			self_message = SPAN_WARNING("You try to analyze the floor's vitals!"))
+		user.show_message(SPAN_NOTICE("Analyzing Results for The floor:\n\t Overall Status: Healthy"))
+		user.show_message(SPAN_NOTICE("\t Damage Specifics: [0]-[0]-[0]-[0]"))
+		user.show_message(SPAN_NOTICE("Key: Suffocation/Toxin/Burns/Brute"))
+		user.show_message(SPAN_NOTICE("Body Temperature: ???"))
 		return
 
 	var/scan_type
@@ -72,30 +71,30 @@
 		if("prosthetics")
 
 			var/mob/living/carbon/human/H = M
-			to_chat(user, "<span class='notice'>Analyzing Results for \the [H]:</span>")
-			to_chat(user, "Key: <font color='#ffa500'>Electronics</font>/<font color='red'>Brute</font>")
-			var/obj/item/organ/internal/cell/C = H.internal_organs_by_name[BP_CELL]
+			to_chat(user, SPAN_NOTICE("Analyzing Results for \the [H]:"))
+			to_chat(user, "Key: [SPAN_ORANGE("Electronics")]/[SPAN_RED("Brute")]")
+			var/obj/item/organ/internal/cell/C = H.get_organ(BP_CELL, /obj/item/organ/internal/cell)
 			if(C)
 				to_chat(user, SPAN_NOTICE("Cell charge: [C.percent()] %"))
 			else
 				to_chat(user, SPAN_NOTICE("Cell charge: ERROR - Cell not present"))
-			to_chat(user, "<span class='notice'>External prosthetics:</span>")
+			to_chat(user, SPAN_NOTICE("External prosthetics:"))
 			var/organ_found
-			for(var/obj/item/organ/external/E in H.organs)
+			for(var/obj/item/organ/external/E in H.get_external_organs())
 				if(!BP_IS_PROSTHETIC(E))
 					continue
 				organ_found = 1
-				to_chat(user, "[E.name]: <font color='red'>[E.brute_dam]</font> <font color='#ffa500'>[E.burn_dam]</font>")
+				to_chat(user, "[E.name]: [SPAN_RED(E.brute_dam)] [SPAN_ORANGE(E.burn_dam)]")
 			if(!organ_found)
 				to_chat(user, "No prosthetics located.")
 			to_chat(user, "<hr>")
-			to_chat(user, "<span class='notice'>Internal prosthetics:</span>")
+			to_chat(user, SPAN_NOTICE("Internal prosthetics:"))
 			organ_found = null
-			for(var/obj/item/organ/O in H.internal_organs)
+			for(var/obj/item/organ/O in H.get_internal_organs())
 				if(!BP_IS_PROSTHETIC(O))
 					continue
 				organ_found = 1
-				to_chat(user, "[O.name]: <font color='red'>[O.damage]</font>")
+				to_chat(user, "[O.name]: [SPAN_RED(O.damage)]")
 			if(!organ_found)
 				to_chat(user, "No prosthetics located.")
 

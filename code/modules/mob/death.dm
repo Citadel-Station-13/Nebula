@@ -1,25 +1,26 @@
 //This is the proc for gibbing a mob. Cannot gib ghosts.
 //added different sort of gibs and animations. N
 /mob/proc/gib(anim="gibbed-m",do_gibs)
+	set waitfor = FALSE
 	death(1)
 	ADD_TRANSFORMATION_MOVEMENT_HANDLER(src)
 	icon = null
 	set_invisibility(101)
 	UpdateLyingBuckledAndVerbStatus()
 	remove_from_dead_mob_list()
+	dump_contents()
 
 	var/atom/movable/overlay/animation = new(src)
 	animation.icon_state = "blank"
 	animation.icon = 'icons/mob/mob.dmi'
 
 	flick(anim, animation)
-	if(do_gibs) gibs(loc, dna)
+	if(do_gibs)
+		gibs(loc, dna)
 
-	addtimer(CALLBACK(src, .proc/check_delete, animation), 15)
+	QDEL_IN(animation, 15)
+	QDEL_IN(src, 15)
 
-/mob/proc/check_delete(var/atom/movable/overlay/animation)
-	if(animation)	qdel(animation)
-	if(src)			qdel(src)
 
 //This is the proc for turning a mob into ash. Mostly a copy of gib code (above).
 //Originally created for wizard disintegrate. I've removed the virus code since it's irrelevant here.
@@ -40,8 +41,8 @@
 	new remains(loc)
 
 	remove_from_dead_mob_list()
-	addtimer(CALLBACK(src, .proc/check_delete, animation), 15)
-
+	QDEL_IN(animation, 15)
+	QDEL_IN(src, 15)
 
 /mob/proc/death(gibbed,deathmessage="seizes up and falls limp...", show_dead_message = "You have died.")
 
@@ -57,16 +58,19 @@
 	adjust_stamina(-100)
 	reset_plane_and_layer()
 	UpdateLyingBuckledAndVerbStatus()
-
-	dizziness = 0
-	jitteriness = 0
+	if(!gibbed)
+		clear_status_effects()
 
 	set_sight(sight|SEE_TURFS|SEE_MOBS|SEE_OBJS)
 	set_see_in_dark(8)
 	set_see_invisible(SEE_INVISIBLE_LEVEL_TWO)
 
-	drop_r_hand()
-	drop_l_hand()
+	drop_held_items()
+
+	var/datum/extension/hattable/hattable = get_extension(src, /datum/extension/hattable)
+	if(hattable?.hat)
+		hattable.hat.dropInto(get_turf(src))
+		hattable.hat = null
 
 	SSstatistics.report_death(src)
 

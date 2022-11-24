@@ -4,7 +4,7 @@
 	icon = 'icons/obj/monitors.dmi'
 	icon_state = "alarm_bitem"
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	var/build_machine_type
 	var/reverse = 0 //if resulting object faces opposite its dir (like light fixtures)
 	var/fully_construct = FALSE // Results in a machine with all parts auto-installed and ready to go if TRUE; if FALSE, the machine will spawn without removable expected parts
@@ -17,10 +17,9 @@
 			.[key] += cost[key]
 
 /obj/item/frame/attackby(obj/item/W, mob/user)
-	if(isWrench(W))
+	if(IS_WRENCH(W))
 		for(var/key in matter)
-			var/decl/material/material = decls_repository.get_decl(key)
-			material.place_sheet(get_turf(src), matter[key]/SHEET_MATERIAL_AMOUNT)
+			SSmaterials.create_object(key, get_turf(src), round(matter[key]/SHEET_MATERIAL_AMOUNT))
 		qdel(src)
 		return TRUE
 	. = ..()
@@ -38,7 +37,7 @@
 	else
 		ndir = get_dir(on_wall,usr)
 
-	if (!(ndir in GLOB.cardinal))
+	if (!(ndir in global.cardinal))
 		return
 
 	var/turf/loc = get_turf(usr)
@@ -81,64 +80,122 @@
 	name = "air alarm kit"
 	desc = "An all-in-one air alarm kit, comes preassembled."
 
+/obj/item/frame/wall_router
+	name = "wall-mounted router frame"
+	desc = "Used for building wall-mounted network routers."
+	icon = 'icons/obj/machines/wall_router.dmi'
+	icon_state = "wall_router_o_off"
+	build_machine_type = /obj/machinery/network/router/wall_mounted
+
+/obj/item/frame/wall_router/kit
+	fully_construct = TRUE
+	name = "wall-mounted router kit"
+	desc = "An all-in-one wall-mounted router kit, comes preassembled."
+
+/obj/item/frame/wall_relay
+	name = "wall-mounted relay frame"
+	desc = "Used for building wall-mounted network relays."
+	icon = 'icons/obj/machines/wall_router.dmi'
+	icon_state = "wall_router_o_off"
+	build_machine_type = /obj/machinery/network/relay/wall_mounted
+
+/obj/item/frame/wall_relay/kit
+	fully_construct = TRUE
+	name = "wall-mounted relay kit"
+	desc = "An all-in-one wall-mounted relay kit, comes preassembled."
+
 /obj/item/frame/light
 	name = "light fixture frame"
 	desc = "Used for building lights."
 	icon = 'icons/obj/lighting.dmi'
 	icon_state = "tube-construct-item"
-	build_machine_type = /obj/machinery/light/buildable
+	build_machine_type = /obj/machinery/light
 	reverse = 1
 
 /obj/item/frame/light/small
 	name = "small light fixture frame"
 	icon_state = "bulb-construct-item"
-	material = MAT_STEEL
-	build_machine_type = /obj/machinery/light/small/buildable
+	material = /decl/material/solid/metal/steel
+	build_machine_type = /obj/machinery/light/small
 
 /obj/item/frame/light/spot
 	name = "spotlight fixture frame"
 	icon_state = "tube-construct-item"
-	material = MAT_STEEL
-	build_machine_type = /obj/machinery/light/spot/buildable
+	material = /decl/material/solid/metal/steel
+	build_machine_type = /obj/machinery/light/spot
 
 /obj/item/frame/light/nav
 	name = "navigation light fixture frame"
 	icon_state = "tube-construct-item"
-	material = MAT_STEEL
-	build_machine_type = /obj/machinery/light/navigation/buildable
+	material = /decl/material/solid/metal/steel
+	build_machine_type = /obj/machinery/light/navigation
 
 /obj/item/frame/button
 	name = "button frame"
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "launcherbtt"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	build_machine_type = /obj/machinery/button/buildable
 
-/obj/item/frame/button/modify_positioning(var/obj/machinery/button/product, _dir, click_params)
-	var/list/params = params2list(click_params)
-	var/_pixel_x = text2num(params["icon-x"]) - WORLD_ICON_SIZE/2 //Make it relative to center instead of bottom left
-	var/_pixel_y = text2num(params["icon-y"]) - WORLD_ICON_SIZE/2
-	switch(_dir)
-		if(NORTH)
-			_pixel_y = max(_pixel_y, WORLD_ICON_SIZE/4)
-			_pixel_y -= WORLD_ICON_SIZE
-		if(SOUTH)
-			_pixel_y = min(_pixel_y, WORLD_ICON_SIZE/4)
-			_pixel_y += WORLD_ICON_SIZE
-		if(EAST)
-			_pixel_x = max(_pixel_x, 0)
-			_pixel_x -= WORLD_ICON_SIZE
-		if(WEST)
-			_pixel_x = min(_pixel_x, 0)
-			_pixel_x += WORLD_ICON_SIZE
-	product.pixel_x = _pixel_x
-	product.pixel_y = _pixel_y
+/obj/item/frame/button/kit
+	fully_construct = TRUE
+	name = "radio button kit"
+	desc = "An all-in-one wall-mounted button kit, comes preassembled and equipped with a radio transmitter."
+	build_machine_type = /obj/machinery/button
+
+/obj/item/frame/button/alternate
+	name = "button frame (door)"
+	icon = 'icons/obj/machines/button_door.dmi'
+	icon_state = "doorctrl"
+	build_machine_type = /obj/machinery/button/alternate/buildable
+
+/obj/item/frame/button/alternate/kit
+	fully_construct = TRUE
+	name = "button kit (door)"
+	desc = "An all-in-one wall-mounted button kit, comes preassembled and equipped with a radio transmitter."
+	build_machine_type = /obj/machinery/button/alternate
+
+/obj/item/frame/button/access
+	name = "button frame (airlock)"
+	icon = 'icons/obj/airlock_machines.dmi'
+	icon_state = "access_button_standby"
+	build_machine_type = /obj/machinery/button/access/buildable
+
+/obj/item/frame/button/access/kit
+	fully_construct = TRUE
+	name = "button kit (airlock)"
+	desc = "An all-in-one wall-mounted button kit, comes preassembled and equipped with a radio transmitter."
+	build_machine_type = /obj/machinery/button/access
+
+/obj/item/frame/button/blastdoor
+	name = "button frame (blast doors)"
+	icon = 'icons/obj/machines/button_blastdoor.dmi'
+	icon_state = "blastctrl"
+	build_machine_type = /obj/machinery/button/blast_door/buildable
+
+/obj/item/frame/button/blastdoor/kit
+	fully_construct = TRUE
+	name = "button kit (blast doors)"
+	desc = "An all-in-one wall-mounted button kit, comes preassembled and equipped with a radio transmitter."
+	build_machine_type = /obj/machinery/button/blast_door
+
+/obj/item/frame/camera
+	name = "security camera frame"
+	icon = 'icons/obj/monitors.dmi'
+	icon_state = "cameracase"
+	material = /decl/material/solid/metal/aluminium
+	build_machine_type = /obj/machinery/camera
+
+/obj/item/frame/camera/kit
+	fully_construct = TRUE
+	name = "security camera kit"
+	desc = "An all-in-one wall-mounted security camera kit, comes preassembled."
 
 /obj/item/frame/button/wall_charger
 	name = "wall charger frame"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/recharger_wall.dmi'
 	icon_state = "wrecharger0"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	build_machine_type = /obj/machinery/recharger/wallcharger
 
 /obj/item/frame/button/wall_charger/kit
@@ -148,9 +205,9 @@
 /obj/item/frame/button/sparker
 	name = "mounted igniter"
 	desc = "A wall-mounted ignition device."
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/igniter_mounted.dmi'
 	icon_state = "migniter"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	build_machine_type = /obj/machinery/sparker/buildable
 
 // Shifts it dead center of the turf you are looking at. Useful for items with antiquated icons.
@@ -158,22 +215,14 @@
 	reverse = TRUE
 
 /obj/item/frame/stock_offset/modify_positioning(var/obj/machinery/product, _dir, click_params)
-	switch(_dir)
-		if(NORTH)
-			product.pixel_y = WORLD_ICON_SIZE
-		if(SOUTH)
-			product.pixel_y = - WORLD_ICON_SIZE
-		if(EAST)
-			product.pixel_x = WORLD_ICON_SIZE
-		if(WEST)
-			product.pixel_x = - WORLD_ICON_SIZE
+	product.update_directional_offset()
 
 /obj/item/frame/stock_offset/request_console
 	name = "request console frame"
 	desc = "Used for building request consoles."
 	icon = 'icons/obj/terminals.dmi'
 	icon_state = "req_comp0"
-	build_machine_type = /obj/machinery/requests_console
+	build_machine_type = /obj/machinery/network/requests_console
 
 /obj/item/frame/stock_offset/request_console/kit
 	fully_construct = TRUE
@@ -209,6 +258,12 @@
 	desc = "An airlock sensor frame."
 	build_machine_type = /obj/machinery/airlock_sensor/buildable
 
+/obj/item/frame/button/airlock_sensor/kit
+	fully_construct = TRUE
+	name = "airlock sensor kit"
+	desc = "An all-in-one airlock sensor kit, comes preassembled with a radio transmitter."
+	build_machine_type = /obj/machinery/airlock_sensor
+
 /obj/item/frame/button/airlock_controller
 	icon = 'icons/obj/airlock_machines.dmi'
 	icon_state = "airlock_control_off"
@@ -230,4 +285,3 @@
 			to_chat(user, SPAN_NOTICE("You configure \the [src] using \the [W]."))
 			return TRUE
 	. = ..()
-	

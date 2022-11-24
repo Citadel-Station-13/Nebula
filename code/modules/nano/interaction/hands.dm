@@ -1,7 +1,7 @@
 /*
 	This state only checks if user is conscious.
 */
-GLOBAL_DATUM_INIT(hands_state, /datum/topic_state/hands, new)
+var/global/datum/topic_state/hands/hands_topic_state = new
 
 /datum/topic_state/hands/can_use_topic(src_object, mob/user)
 	. = user.shared_nano_interaction(src_object)
@@ -12,7 +12,7 @@ GLOBAL_DATUM_INIT(hands_state, /datum/topic_state/hands, new)
 	return STATUS_CLOSE
 
 /mob/living/hands_can_use_topic(src_object)
-	if(src_object in get_both_hands(src))
+	if(src_object in get_held_items())
 		return STATUS_INTERACTIVE
 	return STATUS_CLOSE
 

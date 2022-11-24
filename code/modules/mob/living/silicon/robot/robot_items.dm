@@ -4,6 +4,12 @@
 	icon = 'icons/obj/items/borg_module/borg_rnd_analyser.dmi'
 	icon_state = "portable_analyzer"
 	desc = "Similar to the stationary version, this rather unwieldy device allows you to break down objects in the name of science."
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/metal/copper = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/steel  = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/silicon      = MATTER_AMOUNT_REINFORCEMENT,
+	)
 	var/obj/item/loaded_item
 	var/list/saved_tech_levels = list()
 
@@ -12,7 +18,7 @@
 		to_chat(user, SPAN_WARNING("There is nothing loaded inside \the [src]."))
 		return TRUE
 	var/choice = input("Do you wish to eject or analyze \the [loaded_item]?", "Portable Analyzer") as null|anything in list("Eject", "Analyze")
-	if(!choice || !QDELETED(loaded_item) || user.incapacitated() || loc != user)
+	if(!choice || QDELETED(loaded_item) || user.incapacitated() || loc != user)
 		return TRUE
 	if(choice == "Eject")
 		loaded_item.dropInto(user.loc)
@@ -21,10 +27,13 @@
 	var/confirm = alert(user, "This will destroy the item inside forever. Are you sure?","Confirm Analyze","Yes","No")
 	if(confirm == "Yes" && !QDELETED(loaded_item) && !user.incapacitated() && loc == user)
 		to_chat(user, "You activate the analyzer's microlaser, analyzing \the [loaded_item] and breaking it down.")
-		var/list/tech_found = json_decode(loaded_item.origin_tech)
+		var/list/tech_found = cached_json_decode(loaded_item.get_origin_tech())
 		for(var/tech in tech_found)
-			if(saved_tech_levels[tech] < tech_found[tech])
+			if(saved_tech_levels[tech] == tech_found[tech])
+				saved_tech_levels[tech] = (tech_found[tech]+1)
+			else if(saved_tech_levels[tech] < tech_found[tech])
 				saved_tech_levels[tech] = tech_found[tech]
+
 		flick("portable_analyzer_scan", src)
 		QDEL_NULL(loaded_item)
 
@@ -49,7 +58,8 @@
 		to_chat(user, SPAN_WARNING("\The [src] already has something inside.  Analyze or eject it first."))
 		return
 	var/obj/item/I = target
-	if(!I.origin_tech)
+	var/tech = I.get_origin_tech()
+	if(!tech)
 		to_chat(user, SPAN_WARNING("\The [I] has no interesting data to analyze."))
 		return
 	I.forceMove(src)
@@ -73,6 +83,13 @@
 	icon = 'icons/obj/lighting.dmi'
 	icon_state = "partylight-off"
 	item_state = "partylight-off"
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/metal/steel  = MATTER_AMOUNT_SECONDARY,
+		/decl/material/solid/glass        = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/copper = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/silicon      = MATTER_AMOUNT_TRACE, 
+	)
 	var/activated = 0
 	var/strobe_effect = null
 
@@ -83,9 +100,10 @@
 		activate_strobe()
 
 /obj/item/party_light/on_update_icon()
+	. = ..()
 	if (activated)
 		icon_state = "partylight-on"
-		set_light(1, 1, 7)
+		set_light(7, 1)
 	else
 		icon_state = "partylight_off"
 		set_light(0)
@@ -99,7 +117,7 @@
 	strobe_effect = L
 
 	// Make the light effect follow this party light object.
-	GLOB.moved_event.register(src, L, /atom/movable/proc/move_to_turf_or_null)
+	events_repository.register(/decl/observ/moved, src, L, /atom/movable/proc/move_to_turf_or_null)
 
 	update_icon()
 
@@ -107,7 +125,7 @@
 	activated = 0
 
 	// Cause the party light effect to stop following this object, and then delete it.
-	GLOB.moved_event.unregister(src, strobe_effect, /atom/movable/proc/move_to_turf_or_null)
+	events_repository.unregister(/decl/observ/moved, src, strobe_effect, /atom/movable/proc/move_to_turf_or_null)
 	QDEL_NULL(strobe_effect)
 
 	update_icon()
@@ -143,6 +161,7 @@
 	desc = "A hand-held harvest tool that resembles a sickle.  It uses energy to cut plant matter very efficently."
 	icon = 'icons/obj/items/borg_module/autoharvester.dmi'
 	icon_state = "autoharvester"
+	health = ITEM_HEALTH_NO_DAMAGE
 
 /obj/item/robot_harvester/afterattack(var/atom/target, var/mob/living/user, proximity)
 	if(!target)
@@ -170,14 +189,17 @@
 // Allows service droids to rename paper items.
 
 /obj/item/pen/robopen
-	desc = "A black ink printing attachment with a paper naming mode."
-	name = "Printing Pen"
+	name = "printing pen"
 	var/mode = 1
+
+/obj/item/pen/robopen/make_pen_description()
+	desc = "\A [stroke_colour_name] [medium_name] printing attachment with a paper naming mode."
 
 /obj/item/pen/robopen/attack_self(mob/user)
 
 	var/choice = input("Would you like to change colour or mode?") as null|anything in list("Colour","Mode")
-	if(!choice) return
+	if(!choice) 
+		return
 
 	playsound(src.loc, 'sound/effects/pop.ogg', 50, 0)
 
@@ -185,7 +207,8 @@
 
 		if("Colour")
 			var/newcolour = input("Which colour would you like to use?") as null|anything in list("black","blue","red","green","yellow")
-			if(newcolour) colour = newcolour
+			if(newcolour) 
+				set_medium_color(newcolour, newcolour)
 
 		if("Mode")
 			if (mode == 1)
@@ -202,7 +225,7 @@
 /obj/item/pen/robopen/proc/RenamePaper(mob/user, obj/item/paper/paper)
 	if ( !user || !paper )
 		return
-	var/n_name = sanitizeSafe(input(user, "What would you like to label the paper?", "Paper Labelling", null)  as text, 32)
+	var/n_name = sanitize_safe(input(user, "What would you like to label the paper?", "Paper Labelling", null)  as text, 32)
 	if ( !user || !paper )
 		return
 
@@ -217,9 +240,10 @@
 /obj/item/form_printer
 	//name = "paperwork printer"
 	name = "paper dispenser"
-	icon = 'icons/obj/bureaucracy.dmi'
+	icon = 'icons/obj/items/paper_bin.dmi'
 	icon_state = "paper_bin1"
 	item_state = "sheet-metal"
+	health = ITEM_HEALTH_NO_DAMAGE
 
 /obj/item/form_printer/attack(mob/living/carbon/M, mob/living/carbon/user)
 	return
@@ -236,7 +260,7 @@
 	deploy_paper(get_turf(src))
 
 /obj/item/form_printer/proc/deploy_paper(var/turf/T)
-	T.visible_message("<span class='notice'>\The [src.loc] dispenses a sheet of crisp white paper.</span>")
+	T.visible_message(SPAN_NOTICE("\The [src.loc] dispenses a sheet of crisp white paper."))
 	new /obj/item/paper(T)
 
 
@@ -269,6 +293,7 @@
 	icon = 'icons/obj/items/inflatable_dispenser.dmi'
 	icon_state = "inf_deployer"
 	w_class = ITEM_SIZE_LARGE
+	health = ITEM_HEALTH_NO_DAMAGE
 
 	var/stored_walls = 5
 	var/stored_doors = 2
@@ -299,7 +324,7 @@
 	if(!user.Adjacent(A))
 		to_chat(user, "You can't reach!")
 		return
-	if(istype(A, /turf))
+	if(isturf(A))
 		try_deploy_inflatable(A, user)
 	if(istype(A, /obj/item/inflatable) || istype(A, /obj/structure/inflatable))
 		pick_up(A, user)
@@ -344,22 +369,22 @@
 		visible_message("\The [user] deflates \the [A] with \the [src]!")
 		return
 	if(istype(A, /obj/item/inflatable))
-		if(istype(A, /obj/item/inflatable/wall))
-			if(stored_walls >= max_walls)
-				to_chat(user, "\The [src] is full.")
-				return
-			stored_walls++
-			qdel(A)
-		else
+		if(istype(A, /obj/item/inflatable/door))
 			if(stored_doors >= max_doors)
 				to_chat(usr, "\The [src] is full!")
 				return
 			stored_doors++
 			qdel(A)
+		else
+			if(stored_walls >= max_walls)
+				to_chat(user, "\The [src] is full.")
+				return
+			stored_walls++
+			qdel(A)
 		visible_message("\The [user] picks up \the [A] with \the [src]!")
 		return
 
-	to_chat(user, "You fail to pick up \the [A] with \the [src]")
+	to_chat(user, "You fail to pick up \the [A] with \the [src].")
 	return
 
 /obj/item/chems/spray/cleaner/drone
@@ -370,6 +395,7 @@
 /obj/item/robot_rack
 	name = "a generic robot rack"
 	desc = "A rack for carrying large items as a robot."
+	health = ITEM_HEALTH_NO_DAMAGE
 	var/object_type                    //The types of object the rack holds (subtypes are allowed).
 	var/interact_type                  //Things of this type will trigger attack_hand when attacked by this.
 	var/capacity = 1                   //How many objects can be held.
@@ -377,7 +403,7 @@
 
 /obj/item/robot_rack/examine(mob/user)
 	. = ..()
-	to_chat(user, "It can hold up to [capacity] item[capacity == 1 ? "" : "s"].")
+	to_chat(user, "It can hold up to [capacity] item\s.")
 
 /obj/item/robot_rack/Initialize(mapload, starting_objects = 0)
 	. = ..()
@@ -414,12 +440,13 @@
 	desc = "An integrated power generator that runs on most kinds of biomass."
 	icon = 'icons/obj/power.dmi'
 	icon_state = "portgen0"
+	health = ITEM_HEALTH_NO_DAMAGE
 
 	var/base_power_generation = 75 KILOWATTS
 	var/max_fuel_items = 5
 	var/list/fuel_types = list(
-		/obj/item/chems/food/snacks/meat = 2,
-		/obj/item/chems/food/snacks/fish = 1.5
+		/obj/item/chems/food/meat = 2,
+		/obj/item/chems/food/fish = 1.5
 	)
 
 /obj/item/bioreactor/attack_self(var/mob/user)
@@ -434,7 +461,7 @@
 	if(!proximity_flag || !istype(target))
 		return
 
-	var/is_fuel = istype(target, /obj/item/chems/food/snacks/grown)
+	var/is_fuel = istype(target, /obj/item/chems/food/grown)
 	is_fuel = is_fuel || is_type_in_list(target, fuel_types)
 
 	if(!is_fuel)
@@ -465,10 +492,10 @@
 
 	for(var/thing in contents)
 		var/atom/A = thing
-		if(istype(A, /obj/item/chems/food/snacks/grown))
+		if(istype(A, /obj/item/chems/food/grown))
 			generating_power = base_power_generation
 			using_item = A
-		else 
+		else
 			for(var/fuel_type in fuel_types)
 				if(istype(A, fuel_type))
 					generating_power = fuel_types[fuel_type] * base_power_generation

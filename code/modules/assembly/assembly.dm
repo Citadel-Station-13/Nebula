@@ -5,7 +5,7 @@
 	icon_state = ""
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	w_class = ITEM_SIZE_SMALL
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	throwforce = 2
 	throw_speed = 3
 	throw_range = 10
@@ -22,6 +22,17 @@
 	var/const/WIRE_PULSE_SPECIAL = 4		//Allows Pulse(0) to act on the holders special assembly
 	var/const/WIRE_RADIO_RECEIVE = 8		//Allows Pulsed(1) to call Activate()
 	var/const/WIRE_RADIO_PULSE = 16		//Allows Pulse(1) to send a radio message
+
+/obj/item/assembly/Destroy()
+	if(!QDELETED(holder))
+		if(holder.a_left == src)
+			holder.a_left = null
+		if(holder.a_right == src)
+			holder.a_right = null
+		QDEL_NULL(holder)
+	else
+		holder = null
+	return ..()
 
 /obj/item/assembly/proc/activate()									//What the device does when turned on
 	return
@@ -102,7 +113,7 @@
 		if((!A.secured) && (!secured))
 			attach_assembly(A,user)
 			return
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		if(toggle_secure())
 			to_chat(user, "<span class='notice'>\The [src] is ready!</span>")
 		else

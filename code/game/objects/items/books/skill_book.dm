@@ -33,43 +33,49 @@ Skill books that increase your skills while you activate and hold them
 */
 
 /obj/item/book/skill
-	name = "default textbook" // requires default names for tradershop, cant rely on Initialize for names
+	name = "textbook" // requires default names for tradershop, cant rely on Initialize for names
 	desc = "A blank textbook. (Notify admin)"
 	author = "The Oracle of Bakersroof"
 	icon_state = "book2"
 	force = 4
-	w_class = ITEM_SIZE_LARGE //Skill books are THICC with knowledge. Up one level from regular books to prevent library-in-a-bag silliness.
-	unique = 1
-	material = MAT_PLASTIC
-	matter = list(MAT_WOOD = MATTER_AMOUNT_REINFORCEMENT)
+	w_class = ITEM_SIZE_LARGE            // Skill books are THICC with knowledge. Up one level from regular books to prevent library-in-a-bag silliness.
+	unique = TRUE
+	material = /decl/material/solid/plastic
+	matter = list(/decl/material/solid/wood = MATTER_AMOUNT_REINFORCEMENT)
+	abstract_type = /obj/item/book/skill
 
-	var/decl/hierarchy/skill/skill // e.g. SKILL_LITERACY
-	var/skill_req //The level the user needs in the skill to benefit from the book, e.g. SKILL_PROF
-	var/reading = FALSE //Tto check if the book is actively being used
-	var/custom = FALSE //To bypass init stuff, for player made textbooks and weird books. If true must have details manually set
-	var/ez_read = FALSE //Set to TRUE if you can read it without basic literacy skills
+	var/decl/hierarchy/skill/skill       // e.g. SKILL_LITERACY
+	var/skill_req = SKILL_NONE           // The level the user needs in the skill to benefit from the book, e.g. SKILL_PROF
+	var/weakref/reading                  // To check if the book is actively being used
+	var/custom = FALSE                   // To bypass init stuff, for player made textbooks and weird books. If true must have details manually set
+	var/ez_read = FALSE                  // Set to TRUE if you can read it without basic literacy skills
 
 	var/skill_name = "missing skill name"
 	var/progress = SKILLBOOK_PROG_FINISH // used to track the progress of making a custom book. defaults as finished so, you know, you can read the damn thing
 
 /obj/item/book/skill/Initialize()
+
 	. = ..()
+
+	global.events_repository.register(/decl/observ/moved, src, src, .proc/check_buff)
+
 	if(!custom && skill && skill_req)// custom books should already have all they need
 		skill_name = initial(skill.name)
-		title = RANDOM_BOOK_TITLE(capitalize(initial(skill.name)))
+		title = RANDOM_BOOK_TITLE(capitalize(skill_name))
 		switch(skill_req) // check what skill_req the book has
-			if(1) // none > basic
+			if(SKILL_NONE) // none > basic
 				name = "beginner [skill_name] textbook"
 				desc = "A copy of [title] by [author]. The only reason this book is so big is because all the words are printed very large! Presumably so you, an idiot, can read it."
-			if(2) // basic > adept
+			if(SKILL_BASIC) // basic > adept
 				name = "intermediate [skill_name] textbook"
 				desc = "A copy of [title] by [author]. Dry and long, but not unmanageable. Basic knowledge is required to understand the concepts written."
-			if(3) // adept > expert
+			if(SKILL_ADEPT) // adept > expert
 				name = "advanced [skill_name] textbook"
 				desc = "A copy of [title] by [author]. Those not already trained in the subject will have a hard time reading this. Try not to drop it either, it will put a hole in the floor."
-			if(4) //expert > prof
+			if(SKILL_EXPERT to SKILL_MAX) //expert > prof
 				name = "theoretical [skill_name] textbook"
 				desc = "A copy of [title] by [author]. Significant experience in the subject is required to read this incredibly information dense block of paper. Sadly, does not come in audio form."
+
 	if((!skill || !skill_req) && !custom)//That's a bad book, so just grab ANY child to replace it. Custom books are fine though they can be bad if they want.
 		if(subtypesof(src.type))
 			var/new_book = pick(subtypesof(src.type))
@@ -79,44 +85,95 @@ Skill books that increase your skills while you activate and hold them
 /datum/skill_buff/skill_book
 	limit = 1 // you can only read one book at a time nerd, therefore you can only get one buff at a time
 
-/obj/item/book/skill/attack_self(mob/user)
-	if(!skill || (custom && progress == SKILLBOOK_PROG_NONE))
-		to_chat(user, SPAN_WARNING("The textbook is blank!"))
-		return
-	if(custom && progress < SKILLBOOK_PROG_FINISH)
-		to_chat(user, SPAN_WARNING("The textbook is unfinished! You can't learn from it in this state!"))
-		return
-	if(!ez_read &&!user.skill_check(SKILL_LITERACY, SKILL_BASIC))
-		to_chat(user, SPAN_WARNING(pick("Haha, you know you can't read. Good joke. Put [title] back.","You open up [title], but there aren't any pictures, so you close it again.","You don't know how to read! What good is this [name] to you?!")))
-		return
+/obj/item/book/skill/get_single_monetary_worth()
+	. = max(..(), 200) + (100 * skill_req)
 
-	if(reading) //Close book, get rid of buffs
-		src.unlearn(user)
-		to_chat(user, SPAN_NOTICE("You close the [name]. That's enough learning for now."))
-		reading = FALSE
-		return
+/obj/item/book/skill/proc/check_can_read(mob/user)
+	if(QDELETED(user))
+		return FALSE
+	var/effective_title = length(title) ? title : "the textbook"
+	if(!CanPhysicallyInteract(user))
+		to_chat(user, SPAN_WARNING("You can't reach [effective_title]!"))
+		return FALSE
+	if(!skill || (custom && progress == SKILLBOOK_PROG_NONE))
+		to_chat(user, SPAN_WARNING("[capitalize(effective_title)] is blank!"))
+		return FALSE
+	if(custom && progress < SKILLBOOK_PROG_FINISH)
+		to_chat(user, SPAN_WARNING("[capitalize(effective_title)] is unfinished! You can't learn from it in this state!"))
+		return FALSE
+	if(!ez_read &&!user.skill_check(SKILL_LITERACY, SKILL_BASIC))
+		to_chat(user, SPAN_WARNING(pick(list(
+			"Haha, you know you can't read. Good joke. Put [effective_title] back.",
+			"You open up [effective_title], but there aren't any pictures, so you close it again.",
+			"You don't know how to read! What good is [effective_title] to you?!"
+		))))
+		return FALSE
+
+	if(reading)
+		if(reading.resolve() != user)
+			to_chat(user, SPAN_WARNING("\The [reading.resolve()] is already reading [effective_title]!"))
+		else
+			to_chat(user, SPAN_WARNING("You are already reading [effective_title]!"))
+		return FALSE
 
 	if(user.too_many_buffs(/datum/skill_buff/skill_book))
 		to_chat(user, SPAN_WARNING("You can't read two books at once!"))
-		return
+		return FALSE
 
 	if(!user.skill_check(skill, skill_req))
-		to_chat(user, SPAN_WARNING("[title] is too advanced for you! Try something easier, perhaps the \"For Idiots\" edition?"))
-		return
-	if(user.get_skill_value(skill) > skill_req)
-		to_chat(user, SPAN_WARNING("You already know everything [title] has to teach you!"))
-		return
+		to_chat(user, SPAN_WARNING("[capitalize(title)] is too advanced for you! Try something easier, perhaps the \"For Idiots\" edition?"))
+		return FALSE
 
-	to_chat(user, SPAN_NOTICE("You open up the [name] and start reading..."))
-	if(user.do_skilled(4 SECONDS, SKILL_LITERACY, src, 0.75))
-		var/list/buff = list()
-		buff[skill] = 1
-		user.buff_skill(buff, buff_type = /datum/skill_buff/skill_book)
-		reading = TRUE
-		to_chat(user, SPAN_NOTICE("You find the information you need! Better keep the page open to reference it."))
-	else
-		to_chat(user, SPAN_DANGER("Your perusal of the [name] was interrupted!"))
-		return
+	if(user.get_skill_value(skill) > skill_req)
+		to_chat(user, SPAN_WARNING("You already know everything [effective_title] has to teach you!"))
+		return FALSE
+
+	return TRUE
+
+/obj/item/book/skill/attack_self(mob/user)
+	return try_to_read(user) || ..()
+
+/obj/item/book/skill/verb/read_book()
+	set name = "Read Book"
+	set category = "Object"
+	set src in view(1)
+	try_to_read(usr)
+
+/obj/item/book/skill/proc/try_to_read(mob/user)
+
+	if(istype(user, /mob/observer))
+		to_chat(user, SPAN_WARNING("Ghosts can't read! Go away!"))
+		return TRUE
+
+	if(isturf(loc))
+		user.face_atom(src)
+
+	if(user && user == reading?.resolve())
+		//Close book, get rid of buffs
+		unlearn(user)
+		to_chat(user, SPAN_NOTICE("You close [title]. That's enough learning for now."))
+		reading = null
+		STOP_PROCESSING(SSprocessing, src)
+		return TRUE
+
+	if(!check_can_read(user))
+		return FALSE
+
+	to_chat(user, SPAN_NOTICE("You open up [title] and start reading..."))
+	if(!user.do_skilled(4 SECONDS, SKILL_LITERACY, src, 0.75))
+		to_chat(user, SPAN_DANGER("Your perusal of [title] was interrupted!"))
+		return TRUE
+
+	if(!check_can_read(user))
+		return TRUE
+
+	var/list/buff = list()
+	buff[skill] = 1
+	user.buff_skill(buff, buff_type = /datum/skill_buff/skill_book)
+	reading = weakref(user)
+	to_chat(user, SPAN_NOTICE("You find the information you need! Better keep the page open to reference it."))
+	START_PROCESSING(SSprocessing, src)
+	return TRUE
 
 // buff removal
 /obj/item/book/skill/proc/unlearn(var/mob/user)
@@ -124,19 +181,30 @@ Skill books that increase your skills while you activate and hold them
 	for(var/datum/skill_buff/skill_book/S in F)
 		S.remove()
 
-// Remove buffs when book goes away
-/obj/item/book/skill/dropped(mob/user)
-	if(reading)
-		to_chat(user, SPAN_DANGER("You lose the page you were on! You can't cross-reference using the [name] like this!"))
-		var/mob/M = user
-		if(istype(M) && M.fetch_buffs_of_type(/datum/skill_buff/skill_book, 0))
-			src.unlearn(user)
-		reading = FALSE
-	. = ..()
+/obj/item/book/skill/Process()
+	if(!reading)
+		return PROCESS_KILL
+	check_buff()
+
+/obj/item/book/skill/proc/check_buff()
+	if(!reading)
+		return
+	var/mob/R = reading.resolve()
+	if(!istype(R) || !CanPhysicallyInteract(R))
+		remove_buff()
+
+/obj/item/book/skill/proc/remove_buff()
+	var/mob/R = reading?.resolve()
+	reading = null
+	if(istype(R))
+		to_chat(R, SPAN_DANGER("You lose the page you were on! You can't cross-reference using [title] like this!"))
+		if(R.fetch_buffs_of_type(/datum/skill_buff/skill_book, 0))
+			unlearn(R)
+	STOP_PROCESSING(SSprocessing, src)
+
 /obj/item/book/skill/Destroy()
-	var/mob/M = loc
-	if(istype(M) && M.fetch_buffs_of_type(/datum/skill_buff/skill_book, 0))
-		src.unlearn(M)
+	global.events_repository.unregister(/decl/observ/moved, src, src)
+	remove_buff()
 	. = ..()
 
 /obj/item/book/skill/get_codex_value()
@@ -150,6 +218,7 @@ Skill books that increase your skills while you activate and hold them
 ORGANIZATIONAL
 */
 /obj/item/book/skill/organizational
+	abstract_type = /obj/item/book/skill/organizational
 
 //literacy
 /obj/item/book/skill/organizational/literacy
@@ -159,7 +228,6 @@ ORGANIZATIONAL
 	name = "alphabet book"
 	icon_state = "tb_literacy"
 	author = "Dorothy Mulch"
-	skill_req = SKILL_NONE
 	custom = TRUE
 	w_class = ITEM_SIZE_NORMAL // A little bit smaller c:
 	ez_read = TRUE
@@ -171,7 +239,6 @@ ORGANIZATIONAL
 	icon_state = "tb_finance"
 
 /obj/item/book/skill/organizational/finance/basic
-	skill_req = SKILL_NONE
 	name = "beginner finance textbook"
 
 /obj/item/book/skill/organizational/finance/adept
@@ -190,6 +257,7 @@ ORGANIZATIONAL
 GENERAL
 */
 /obj/item/book/skill/general
+	abstract_type = /obj/item/book/skill/general
 
 //eva
 /obj/item/book/skill/general/eva
@@ -198,7 +266,6 @@ GENERAL
 	author = "Big Dark"
 
 /obj/item/book/skill/general/eva/basic
-	skill_req = SKILL_NONE
 	name = "beginner extra-vehicular activity textbook"
 
 /obj/item/book/skill/general/eva/adept
@@ -220,7 +287,6 @@ GENERAL
 	author = "J.T. Marsh"
 
 /obj/item/book/skill/general/mech/basic
-	skill_req = SKILL_NONE
 	name = "beginner exosuit operation textbook"
 
 /obj/item/book/skill/general/mech/adept
@@ -242,7 +308,6 @@ GENERAL
 	icon_state = "tb_pilot"
 
 /obj/item/book/skill/general/pilot/basic
-	skill_req = SKILL_NONE
 	name = "beginner piloting textbook"
 
 /obj/item/book/skill/general/pilot/adept
@@ -264,7 +329,6 @@ GENERAL
 	icon_state = "tb_hauling"
 
 /obj/item/book/skill/general/hauling/basic
-	skill_req = SKILL_NONE
 	name = "beginner athletics textbook"
 
 /obj/item/book/skill/general/hauling/adept
@@ -286,7 +350,6 @@ GENERAL
 	icon_state = "bookNuclear"
 
 /obj/item/book/skill/general/computer/basic
-	skill_req = SKILL_NONE
 	name = "beginner information technology textbook"
 
 /obj/item/book/skill/general/computer/adept
@@ -305,6 +368,7 @@ GENERAL
 SERVICE
 */
 /obj/item/book/skill/service
+	abstract_type = /obj/item/book/skill/service
 
 //botany
 /obj/item/book/skill/service/botany
@@ -313,7 +377,6 @@ SERVICE
 	author = "Mai Dong Chat"
 
 /obj/item/book/skill/service/botany/basic
-	skill_req = SKILL_NONE
 	name = "beginner botany textbook"
 
 /obj/item/book/skill/service/botany/adept
@@ -335,7 +398,6 @@ SERVICE
 	author = "Lavinia Burrows"
 
 /obj/item/book/skill/service/cooking/basic
-	skill_req = SKILL_NONE
 	name = "beginner cooking textbook"
 
 /obj/item/book/skill/service/cooking/adept
@@ -354,6 +416,7 @@ SERVICE
 SECURITY
 */
 /obj/item/book/skill/security
+	abstract_type = /obj/item/book/skill/security
 	icon_state = "bookSpaceLaw"
 
 //combat
@@ -363,7 +426,6 @@ SECURITY
 	icon_state = "tb_combat"
 
 /obj/item/book/skill/security/combat/basic
-	skill_req = SKILL_NONE
 	name = "beginner close combat textbook"
 
 /obj/item/book/skill/security/combat/adept
@@ -385,7 +447,6 @@ SECURITY
 	icon_state = "tb_weapon"
 
 /obj/item/book/skill/security/weapons/basic
-	skill_req = SKILL_NONE
 	name = "beginner weapons expertise textbook"
 
 /obj/item/book/skill/security/weapons/adept
@@ -407,7 +468,6 @@ SECURITY
 	author = "Samuel Vimes"
 
 /obj/item/book/skill/security/forensics/basic
-	skill_req = SKILL_NONE
 	name = "beginner forensics textbook"
 
 /obj/item/book/skill/security/forensics/adept
@@ -426,6 +486,7 @@ SECURITY
 ENGINEERING
 */
 /obj/item/book/skill/engineering
+	abstract_type = /obj/item/book/skill/engineering
 	icon_state = "bookEngineering"
 
 //construction
@@ -434,7 +495,6 @@ ENGINEERING
 	skill = SKILL_CONSTRUCTION
 
 /obj/item/book/skill/engineering/construction/basic
-	skill_req = SKILL_NONE
 	name = "beginner construction textbook"
 
 /obj/item/book/skill/engineering/construction/adept
@@ -455,7 +515,6 @@ ENGINEERING
 	author = "Ariana Vanderbalt"
 
 /obj/item/book/skill/engineering/electrical/basic
-	skill_req = SKILL_NONE
 	name = "beginner electrical engineering textbook"
 
 /obj/item/book/skill/engineering/electrical/adept
@@ -477,7 +536,6 @@ ENGINEERING
 	icon_state = "pipingbook"
 
 /obj/item/book/skill/engineering/atmos/basic
-	skill_req = SKILL_NONE
 	name = "beginner atmospherics textbook"
 
 /obj/item/book/skill/engineering/atmos/adept
@@ -498,7 +556,6 @@ ENGINEERING
 	author = "Gilgamesh Scholz"
 
 /obj/item/book/skill/engineering/engines/basic
-	skill_req = SKILL_NONE
 	name = "beginner engines textbook"
 
 /obj/item/book/skill/engineering/engines/adept
@@ -527,6 +584,7 @@ ENGINEERING
 RESEARCH
 */
 /obj/item/book/skill/research
+	abstract_type = /obj/item/book/skill/research
 	icon_state = "analysis"
 
 //devices
@@ -535,7 +593,6 @@ RESEARCH
 	skill = SKILL_DEVICES
 
 /obj/item/book/skill/research/devices/basic
-	skill_req = SKILL_NONE
 	name = "beginner complex devices textbook"
 
 /obj/item/book/skill/research/devices/adept
@@ -556,7 +613,6 @@ RESEARCH
 	skill = SKILL_SCIENCE
 
 /obj/item/book/skill/research/science/basic
-	skill_req = SKILL_NONE
 	name = "beginner science textbook"
 
 /obj/item/book/skill/research/science/adept
@@ -575,6 +631,7 @@ RESEARCH
 MEDICAL
 */
 /obj/item/book/skill/medical
+	abstract_type = /obj/item/book/skill/medical
 	icon_state = "bookMedical"
 
 //chemistry
@@ -584,7 +641,6 @@ MEDICAL
 	skill = SKILL_CHEMISTRY
 
 /obj/item/book/skill/medical/chemistry/basic
-	skill_req = SKILL_NONE
 	name = "beginner chemistry textbook"
 
 /obj/item/book/skill/medical/chemistry/adept
@@ -605,7 +661,6 @@ MEDICAL
 	skill = SKILL_MEDICAL
 
 /obj/item/book/skill/medical/medicine/basic
-	skill_req = SKILL_NONE
 	name = "beginner medicine textbook"
 	title = "\"Instructional Guide on How Rubbing Dirt In Wounds Might Not Be The Right Approach To Stopping Bleeding Anymore\""
 	desc = "A copy of \"Instructional Guide on How Rubbing Dirt In Wounds Might Not Be The Right Approach To Stopping Bleeding Anymore\" by Dr. Merrs. Despite the information density of this heavy book, it lacks any and all teachings regarding bedside manner."
@@ -630,7 +685,6 @@ MEDICAL
 	skill = SKILL_ANATOMY
 
 /obj/item/book/skill/medical/anatomy/basic
-	skill_req = SKILL_NONE
 	name = "beginner anatomy textbook"
 
 /obj/item/book/skill/medical/anatomy/adept
@@ -705,7 +759,7 @@ MEDICAL
 	icon_state = "tb_white_question"
 
 /obj/item/book/skill/custom/attackby(obj/item/pen, mob/user)
-	if(istype(pen, /obj/item/pen))
+	if(IS_PEN(pen))
 
 		if(!user.skill_check(SKILL_LITERACY, SKILL_BASIC))
 			to_chat(user, SPAN_WARNING("You can't even read, yet you want to write a whole educational textbook?"))
@@ -752,7 +806,7 @@ MEDICAL
 		return FALSE
 
 /obj/item/book/skill/custom/proc/edit_title(var/obj/item/pen, var/mob/user)
-	var/newtitle = reject_bad_text(sanitizeSafe(input(user, "Write a new title:")))
+	var/newtitle = reject_bad_text(sanitize_safe(input(user, "Write a new title:")))
 	if(!can_write(pen,user))
 		return
 	if(!newtitle)
@@ -783,7 +837,7 @@ MEDICAL
 
 	//Choosing the skill
 	var/list/skill_choices = list()
-	for(var/decl/hierarchy/skill/S in GLOB.skills)
+	for(var/decl/hierarchy/skill/S in global.skills)
 		if(user.skill_check(S.type, SKILL_BASIC))
 			LAZYADD(skill_choices, S)
 	var/decl/hierarchy/skill/skill_choice = input(user, "What subject does your textbook teach?", "Textbook skill selection") as null|anything in skill_choices

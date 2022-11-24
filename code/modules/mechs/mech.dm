@@ -12,7 +12,8 @@
 	status_flags = PASSEMOTES
 	a_intent =     I_HURT
 	mob_size =     MOB_SIZE_LARGE
-	
+	atom_flags = ATOM_FLAG_SHIELD_CONTENTS | ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_BLOCK_DIAGONAL_FACING
+
 	meat_type = null
 	meat_amount = 0
 	skin_material = null
@@ -66,9 +67,27 @@
 	// Interface stuff.
 	var/list/hud_elements = list()
 	var/list/hardpoint_hud_elements = list()
-	var/obj/screen/movable/exosuit/health/hud_health
-	var/obj/screen/movable/exosuit/toggle/hatch_open/hud_open
-	var/obj/screen/movable/exosuit/power/hud_power
+	var/obj/screen/exosuit/health/hud_health
+	var/obj/screen/exosuit/toggle/hatch_open/hud_open
+	var/obj/screen/exosuit/power/hud_power
+	var/obj/screen/exosuit/heat/hud_heat
+	var/obj/screen/exosuit/toggle/power_control/hud_power_control
+	var/obj/screen/exosuit/toggle/camera/hud_camera
+	//POWER
+	var/power = MECH_POWER_OFF
+
+	var/mob/living/current_user = null
+
+
+//Pixel projectiles need a client, so we need a way to pass who the last user was for view calcs
+/mob/living/proc/get_effective_gunner()
+	return src
+
+/mob/living/exosuit/get_effective_gunner()
+	return current_user
+
+/mob/living/exosuit/can_be_buckled(mob/user)
+	return FALSE
 
 /mob/living/exosuit/is_flooded(lying_mob, absolute)
 	. = (body && body.pilot_coverage >= 100 && hatch_closed) ? FALSE : ..()
@@ -78,8 +97,7 @@
 
 	if(!access_card) access_card = new (src)
 
-	pixel_x = default_pixel_x
-	pixel_y = default_pixel_y
+	reset_offsets(0)
 	sparks = new(src)
 
 	// Grab all the supplied components.
@@ -130,11 +148,18 @@
 
 	for(var/thing in pilots)
 		var/mob/pilot = thing
-		if(pilot.client)
+		if(pilot && pilot.client)
 			pilot.client.screen -= hud_elements
 			pilot.client.images -= hud_elements
 		pilot.forceMove(get_turf(src))
 	pilots = null
+
+	hud_health = null
+	hud_open = null
+	hud_power = null
+	hud_heat = null
+	hud_power_control = null
+	hud_camera = null
 
 	for(var/thing in hud_elements)
 		qdel(thing)
@@ -151,7 +176,7 @@
 	QDEL_NULL(body)
 
 	for(var/hardpoint in hardpoint_hud_elements)
-		var/obj/screen/movable/exosuit/hardpoint/H = hardpoint_hud_elements[hardpoint]
+		var/obj/screen/exosuit/hardpoint/H = hardpoint_hud_elements[hardpoint]
 		H.owner = null
 		H.holding = null
 		qdel(H)
@@ -163,6 +188,8 @@
 	. = ..()
 	if(LAZYLEN(pilots) && (!hatch_closed || body.pilot_coverage < 100 || body.transparent_cabin))
 		to_chat(user, "It is being piloted by [english_list(pilots, nothing_text = "nobody")].")
+	if(body && LAZYLEN(body.pilot_positions))
+		to_chat(user, "It can seat [body.pilot_positions.len] pilot\s total.")
 	if(hardpoints.len)
 		to_chat(user, "It has the following hardpoints:")
 		for(var/hardpoint in hardpoints)
@@ -174,31 +201,45 @@
 	for(var/obj/item/mech_component/thing in list(arms, legs, head, body))
 		if(!thing)
 			continue
-		var/damage_string = "destroyed"
-		switch(thing.damage_state)
-			if(MECH_COMPONENT_DAMAGE_UNDAMAGED)
-				damage_string = "undamaged"
-			if(MECH_COMPONENT_DAMAGE_DAMAGED)
-				damage_string = "damaged"
-			if(MECH_COMPONENT_DAMAGE_DAMAGED_BAD)
-				damage_string = "badly damaged"
-			if(MECH_COMPONENT_DAMAGE_DAMAGED_TOTAL)
-				damage_string = "almost destroyed"
+
+		var/damage_string = thing.get_damage_string()
 		to_chat(user, "Its [thing.name] [thing.gender == PLURAL ? "are" : "is"] [damage_string].")
 
 	to_chat(user, "It menaces with reinforcements of [material].")
 
 /mob/living/exosuit/return_air()
-	return (body && body.pilot_coverage >= 100 && hatch_closed) ? body.cockpit : loc.return_air()
+	return (body && body.pilot_coverage >= 100 && hatch_closed && body.cockpit) ? body.cockpit : loc.return_air()
 
-/mob/living/exosuit/GetIdCard()
-	return access_card
+/mob/living/exosuit/GetIdCards()
+	. = ..()
+	if(istype(access_card))
+		LAZYDISTINCTADD(., access_card)
 
 /mob/living/exosuit/set_dir()
 	. = ..()
 	if(.)
 		update_pilots()
 
-		
+/mob/living/exosuit/increaseBodyTemp(value)
+	bodytemperature += value
+	return bodytemperature
 
-
+/mob/living/exosuit/proc/toggle_power(var/mob/user)
+	if(power == MECH_POWER_TRANSITION)
+		to_chat(user, SPAN_NOTICE("Power transition in progress. Please wait."))
+	else if(power == MECH_POWER_ON) //Turning it off is instant
+		playsound(src, 'sound/mecha/mech-shutdown.ogg', 100, 0)
+		power = MECH_POWER_OFF
+	else if(get_cell(TRUE))
+		//Start power up sequence
+		power = MECH_POWER_TRANSITION
+		playsound(src, 'sound/mecha/powerup.ogg', 50, 0)
+		if(user.do_skilled(1.5 SECONDS, SKILL_MECH, src, 0.5) && power == MECH_POWER_TRANSITION)
+			playsound(src, 'sound/mecha/nominal.ogg', 50, 0)
+			power = MECH_POWER_ON
+		else
+			to_chat(user, SPAN_WARNING("You abort the powerup sequence."))
+			power = MECH_POWER_OFF
+		hud_power_control?.queue_icon_update()
+	else
+		to_chat(user, SPAN_WARNING("Error: No power cell was detected."))

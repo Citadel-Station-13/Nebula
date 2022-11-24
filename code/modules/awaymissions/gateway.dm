@@ -47,7 +47,7 @@
 
 
 
-obj/machinery/gateway/centerstation/Process()
+/obj/machinery/gateway/centerstation/Process()
 	if(stat & (NOPOWER))
 		if(active) toggleoff()
 		return
@@ -60,7 +60,7 @@ obj/machinery/gateway/centerstation/Process()
 	linked = list()	//clear the list
 	var/turf/T = loc
 
-	for(var/i in GLOB.alldirs)
+	for(var/i in global.alldirs)
 		T = get_step(loc, i)
 		var/obj/machinery/gateway/G = locate(/obj/machinery/gateway) in T
 		if(G)
@@ -77,9 +77,12 @@ obj/machinery/gateway/centerstation/Process()
 
 
 /obj/machinery/gateway/centerstation/proc/toggleon(mob/user)
-	if(!ready)			return
-	if(linked.len != 8)	return
-	if(!powered())		return
+	if(!ready)
+		return
+	if(linked.len != 8)
+		return
+	if(stat & NOPOWER)
+		return
 	if(!awaygate)
 		to_chat(user, "<span class='notice'>Error: No destination found.</span>")
 		return
@@ -121,15 +124,9 @@ obj/machinery/gateway/centerstation/Process()
 		M.forceMove(get_step(awaygate.loc, SOUTH))
 		M.set_dir(SOUTH)
 		return
-	else
-		var/obj/effect/landmark/dest = pick(GLOB.awaydestinations)
-		if(dest)
-			M.forceMove(dest.loc)
-			M.set_dir(SOUTH)
-			use_power_oneoff(5000)
 
 /obj/machinery/gateway/centerstation/attackby(obj/item/W, mob/user)
-	if(isMultitool(W))
+	if(IS_MULTITOOL(W))
 		to_chat(user, "The gate is already calibrated, there is no work for you to do here.")
 		return
 
@@ -162,7 +159,7 @@ obj/machinery/gateway/centerstation/Process()
 	linked = list()	//clear the list
 	var/turf/T = loc
 
-	for(var/i in GLOB.alldirs)
+	for(var/i in global.alldirs)
 		T = get_step(loc, i)
 		var/obj/machinery/gateway/G = locate(/obj/machinery/gateway) in T
 		if(G)
@@ -221,7 +218,7 @@ obj/machinery/gateway/centerstation/Process()
 	M.set_dir(SOUTH)
 
 /obj/machinery/gateway/centeraway/attackby(obj/item/W, mob/user)
-	if(isMultitool(W))
+	if(IS_MULTITOOL(W))
 		if(calibrated)
 			to_chat(user, "The gate is already calibrated, there is no work for you to do here.")
 			return

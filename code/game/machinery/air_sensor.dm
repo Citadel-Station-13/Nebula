@@ -1,6 +1,6 @@
 /obj/machinery/air_sensor
 	name = "gas sensor"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/gas_sensor.dmi'
 	icon_state = "gsensor1"
 	anchored = TRUE
 
@@ -25,7 +25,7 @@
 	uncreated_component_parts = null
 
 /obj/machinery/air_sensor/on_update_icon()
-	if(!powered())
+	if(stat & NOPOWER)
 		icon_state = "gsensor0"
 	else
 		icon_state = "gsensor[use_power]"
@@ -47,7 +47,7 @@
 		return
 	. = list()
 	for(var/gas in air_sample.gas)
-		var/decl/material/mat = decls_repository.get_decl(gas)			
+		var/decl/material/mat = GET_DECL(gas)			
 		var/gaspercent = round(air_sample.gas[gas]*100/total_moles,0.01)
 		var/gas_list = list("symbol" = mat.gas_symbol_html, "percent" = gaspercent)
 		. += list(gas_list)
@@ -91,7 +91,7 @@
 	frequency = ATMOS_ENGINE_FREQ
 
 /obj/machinery/air_sensor/dist
-	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/air_sensor/engine = 1)
+	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/air_sensor/dist = 1)
 
-/decl/stock_part_preset/radio/basic_transmitter/air_sensor/engine
+/decl/stock_part_preset/radio/basic_transmitter/air_sensor/dist
 	frequency = ATMOS_DIST_FREQ

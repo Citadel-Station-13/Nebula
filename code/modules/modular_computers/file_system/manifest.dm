@@ -1,16 +1,10 @@
 // Generates a simple HTML crew manifest for use in various places
-/proc/html_crew_manifest(var/monochrome, var/OOC, records = GLOB.all_crew_records)
+/proc/html_crew_manifest(var/monochrome, var/OOC, records = global.all_crew_records)
 	var/list/dept_data = list()
-	var/list/dept_list = SSdepartments.departments
-	for(var/dept_key in dept_list)
-		var/datum/department/dept = dept_list[dept_key]
-		dept_data += list(list("names" = list(), "header" = dept.title, "ref" = dept.reference))
-	
-	
-	var/list/misc //Special departments for easier access
-	for(var/list/department in dept_data)
-		if(department["ref"] == "misc")
-			misc = department["names"]
+	var/list/all_departments = decls_repository.get_decls_of_subtype(/decl/department)
+	for(var/dtype in all_departments)
+		var/decl/department/dept = all_departments[dtype]
+		dept_data += list(list("names" = list(), "header" = dept.name, "ref" = dept.type))
 
 	var/list/isactive = new()
 	var/list/mil_ranks = list() // HTML to prepend to name
@@ -32,7 +26,7 @@
 		var/rank = CR.get_job()
 		mil_ranks[name] = ""
 
-		if(GLOB.using_map.flags & MAP_HAS_RANK)
+		if(global.using_map.flags & MAP_HAS_RANK)
 			var/datum/mil_branch/branch_obj = mil_branches.get_branch(CR.get_branch())
 			var/datum/mil_rank/rank_obj = mil_branches.get_rank(CR.get_branch(), CR.get_rank())
 
@@ -41,7 +35,7 @@
 
 		if(OOC)
 			var/active = 0
-			for(var/mob/M in GLOB.player_list)
+			for(var/mob/M in global.player_list)
 				var/mob_real_name = M.real_name
 				if(sanitize(mob_real_name) == CR.get_name() && M.client && M.client.inactivity <= 10 MINUTES)
 					active = 1
@@ -51,15 +45,11 @@
 			isactive[name] = CR.get_status()
 
 		var/datum/job/job = SSjobs.get_by_title(rank)
-		var/found_place = 0
 		if(job)
 			for(var/list/department in dept_data)
 				var/list/names = department["names"]
-				if(department["ref"] in job.department_refs)
+				if(department["ref"] in job.department_types)
 					names[name] = rank
-					found_place = 1
-		if(!found_place)
-			misc[name] = rank
 
 	for(var/list/department in dept_data)
 		var/list/names = department["names"]
@@ -73,7 +63,7 @@
 	dat = replacetext(dat, "\t", "")
 	return dat
 
-/proc/silicon_nano_crew_manifest(var/list/filter)
+/proc/silicon_nano_crew_manifest()
 	var/list/filtered_entries = list()
 
 	for(var/mob/living/silicon/ai/ai in SSmobs.mob_list)
@@ -105,15 +95,13 @@
 	return filtered_entries
 
 /proc/nano_crew_manifest()
-	var/list/dept_data 
-	var/list/dept_list = SSdepartments.departments
-	for(var/dept_key in dept_list)
-		var/datum/department/dept = dept_list[dept_key]
-		dept_data += list("[dept.reference]" = filtered_nano_crew_manifest(SSjobs.titles_by_department(dept.reference))) 
-	return dept_data
-	
+	. = list()
+	var/list/all_departments = decls_repository.get_decls_of_subtype(/decl/department)
+	for(var/dtype in all_departments)
+		var/decl/department/dept = GET_DECL(dtype)
+		.[dept.name] = filtered_nano_crew_manifest(SSjobs.titles_by_department(dtype))
 
 /proc/flat_nano_crew_manifest()
 	. = list()
 	. += filtered_nano_crew_manifest(null, TRUE)
-	. += silicon_nano_crew_manifest(SSjobs.titles_by_department("misc"))
+	. += silicon_nano_crew_manifest()

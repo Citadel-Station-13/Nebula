@@ -16,15 +16,11 @@
 	var/opened = TRUE
 	var/obj/item/cell/battery // Internal cell which most circuits need to work.
 	var/cell_type = /obj/item/cell
-	var/can_charge = TRUE //Can it be charged in a recharger?
 	var/circuit_flags = IC_FLAG_ANCHORABLE
-	var/charge_sections = 4
-	var/charge_delay = 4
 	var/ext_next_use = 0
 	var/weakref/collw
 	var/allowed_circuit_action_flags = IC_ACTION_COMBAT | IC_ACTION_LONG_RANGE //which circuit flags are allowed
 	var/creator // circuit creator if any
-	var/static/next_assembly_id = 0
 	var/interact_page = 0
 	var/components_per_page = 5
 	health = 30
@@ -66,8 +62,8 @@
 		to_chat(user, "You can <a href='?src=\ref[src];ghostscan=1'>scan</a> this circuit.");
 
 
-/obj/item/electronic_assembly/proc/take_damage(var/amnt)
-	health = health - amnt
+/obj/item/electronic_assembly/take_damage(amount, damtype, silent)
+	health = health - amount
 	if(health <= 0)
 		visible_message("<span class='danger'>\The [src] falls to pieces!</span>")
 		qdel(src)
@@ -94,7 +90,7 @@
 
 /obj/item/electronic_assembly/create_matter()
 	..()
-	LAZYSET(matter, MAT_STEEL, round((max_complexity + max_components) / 4) * SScircuit.cost_multiplier)
+	LAZYSET(matter, /decl/material/solid/metal/steel, round((max_complexity + max_components) / 4) * SScircuit.cost_multiplier)
 
 /obj/item/electronic_assembly/Initialize()
 	. = ..()
@@ -123,11 +119,11 @@
 			if(power_failure || !draw_power(IC.power_draw_idle))
 				IC.power_fail()
 
-/obj/item/electronic_assembly/MouseDrop_T(atom/dropping, mob/user)
-	if(user == dropping)
+/obj/item/electronic_assembly/receive_mouse_drop(atom/dropping, mob/user)
+	. = ..()
+	if(!. && user == dropping)
 		interact(user)
-	else
-		..()
+		return TRUE
 
 /obj/item/electronic_assembly/interact(mob/user)
 	if(!check_interactivity(user))
@@ -164,6 +160,8 @@
 	if(listed_components)
 		show_browser(user, jointext(HTML,null), "window=closed-assembly-\ref[src];size=600x350;border=1;can_resize=1;can_close=1;can_minimize=1")
 
+/obj/item/electronic_assembly/get_assembly_detail_color()
+	return detail_color
 
 /obj/item/electronic_assembly/proc/open_interact(mob/user)
 	var/total_part_size = return_total_size()
@@ -198,7 +196,7 @@
 
 		if(length(assembly_components) > components_per_page)
 			HTML += "<br>\["
-			for(var/i = 1 to ceil(length(assembly_components)/components_per_page))
+			for(var/i = 1 to CEILING(length(assembly_components)/components_per_page))
 				if((i-1) == interact_page)
 					HTML += " [i]"
 				else
@@ -273,7 +271,7 @@
 	if(!check_interactivity(M))
 		return
 	var/input = input("What do you want to name this?", "Rename", src.name) as null|text
-	input = sanitizeName(input,allow_numbers = 1)
+	input = sanitize_name(input,allow_numbers = 1)
 	if(!check_interactivity(M))
 		return
 	if(!QDELETED(src) && input)
@@ -287,16 +285,14 @@
 	return FALSE
 
 /obj/item/electronic_assembly/on_update_icon()
+	. = ..()
 	if(opened)
 		icon_state = initial(icon_state) + "-open"
 	else
 		icon_state = initial(icon_state)
-	overlays.Cut()
 	if(detail_color == COLOR_ASSEMBLY_BLACK) //Black colored overlay looks almost but not exactly like the base sprite, so just cut the overlay and avoid it looking kinda off.
 		return
-	var/image/detail_overlay = image('icons/obj/assemblies/electronic_setups.dmi', src,"[icon_state]-color")
-	detail_overlay.color = detail_color
-	overlays += detail_overlay
+	add_overlay(overlay_image('icons/obj/assemblies/electronic_setups.dmi', "[icon_state]-color", detail_color))
 
 /obj/item/electronic_assembly/examine(mob/user)
 	. = ..()
@@ -388,7 +384,7 @@
 	add_allowed_scanner(user.ckey)
 
 	// Make sure we're not on an invalid page
-	interact_page = Clamp(interact_page, 0, ceil(length(assembly_components)/components_per_page)-1)
+	interact_page = clamp(interact_page, 0, CEILING(length(assembly_components)/components_per_page)-1)
 
 	return TRUE
 
@@ -410,9 +406,9 @@
 				visible_message("<span class='notice'>\The [user] points \the [src] towards \the [target].</span>")
 
 
-/obj/item/electronic_assembly/attackby(obj/item/I, mob/living/user)
-	if(istype(I, /obj/item/wrench))
-		if(istype(loc, /turf) && (IC_FLAG_ANCHORABLE & circuit_flags))
+/obj/item/electronic_assembly/attackby(obj/item/I, mob/user)
+	if(IS_WRENCH(I))
+		if(isturf(loc) && (IC_FLAG_ANCHORABLE & circuit_flags))
 			user.visible_message("\The [user] wrenches \the [src]'s anchoring bolts [anchored ? "back" : "into position"].")
 			playsound(get_turf(user), 'sound/items/Ratchet.ogg',50)
 			if(user.do_skilled(5 SECONDS, SKILL_CONSTRUCTION, src))
@@ -426,7 +422,7 @@
 			for(var/obj/item/integrated_circuit/input/S in assembly_components)
 				S.attackby_react(I,user,user.a_intent)
 			return ..()
-	else if(istype(I, /obj/item/multitool) || istype(I, /obj/item/integrated_electronics/wirer) || istype(I, /obj/item/integrated_electronics/debugger))
+	else if(IS_MULTITOOL(I) || istype(I, /obj/item/integrated_electronics/wirer) || istype(I, /obj/item/integrated_electronics/debugger))
 		if(opened)
 			interact(user)
 			return TRUE
@@ -459,7 +455,7 @@
 		var/obj/item/integrated_electronics/detailer/D = I
 		detail_color = D.detail_color
 		update_icon()
-	else if(istype(I, /obj/item/screwdriver))
+	else if(IS_SCREWDRIVER(I))
 		var/hatch_locked = FALSE
 		for(var/obj/item/integrated_circuit/manipulation/hatchlock/H in assembly_components)
 			// If there's more than one hatch lock, only one needs to be enabled for the assembly to be locked
@@ -475,10 +471,10 @@
 		opened = !opened
 		to_chat(user, "<span class='notice'>You [opened ? "open" : "close"] the maintenance hatch of [src].</span>")
 		update_icon()
-	else if(isCoil(I))
+	else if(IS_COIL(I))
 		var/obj/item/stack/cable_coil/C = I
 		if(health != initial(health) && do_after(user, 10, src) && C.use(1))
-			user.visible_message("\The [user] patches up \the [src]")
+			user.visible_message("\The [user] patches up \the [src].")
 			health = min(initial(health), health + 5)
 	else
 		if(user.a_intent == I_HURT) // Kill it
@@ -546,13 +542,13 @@
 	name = "type-e electronic assembly"
 	icon_state = "setup_small_hook"
 	desc = "It's a case, for building small electronics with. This one looks like it has a belt clip."
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 
 /obj/item/electronic_assembly/pda
 	name = "type-f electronic assembly"
 	icon_state = "setup_small_pda"
 	desc = "It's a case, for building small electronics with. This one resembles a PDA."
-	slot_flags = SLOT_BELT | SLOT_ID
+	slot_flags = SLOT_LOWER_BODY | SLOT_ID
 
 /obj/item/electronic_assembly/augment
 	name = "augment electronic assembly"
@@ -568,6 +564,7 @@
 	max_components = IC_MAX_SIZE_BASE * 2
 	max_complexity = IC_COMPLEXITY_BASE * 2
 	health = 20
+	max_health = 20
 
 /obj/item/electronic_assembly/medium/default
 	name = "type-a electronic mechanism"
@@ -607,6 +604,7 @@
 	max_components = IC_MAX_SIZE_BASE * 4
 	max_complexity = IC_COMPLEXITY_BASE * 4
 	health = 30
+	max_health = 30
 
 /obj/item/electronic_assembly/large/default
 	name = "type-a electronic machine"
@@ -646,6 +644,7 @@
 	allowed_circuit_action_flags = IC_ACTION_MOVEMENT | IC_ACTION_COMBAT | IC_ACTION_LONG_RANGE
 	circuit_flags = 0
 	health = 50
+	max_health = 50
 
 /obj/item/electronic_assembly/drone/can_move()
 	return TRUE
@@ -686,6 +685,7 @@
 	max_components = IC_MAX_SIZE_BASE * 2
 	max_complexity = IC_COMPLEXITY_BASE * 2
 	health = 10
+	max_health = 10
 
 /obj/item/electronic_assembly/wallmount/afterattack(var/atom/a, var/mob/user, var/proximity)
 	if(proximity && istype(a ,/turf) && a.density)
@@ -712,7 +712,7 @@
 
 /obj/item/electronic_assembly/wallmount/proc/mount_assembly(turf/on_wall, mob/user) //Yeah, this is admittedly just an abridged and kitbashed version of the wallframe attach procs.
 	var/ndir = get_dir(on_wall, user)
-	if(!(ndir in GLOB.cardinal))
+	if(!(ndir in global.cardinal))
 		return
 	var/turf/T = get_turf(user)
 	if(T.density)
@@ -729,20 +729,21 @@
 		var/matrix/M = matrix()
 		switch(ndir)
 			if(NORTH)
-				pixel_y = -32
-				pixel_x = 0
+				default_pixel_y = -32
+				default_pixel_x = 0
 				M.Turn(180)
 			if(SOUTH)
-				pixel_y = 21
-				pixel_x = 0
+				default_pixel_y = 21
+				default_pixel_x = 0
 			if(EAST)
-				pixel_x = -27
-				pixel_y = 0
+				default_pixel_x = -27
+				default_pixel_y = 0
 				M.Turn(270)
 			if(WEST)
-				pixel_x = 27
-				pixel_y = 0
+				default_pixel_x = 27
+				default_pixel_y = 0
 				M.Turn(90)
+		reset_offsets(0)
 		transform = M
 
 #undef IC_MAX_SIZE_BASE

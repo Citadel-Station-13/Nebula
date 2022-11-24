@@ -8,7 +8,7 @@
 /obj/item/implant/death_alarm/get_data()
 	return {"
 	<b>Implant Specifications:</b><BR>
-	<b>Name:</b> [GLOB.using_map.company_name] \"Profit Margin\" Class Employee Lifesign Sensor<BR>
+	<b>Name:</b> [global.using_map.company_name] \"Profit Margin\" Class Employee Lifesign Sensor<BR>
 	<b>Life:</b> Activates upon death.<BR>
 	<b>Important Notes:</b> Alerts crew to crewmember death.<BR>
 	<HR>
@@ -32,20 +32,17 @@
 /obj/item/implant/death_alarm/activate(var/cause = "emp")
 	if(malfunction) return
 	var/mob/M = imp_in
-	var/area/t = get_area(M)
-	var/location = t.name
+	var/area/location = get_area(M)
 	if (cause == "emp" && prob(50))
-		location =  pick(teleportlocs)
-	if(!t.requires_power) // We assume areas that don't use power are some sort of special zones
-		var/area/default = world.area
-		location = initial(default.name)
-	var/death_message = "[mobname] has died in [location]!"
+		location = pick(teleportlocs)
+	var/death_message = "[mobname] has died in [location.proper_name]!"
 	if(!cause)
 		death_message = "[mobname] has died-zzzzt in-in-in..."
 	STOP_PROCESSING(SSobj, src)
 
 	for(var/channel in list("Security", "Medical", "Command"))
-		GLOB.global_headset.autosay(death_message, "[mobname]'s Death Alarm", channel)
+		var/obj/item/radio/headset = get_global_headset()
+		headset.autosay(death_message, "[mobname]'s Death Alarm", channel)
 
 /obj/item/implant/death_alarm/disable()
 	. = ..()

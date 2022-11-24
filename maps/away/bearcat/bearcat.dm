@@ -2,7 +2,7 @@
 #include "bearcat_jobs.dm"
 #include "bearcat_access.dm"
 
-/obj/effect/submap_landmark/joinable_submap/bearcat
+/obj/abstract/submap_landmark/joinable_submap/bearcat
 	name = "FTV Bearcat"
 	archetype = /decl/submap_archetype/derelict/bearcat
 
@@ -25,13 +25,12 @@
 	name = "[pick("FTV","ITV","IEV")] [pick("Bearcat", "Firebug", "Defiant", "Unsinkable","Horizon","Vagrant")]"
 	for(var/area/ship/scrap/A)
 		A.name = "\improper [name] - [A.name]"
-		GLOB.using_map.area_purity_test_exempt_areas += A.type
+		global.using_map.area_purity_test_exempt_areas += A.type
 	name = "[name], \a [initial(name)]"
 	. = ..()
 
 /datum/map_template/ruin/away_site/bearcat_wreck
 	name = "Bearcat Wreck"
-	id = "awaysite_bearcat_wreck"
 	description = "A wrecked light freighter."
 	suffixes = list("bearcat/bearcat-1.dmm", "bearcat/bearcat-2.dmm")
 	cost = 1
@@ -83,20 +82,6 @@
 	base_area = /area/ship/scrap/cargo/lower
 	base_turf = /turf/simulated/floor
 
-/obj/machinery/power/apc/derelict
-	lighting = 0
-	equipment = 0
-	environ = 0
-	locked = 0
-	uncreated_component_parts = list(
-		/obj/item/cell/crap/empty
-	)
-
-/obj/machinery/power/apc/derelict/full
-	uncreated_component_parts = list(
-		/obj/item/cell/crap
-	)
-
 /obj/machinery/door/airlock/autoname/command
 	door_color = COLOR_COMMAND_BLUE
 
@@ -104,26 +89,26 @@
 	door_color = COLOR_AMBER
 
 /turf/simulated/floor/usedup
-	initial_gas = list(MAT_CO2 = MOLES_O2STANDARD, MAT_NITROGEN = MOLES_N2STANDARD)
+	initial_gas = list(/decl/material/gas/carbon_dioxide = MOLES_O2STANDARD, /decl/material/gas/nitrogen = MOLES_N2STANDARD)
 
 /turf/simulated/floor/tiled/usedup
-	initial_gas = list(MAT_CO2 = MOLES_O2STANDARD, MAT_NITROGEN = MOLES_N2STANDARD)
+	initial_gas = list(/decl/material/gas/carbon_dioxide = MOLES_O2STANDARD, /decl/material/gas/nitrogen = MOLES_N2STANDARD)
 
 /turf/simulated/floor/tiled/dark/usedup
-	initial_gas = list(MAT_CO2 = MOLES_O2STANDARD, MAT_NITROGEN = MOLES_N2STANDARD)
+	initial_gas = list(/decl/material/gas/carbon_dioxide = MOLES_O2STANDARD, /decl/material/gas/nitrogen = MOLES_N2STANDARD)
 
 /turf/simulated/floor/tiled/white/usedup
-	initial_gas = list(MAT_CO2 = MOLES_O2STANDARD, MAT_NITROGEN = MOLES_N2STANDARD)
+	initial_gas = list(/decl/material/gas/carbon_dioxide = MOLES_O2STANDARD, /decl/material/gas/nitrogen = MOLES_N2STANDARD)
 
-/obj/effect/landmark/deadcap
+/obj/abstract/landmark/deadcap
 	name = "Dead Captain"
 
-/obj/effect/landmark/deadcap/Initialize()
+/obj/abstract/landmark/deadcap/Initialize()
 	..()
 	return INITIALIZE_HINT_LATELOAD
 
 // chair may need to init first
-/obj/effect/landmark/deadcap/LateInitialize()
+/obj/abstract/landmark/deadcap/LateInitialize()
 	..()
 	var/turf/T = get_turf(src)
 	var/mob/living/carbon/human/corpse = new(T)
@@ -141,14 +126,14 @@
 
 /decl/hierarchy/outfit/deadcap
 	name = "Derelict Captain"
-	uniform = /obj/item/clothing/under/casual_pants/classicjeans
-	suit = /obj/item/clothing/suit/storage/hooded/wintercoat
+	uniform = /obj/item/clothing/pants/baggy/casual/classicjeans
+	suit = /obj/item/clothing/suit/storage/toggle/wintercoat
 	shoes = /obj/item/clothing/shoes/color/black
 	r_pocket = /obj/item/radio
 
 /decl/hierarchy/outfit/deadcap/post_equip(mob/living/carbon/human/H)
 	..()
-	var/obj/item/clothing/uniform = H.w_uniform
+	var/obj/item/clothing/uniform = H.get_equipped_item(slot_w_uniform_str)
 	if(uniform)
 		var/obj/item/clothing/accessory/toggleable/hawaii/random/eyegore = new()
 		if(uniform.can_attach_accessory(eyegore))
@@ -156,4 +141,4 @@
 		else
 			qdel(eyegore)
 	var/obj/item/cell/super/C = new()
-	H.put_in_any_hand_if_possible(C)
+	H.put_in_hands(C)

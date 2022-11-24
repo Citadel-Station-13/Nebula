@@ -1,63 +1,81 @@
+var/global/list/wall_blend_objects = list(
+	/obj/machinery/door,
+	/obj/structure/wall_frame,
+	/obj/structure/grille,
+	/obj/structure/window/reinforced/full,
+	/obj/structure/window/reinforced/polarized/full,
+	/obj/structure/window/shuttle,
+	/obj/structure/window/borosilicate/full,
+	/obj/structure/window/borosilicate_reinforced/full
+)
+var/global/list/wall_noblend_objects = list(
+	/obj/machinery/door/window
+)
+var/global/list/wall_fullblend_objects = list(
+	/obj/structure/wall_frame
+)
+
 /turf/simulated/wall
 	name = "wall"
 	desc = "A huge chunk of metal used to seperate rooms."
-	icon = 'icons/turf/wall_masks.dmi'
-	icon_state = "generic"
+	icon = 'icons/turf/walls/_previews.dmi'
+	icon_state = "solid"
 	opacity = 1
 	density = 1
 	blocks_air = 1
 	thermal_conductivity = WALL_HEAT_TRANSFER_COEFFICIENT
 	heat_capacity = 312500 //a little over 5 cm thick , 312500 for 1 m by 2.5 m by 0.25 m plasteel wall
 	explosion_resistance = 10
+	color = COLOR_GRAY40
+	atom_flags = ATOM_FLAG_CAN_BE_PAINTED
 
 	var/damage = 0
-	var/damage_overlay = 0
-	var/global/damage_overlays[16]
-	var/active
 	var/can_open = 0
 	var/decl/material/material
 	var/decl/material/reinf_material
-	var/decl/material/girder_material = MAT_STEEL
-	var/last_state
+	var/decl/material/girder_material = /decl/material/solid/metal/steel
 	var/construction_stage
 	var/hitsound = 'sound/weapons/Genhit.ogg'
-	var/list/wall_connections = list("0", "0", "0", "0")
-	var/list/other_connections = list("0", "0", "0", "0")
+	var/list/wall_connections
+	var/list/other_connections
 	var/floor_type = /turf/simulated/floor/plating //turf it leaves after destruction
 	var/paint_color
 	var/stripe_color
-	var/global/list/wall_stripe_cache = list()
-	var/list/blend_turfs = list(/turf/simulated/wall/cult, /turf/simulated/wall/wood, /turf/simulated/wall/walnut, /turf/simulated/wall/maple, /turf/simulated/wall/mahogany, /turf/simulated/wall/ebony)
-	var/list/blend_objects = list(/obj/machinery/door, /obj/structure/wall_frame, /obj/structure/grille, /obj/structure/window/reinforced/full, /obj/structure/window/reinforced/polarized/full, /obj/structure/window/shuttle, ,/obj/structure/window/borosilicate/full, /obj/structure/window/borosilicate_reinforced/full) // Objects which to blend with
-	var/list/noblend_objects = list(/obj/machinery/door/window) //Objects to avoid blending with (such as children of listed blend objects.
+	var/handle_structure_blending = TRUE
 
 /turf/simulated/wall/Initialize(var/ml, var/materialtype, var/rmaterialtype)
+
 	..(ml)
+
+	// Clear mapping icons.
+	icon = 'icons/turf/walls/solid.dmi'
+	icon_state = "blank"
+	color = null
 
 	if(!ispath(material, /decl/material))
 		material = materialtype || get_default_material()
 	if(ispath(material, /decl/material))
-		material = decls_repository.get_decl(material)
+		material = GET_DECL(material)
 
 	if(!ispath(reinf_material, /decl/material))
 		reinf_material = rmaterialtype
 	if(ispath(reinf_material, /decl/material))
-		reinf_material = decls_repository.get_decl(reinf_material)
+		reinf_material = GET_DECL(reinf_material)
 
 	if(ispath(girder_material, /decl/material))
-		girder_material = decls_repository.get_decl(girder_material)
+		girder_material = GET_DECL(girder_material)
 
 	. = INITIALIZE_HINT_LATELOAD
 	set_extension(src, /datum/extension/penetration/proc_call, .proc/CheckPenetration)
 	START_PROCESSING(SSturf, src) //Used for radiation.
 
-/turf/simulated/wall/LateInitialize()
+/turf/simulated/wall/LateInitialize(var/ml)
 	..()
-	update_material()
+	update_material(!ml)
 
 /turf/simulated/wall/Destroy()
 	STOP_PROCESSING(SSturf, src)
-	material = decls_repository.get_decl(MAT_PLACEHOLDER)
+	material = GET_DECL(/decl/material/placeholder)
 	reinf_material = null
 	var/old_x = x
 	var/old_y = y
@@ -66,7 +84,8 @@
 	var/turf/debris = locate(old_x, old_y, old_z)
 	if(debris)
 		for(var/turf/simulated/wall/W in RANGE_TURFS(debris, 1))
-			W.update_connections()
+			W.wall_connections = null
+			W.other_connections = null
 			W.queue_icon_update()
 
 // Walls always hide the stuff below them.
@@ -78,9 +97,9 @@
 	var/obj/O = A
 	return (istype(O) && O.hides_under_flooring()) || ..()
 
-/turf/simulated/wall/Process(wait, times_fired)
+/turf/simulated/wall/Process(wait, tick)
 	var/how_often = max(round(2 SECONDS/wait), 1)
-	if(times_fired % how_often)
+	if(tick % how_often)
 		return //We only work about every 2 seconds
 	if(!radiate())
 		return PROCESS_KILL
@@ -109,16 +128,15 @@
 	var/damage = min(proj_damage, 100)
 
 	take_damage(damage)
-	return
 
 /turf/simulated/wall/hitby(AM, var/datum/thrownthing/TT)
-	if(!ismob(AM))
+	..()
+	if(density && !ismob(AM))
 		var/obj/O = AM
 		var/tforce = O.throwforce * (TT.speed/THROWFORCE_SPEED_DIVISOR)
-		playsound(src, hitsound, tforce >= 15? 60 : 25, TRUE)
-		if (tforce >= 15)
+		playsound(src, hitsound, tforce >= 15 ? 60 : 25, TRUE)
+		if(tforce > 0)
 			take_damage(tforce)
-	..()
 
 /turf/simulated/wall/proc/clear_plants()
 	for(var/obj/effect/overlay/wallrot/WR in src)
@@ -127,12 +145,11 @@
 		if(!plant.floor) //shrooms drop to the floor
 			plant.floor = 1
 			plant.update_icon()
-			plant.pixel_x = 0
-			plant.pixel_y = 0
+			plant.reset_offsets(0)
 
-/turf/simulated/wall/ChangeTurf(var/newtype)
+/turf/simulated/wall/ChangeTurf(var/turf/N, var/tell_universe = TRUE, var/force_lighting_update = FALSE, var/keep_air = FALSE)
 	clear_plants()
-	return ..(newtype)
+	. = ..()
 
 //Appearance
 /turf/simulated/wall/examine(mob/user)
@@ -179,7 +196,7 @@
 		cap = cap / 10
 
 	if(damage >= cap)
-		dismantle_wall()
+		dismantle_wall(1)
 	else
 		update_icon()
 
@@ -248,14 +265,18 @@
 	return total_radiation
 
 /turf/simulated/wall/proc/burn(temperature)
-	if(material.combustion_effect(src, temperature, 0.7))
-		spawn(2)
-			for(var/turf/simulated/wall/W in range(3,src))
-				W.burn((temperature/4))
-			dismantle_wall(TRUE)
+	if(!QDELETED(src) && istype(material) && material.combustion_effect(src, temperature, 0.7))
+		for(var/turf/simulated/wall/W in range(3,src))
+			if(W != src)
+				addtimer(CALLBACK(W, /turf/simulated/wall/proc/burn, temperature/4), 2)
+		dismantle_wall(TRUE)
 
 /turf/simulated/wall/get_color()
 	return paint_color
+
+/turf/simulated/wall/set_color(new_color)
+	paint_color = new_color
+	update_icon()
 
 /turf/simulated/wall/proc/CheckPenetration(var/base_chance, var/damage)
 	return round(damage/material.integrity*180)

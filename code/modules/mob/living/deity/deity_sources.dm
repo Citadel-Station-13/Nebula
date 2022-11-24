@@ -10,12 +10,12 @@
 	if(form)
 		L.faction = form.faction
 	update_followers()
-	GLOB.destroyed_event.register(L,src, .proc/dead_follower)
-	GLOB.death_event.register(L,src, .proc/update_followers)
+	events_repository.register(/decl/observ/destroyed, L,src, .proc/dead_follower)
+	events_repository.register(/decl/observ/death, L,src, .proc/update_followers)
 
 /mob/living/deity/proc/dead_follower(var/mob/living/L)
-	GLOB.death_event.unregister(L,src)
-	GLOB.destroyed_event.unregister(L,src)
+	events_repository.unregister(/decl/observ/death, L,src)
+	events_repository.unregister(/decl/observ/destroyed, L,src)
 
 /mob/living/deity/proc/remove_follower_spells(var/datum/mind/M)
 	if(M.learned_spells)
@@ -64,8 +64,8 @@
 		return 0
 	for(var/m in minions)
 		var/datum/mind/minion = m
-		to_chat(minion.current, "Your master is now known as [new_name]")
-		minion.special_role = "Servant of [new_name]"
+		to_chat(minion.current, "Your master is now known as [new_name].")
+		minion.assigned_special_role = "Servant of [new_name]"
 	eyeobj.SetName("[src] ([eyeobj.name_sufix])")
 	nano_data["name"] = new_name
 	return 1

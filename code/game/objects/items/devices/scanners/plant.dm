@@ -7,8 +7,8 @@
 	item_state = "analyzer"
 	scan_sound = 'sound/effects/fastbeep.ogg'
 	printout_color = "#eeffe8"
-	var/global/list/valid_targets = list(
-		/obj/item/chems/food/snacks/grown,
+	var/static/list/valid_targets = list(
+		/obj/item/chems/food/grown,
 		/obj/item/grown,
 		/obj/machinery/portable_atmospherics/hydroponics,
 		/obj/item/seeds
@@ -20,15 +20,15 @@
 	return FALSE
 
 /obj/item/scanner/plant/scan(atom/A, mob/user)
-	scan_title = "[A] at [get_area(A)]"
+	scan_title = "[A] at [get_area_name(A)]"
 	scan_data = plant_scan_results(A)
 	show_menu(user)
 
 /proc/plant_scan_results(obj/target)
 	var/datum/seed/grown_seed
 	var/datum/reagents/grown_reagents
-	if(istype(target,/obj/item/chems/food/snacks/grown))
-		var/obj/item/chems/food/snacks/grown/G = target
+	if(istype(target,/obj/item/chems/food/grown))
+		var/obj/item/chems/food/grown/G = target
 		grown_seed = SSplants.seeds[G.plantname]
 		grown_reagents = G.reagents
 
@@ -76,7 +76,7 @@
 		dat += "<h2>Reagent Data</h2>"
 		dat += "<br>This sample contains: "
 		for(var/rtype in grown_reagents.reagent_volumes)
-			var/decl/material/R = decls_repository.get_decl(rtype)
+			var/decl/material/R = GET_DECL(rtype)
 			dat += "<br>- [R.name], [REAGENT_VOLUME(grown_reagents, rtype)] unit(s)"
 
 	dat += "<h2>Other Data</h2>"
@@ -120,7 +120,7 @@
 	else if(grown_seed.get_trait(TRAIT_HEAT_TOLERANCE) < 10)
 		dat += "<br>It is very sensitive to temperature shifts."
 
-	dat += "<br>It thrives in a light level of [grown_seed.get_trait(TRAIT_IDEAL_LIGHT)] lumen[grown_seed.get_trait(TRAIT_IDEAL_LIGHT) == 1 ? "" : "s"]."
+	dat += "<br>It thrives in a light level of [grown_seed.get_trait(TRAIT_IDEAL_LIGHT)] lumen\s."
 
 	if(grown_seed.get_trait(TRAIT_LIGHT_TOLERANCE) > 10)
 		dat += "<br>It is well adapted to a range of light levels."

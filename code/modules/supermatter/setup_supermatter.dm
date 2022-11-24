@@ -3,12 +3,9 @@
 #define SETUP_ERROR 3		// Something bad happened, and it's important so we won't continue setup.
 #define SETUP_DELAYED 4		// Wait for other things first.
 
-
 #define ENERGY_NITROGEN 115			// Roughly 8 emitter shots.
 #define ENERGY_CARBONDIOXIDE 150	// Roughly 10 emitter shots.
 #define ENERGY_HYDROGEN 300			// Roughly 20 emitter shots.
-#define ENERGY_PHORON 500			// Roughly 40 emitter shots.
-
 
 /datum/admins/proc/setup_supermatter()
 	set category = "Debug"
@@ -21,7 +18,7 @@
 		to_chat(usr, "Error: you are not an admin!")
 		return
 
-	var/response = input(usr, "Are you sure? This will start up the engine with selected gas as coolant.", "Engine setup") as null|anything in list("N2", "CO2", "PH", "H2", "Abort")
+	var/response = input(usr, "Are you sure? This will start up the engine with selected gas as coolant.", "Engine setup") as null|anything in list("N2", "CO2", "H2", "Abort")
 	if(!response || response == "Abort")
 		return
 
@@ -33,7 +30,7 @@
 
 	// CONFIGURATION PHASE
 	// Coolant canisters, set types according to response.
-	for(var/obj/effect/engine_setup/coolant_canister/C in world)
+	for(var/obj/effect/engine_setup/coolant_canister/C in global.engine_setup_markers)
 		switch(response)
 			if("N2")
 				C.canister_type = /obj/machinery/portable_atmospherics/canister/nitrogen/engine_setup/
@@ -41,14 +38,11 @@
 			if("CO2")
 				C.canister_type = /obj/machinery/portable_atmospherics/canister/carbon_dioxide/engine_setup/
 				continue
-			if("PH")
-				C.canister_type = /obj/machinery/portable_atmospherics/canister/phoron/engine_setup/
-				continue
 			if("H2")
 				C.canister_type = /obj/machinery/portable_atmospherics/canister/hydrogen/engine_setup/
 				continue
 
-	for(var/obj/effect/engine_setup/core/C in world)
+	for(var/obj/effect/engine_setup/core/C in global.engine_setup_markers)
 		switch(response)
 			if("N2")
 				C.energy_setting = ENERGY_NITROGEN
@@ -56,19 +50,16 @@
 			if("CO2")
 				C.energy_setting = ENERGY_CARBONDIOXIDE
 				continue
-			if("PH")
-				C.energy_setting = ENERGY_PHORON
-				continue
 			if("H2")
 				C.energy_setting = ENERGY_HYDROGEN
 				continue
 
-	for(var/obj/effect/engine_setup/filter/F in world)
+	for(var/obj/effect/engine_setup/filter/F in global.engine_setup_markers)
 		F.coolant = response
 
 	var/list/delayed_objects = list()
 	// SETUP PHASE
-	for(var/obj/effect/engine_setup/S in world)
+	for(var/obj/effect/engine_setup/S in global.engine_setup_markers)
 		var/result = S.activate(0)
 		switch(result)
 			if(SETUP_OK)
@@ -106,7 +97,9 @@
 
 
 
-/obj/effect/engine_setup/
+var/global/list/engine_setup_markers = list()
+
+/obj/effect/engine_setup
 	name = "Engine Setup Marker"
 	desc = "You shouldn't see this."
 	invisibility = 101
@@ -114,6 +107,14 @@
 	density = 0
 	icon = 'icons/mob/screen1.dmi'
 	icon_state = "x3"
+
+/obj/effect/engine_setup/Initialize()
+	. = ..()
+	global.engine_setup_markers += src
+
+/obj/effect/engine_setup/Destroy()
+	global.engine_setup_markers -= src
+	. = ..()
 
 /obj/effect/engine_setup/proc/activate(var/last = 0)
 	return 1
@@ -132,7 +133,6 @@
 		return SETUP_WARNING
 	P.target_pressure = P.max_pressure_setting
 	P.update_use_power(POWER_USE_IDLE)
-	P.update_icon()
 	return SETUP_OK
 
 
@@ -195,8 +195,16 @@
 
 
 // Tries to enable the SMES on max input/output settings. With load balancing it should be fine as long as engine outputs at least ~500kW
-/obj/effect/engine_setup/smes/
+/obj/effect/engine_setup/smes
 	name = "SMES Marker"
+
+	var/target_input_level		//These are in watts, the display is in kilowatts. Add three zeros to the value you want.
+	var/target_output_level		//These are in watts, the display is in kilowatts. Add three zeros to the value you want.
+
+/obj/effect/engine_setup/smes/main
+	name = "Main SMES Marker"
+	target_input_level =  INFINITY
+	target_output_level = INFINITY
 
 /obj/effect/engine_setup/smes/activate()
 	..()
@@ -205,16 +213,14 @@
 		log_and_message_admins("## WARNING: Unable to locate SMES unit at [x] [y] [z]!")
 		return SETUP_WARNING
 	S.input_attempt = 1
+	S.input_level = min(target_input_level, S.input_level_max)
 	S.output_attempt = 1
-	S.input_level = S.input_level_max
-	S.output_level = S.output_level_max
+	S.output_level = min(target_output_level, S.output_level_max)
 	S.update_icon()
 	return SETUP_OK
 
-
-
 // Sets up filters. This assumes filters are set to filter out CO2 back to the core loop by default!
-/obj/effect/engine_setup/filter/
+/obj/effect/engine_setup/filter
 	name = "Omni Filter Marker"
 	var/coolant = null
 
@@ -231,16 +237,13 @@
 	// Non-co2 coolant, adjust the filter's config first.
 	if(coolant != "CO2")
 		for(var/datum/omni_port/P in F.ports)
-			if(P.mode != ATM_CO2)
+			if(P.filtering != /decl/material/gas/carbon_dioxide)
 				continue
-			if(coolant == "PH")
-				P.mode = ATM_P
-				break
 			else if(coolant == "N2")
-				P.mode = ATM_N2
+				P.filtering = /decl/material/gas/nitrogen
 				break
 			else if(coolant == "H2")
-				P.mode = ATM_H2
+				P.filtering = /decl/material/gas/hydrogen
 				break
 			else
 				log_and_message_admins("## WARNING: Inapropriate filter coolant type set at [x] [y] [z]!")
@@ -248,9 +251,30 @@
 		F.rebuild_filtering_list()
 
 	F.update_use_power(POWER_USE_IDLE)
-	F.update_icon()
 	return SETUP_OK
 
+// Closes the monitoring room shutters so the first Engi to show up doesn't get microwaved
+/obj/effect/engine_setup/shutters
+	name = "Shutter Button Marker"
+	// This needs to be set to whatever the shutter button is called
+	var/target_button = "Engine Monitoring Room Blast Doors"
+
+/obj/effect/engine_setup/shutters/activate()
+	if(!target_button)
+		log_and_message_admins("## WARNING: No button type set at [x] [y] [z]!")
+		return SETUP_WARNING
+	var/obj/machinery/button/blast_door/found = null
+	var/turf/T = get_turf(src)
+	for(var/obj/machinery/button/blast_door/B in T.contents)
+		if(B.name == target_button)
+			found = B
+			break
+	if(!found)
+		log_and_message_admins("## WARNING: Unable to locate button at [x] [y] [z]!")
+		return SETUP_WARNING
+	found.activate()
+	found.update_icon()
+	return SETUP_OK
 
 #undef SETUP_OK
 #undef SETUP_WARNING
@@ -259,4 +283,3 @@
 #undef ENERGY_NITROGEN
 #undef ENERGY_CARBONDIOXIDE
 #undef ENERGY_HYDROGEN
-#undef ENERGY_PHORON

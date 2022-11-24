@@ -1,4 +1,4 @@
-/obj/machinery/proc/take_damage(amount, damtype, silent)
+/obj/machinery/proc/take_damage(amount, damtype = BRUTE, silent = FALSE)
 	//Let's not bother initializing all the components for nothing
 	if(amount <= 0)
 		return
@@ -21,10 +21,10 @@
 		return
 
 	// If some damage got past, next it's generic (non-circuitboard) components
-	var/obj/item/stock_parts/victim = get_damageable_component()
+	var/obj/item/stock_parts/victim = get_damageable_component(damtype)
 	while(amount > 0 && victim)
 		amount -= victim.take_damage(amount, damtype)
-		victim = get_damageable_component()
+		victim = get_damageable_component(damtype)
 	if(amount <= 0)
 		return
 
@@ -33,12 +33,14 @@
 	if(victim)
 		victim.take_damage(amount, damtype)
 	
-/obj/machinery/proc/get_damageable_component()
+/obj/machinery/proc/get_damageable_component(var/damage_type)
 	var/list/victims = shuffle(component_parts)
 	if(LAZYLEN(victims))
 		for(var/obj/item/stock_parts/component in victims)
 			// Circuitboards are handled separately
 			if(istype(component, /obj/item/stock_parts/circuitboard))
+				continue
+			if(damage_type && (damage_type in component.ignore_damage_types))
 				continue
 			// Don't damage what can't be repaired
 			if(component.part_flags & PART_FLAG_NODAMAGE)
@@ -53,7 +55,9 @@
 
 /obj/machinery/proc/on_component_failure(var/obj/item/stock_parts/component)
 	RefreshParts()
-	power_change()
+	update_icon()
+	if(istype(component, /obj/item/stock_parts/power))
+		power_change()
 
 /obj/machinery/emp_act(severity)
 	if(use_power && stat == 0)
@@ -65,14 +69,17 @@
 /obj/machinery/explosion_act(severity)
 	..()
 	if(!QDELETED(src))
-		take_damage(100/severity, BRUTE, TRUE)
+		if((severity == 1 || (severity == 2 && prob(25))))
+			physically_destroyed()
+		else
+			take_damage(100/severity, BRUTE, TRUE)
 
 /obj/machinery/bullet_act(obj/item/projectile/P, def_zone)
 	. = ..()
 	take_damage(P.damage, P.damage_type)
 
 /obj/machinery/bash(obj/item/W, mob/user)
-	if(W.force <= 5)
+	if(!istype(W) || W.force <= 5 || (W.item_flags & ITEM_FLAG_NO_BLUDGEON))
 		return FALSE
 	. = ..()
 	if(.)

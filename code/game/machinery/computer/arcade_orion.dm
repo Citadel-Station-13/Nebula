@@ -76,9 +76,9 @@
 	settlers = list("[usr]")
 	for(var/i=0; i<3; i++)
 		if(prob(50))
-			settlers += pick(GLOB.first_names_male)
+			settlers += pick(global.first_names_male)
 		else
-			settlers += pick(GLOB.first_names_female)
+			settlers += pick(global.first_names_female)
 	num_traitors = 0
 	event = ORION_TRAIL_START
 	port = 0
@@ -115,7 +115,7 @@
 					event_title  += ": [stops[port]]"
 					event_actions = "<a href='?src=\ref[src];continue=1'>Shove off</a>"
 				if(ORION_TRAIL_RAIDERS)
-					event_desc   = "You arm yourselves as you prepare to fight off the vox menace!"
+					event_desc   = "You arm yourselves as you prepare to fight off the alien menace!"
 				if(ORION_TRAIL_DERELICT)
 					event_desc = "You come across an unpowered ship drifting slowly in the vastness of space. Sensors indicate there are no lifeforms aboard."
 				if(ORION_TRAIL_ILLNESS)
@@ -403,7 +403,7 @@
 				var/mob/living/carbon/M = usr
 				if(prob(50))
 					to_chat(usr, "<span class='warning'>You hear battle shouts. The tramping of boots on cold metal. Screams of agony. The rush of venting air. Are you going insane?</span>")
-					M.hallucination(50, 50)
+					M.set_hallucination(50, 50)
 				else
 					to_chat(usr, "<span class='danger'>Something strikes you from behind! It hurts like hell and feel like a blunt weapon, but nothing is there...</span>")
 					M.take_organ_damage(10)
@@ -423,7 +423,7 @@
 		if(ORION_TRAIL_FLUX)
 			if(istype(usr,/mob/living/carbon) && prob(75))
 				var/mob/living/carbon/M = usr
-				M.Weaken(3)
+				SET_STATUS_MAX(M, STAT_WEAK, 3)
 				src.visible_message("A sudden gust of powerful wind slams \the [M] into the floor!", "You hear a large fwooshing sound, followed by a bang.")
 				M.take_organ_damage(10)
 			else
@@ -448,7 +448,7 @@
 			close_browser(M, "window=arcade")
 			for(var/i=0;i<10;i++)
 				sleep(10)
-				M.Stun(5)
+				SET_STATUS_MAX(M, STAT_STUN, 5)
 				M.adjustBruteLoss(10)
 				M.adjustFireLoss(10)
 			usr.gib() //So that people can't cheese it and inject a lot of kelo/bicard before losing
@@ -476,7 +476,16 @@
 	icon = 'icons/obj/toy.dmi'
 	icon_state = "ship"
 	w_class = ITEM_SIZE_SMALL
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/metal/steel   = MATTER_AMOUNT_SECONDARY,
+		/decl/material/solid/metal/copper  = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/lead    = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/silicon       = MATTER_AMOUNT_TRACE,
+	)
 	var/active = 0 //if the ship is on
+
 /obj/item/orion_ship/examine(mob/user)
 	. = ..()
 	if(!(in_range(user, src)))

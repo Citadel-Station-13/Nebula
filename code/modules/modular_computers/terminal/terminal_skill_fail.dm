@@ -1,6 +1,10 @@
-GLOBAL_LIST_INIT(terminal_fails, init_subtypes(/datum/terminal_skill_fail))
+var/global/list/terminal_fails
+/proc/get_terminal_fails()
+	if(!global.terminal_fails)
+		global.terminal_fails = init_subtypes(/datum/terminal_skill_fail)
+	return global.terminal_fails
 
-/datum/terminal_skill_fail/
+/datum/terminal_skill_fail
 	var/weight = 1
 	var/message
 
@@ -37,13 +41,15 @@ GLOBAL_LIST_INIT(terminal_fails, init_subtypes(/datum/terminal_skill_fail))
 	var/fulldata = ""
 	for(var/datum/computer_file/data/L in logs)
 		fulldata += L.generate_file_data()
-	var/datum/computer_file/data/email_account/server = network.find_email_by_name(EMAIL_DOCUMENTS)
-	for(var/datum/computer_file/data/email_account/email in network.get_email_addresses())
+	var/datum/computer_file/data/account/server = network.find_account_by_login(EMAIL_DOCUMENTS)
+	if(!server)
+		return
+	for(var/datum/computer_file/data/account/email in network.get_accounts_unsorted())
 		if(!email.can_login || email.suspended)
 			continue
 		var/datum/computer_file/data/email_message/message = new()
 		message.title = "IMPORTANT NETWORK ALERT!"
 		message.stored_data = fulldata
 		message.source = server.login
-		server.send_mail(email.login, message, network)
+		network.send_email(server, email.login, message)
 	return ..()

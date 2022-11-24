@@ -1,8 +1,8 @@
-var/list/spells = typesof(/spell) //needed for the badmin verb for now
+var/global/list/spells = typesof(/spell) //needed for the badmin verb for now
 
 /spell
-	var/name = "Spell"
-	var/desc = "A spell"
+	var/name
+	var/desc
 	var/feedback = "" //what gets sent if this spell gets chosen by the spellbook.
 	parent_type = /datum
 	var/panel = "Spells"//What panel the proc holder needs to go on.
@@ -27,17 +27,17 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 	var/holder_var_amount = 20 //same. The amount adjusted with the mob's var when the spell is used
 
 	var/spell_flags = NEEDSCLOTHES
-	var/invocation = "HURP DURP"	//what is uttered when the wizard casts the spell
-	var/invocation_type = SpI_NONE	//can be none, whisper, shout, and emote
-	var/range = 7					//the range of the spell; outer radius for aoe spells
-	var/message = ""				//whatever it says to the guy affected by it
-	var/selection_type = "view"		//can be "range" or "view"
-	var/atom/movable/holder			//where the spell is. Normally the user, can be an item
-	var/duration = 0 //how long the spell lasts
+	var/invocation = "HURP DURP"   //what is uttered when the wizard casts the spell
+	var/invocation_type = SpI_NONE //can be none, whisper, shout, and emote
+	var/range = 7                  //the range of the spell; outer radius for aoe spells
+	var/message = ""               //whatever it says to the guy affected by it
+	var/selection_type = "view"    //can be "range" or "view"
+	var/atom/movable/holder	       //where the spell is. Normally the user, can be an item
+	var/duration = 0               //how long the spell lasts
 
 	var/list/spell_levels = list(Sp_SPEED = 0, Sp_POWER = 0) //the current spell levels - total spell levels can be obtained by just adding the two values
 	var/list/level_max = list(Sp_TOTAL = 4, Sp_SPEED = 4, Sp_POWER = 0) //maximum possible levels in each category. Total does cover both.
-	var/cooldown_reduc = 0		//If set, defines how much charge_max drops by every speed upgrade
+	var/cooldown_reduc = 0 //If set, defines how much charge_max drops by every speed upgrade
 	var/delay_reduc = 0
 	var/cooldown_min = 0 //minimum possible cooldown for a charging spell
 
@@ -106,10 +106,12 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 		holder = user //just in case
 	if(!cast_check(skipcharge, user))
 		return
+	to_chat(user, SPAN_NOTICE("You start casting \the [name]..."))
 	if(cast_delay && !spell_do_after(user, cast_delay))
 		return
 	var/list/targets = choose_targets(user)
 	if(!check_valid_targets(targets))
+		to_chat(user, SPAN_WARNING("\The [name] fizzles. There are no valid targets nearby."))
 		return
 	var/time = 0
 	admin_attacker_log(user, "attempted to cast the spell [name]")
@@ -157,11 +159,11 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 		if("brainloss")
 			target.adjustBrainLoss(amount)
 		if("stunned")
-			target.AdjustStunned(amount)
+			ADJ_STATUS(target, STAT_STUN, amount)
 		if("weakened")
-			target.AdjustWeakened(amount)
+			ADJ_STATUS(target, STAT_WEAK, amount)
 		if("paralysis")
-			target.AdjustParalysis(amount)
+			ADJ_STATUS(target, STAT_PARA, amount)
 		else
 			target.vars[type] += amount //I bear no responsibility for the runtimes that'll happen if you try to adjust non-numeric or even non-existant vars
 	return
@@ -176,7 +178,7 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 			var/location
 			if(istype(target,/mob/living))
 				location = target.loc
-			else if(istype(target,/turf))
+			else if(isturf(target))
 				location = target
 			var/obj/effect/overlay/spell = new /obj/effect/overlay(location)
 			spell.icon = overlay_icon
@@ -194,9 +196,7 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 		if(istype(target,/mob/living) && message)
 			to_chat(target, text("[message]"))
 		if(sparks_spread)
-			var/datum/effect/effect/system/spark_spread/sparks = new /datum/effect/effect/system/spark_spread()
-			sparks.set_up(sparks_amt, 0, location) //no idea what the 0 is
-			sparks.start()
+			spark_at(location, amount = sparks_amt)
 		if(smoke_spread)
 			if(smoke_spread == 1)
 				var/datum/effect/effect/system/smoke_spread/smoke = new /datum/effect/effect/system/smoke_spread()
@@ -213,7 +213,7 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 /*Checkers, cost takers, message makers, etc*/
 
 /spell/proc/cast_check(skipcharge = 0,mob/user = usr, var/list/targets) //checks if the spell can be cast based on its settings; skipcharge is used when an additional cast_check is called inside the spell
-	
+
 	if(silenced > 0)
 		return 0
 
@@ -226,7 +226,7 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 	if(!user_turf)
 		to_chat(user, "<span class='warning'>You cannot cast spells in null space!</span>")
 
-	if((spell_flags & Z2NOCAST) && (user_turf.z in GLOB.using_map.admin_levels)) //Certain spells are not allowed on the centcomm zlevel
+	if((spell_flags & Z2NOCAST) && isAdminLevel(user_turf.z)) //Certain spells are not allowed on the centcomm zlevel
 		return 0
 
 	if(spell_flags & CONSTRUCT_CHECK)
@@ -251,10 +251,9 @@ var/list/spells = typesof(/spell) //needed for the badmin verb for now
 					to_chat(user, "<span class='warning'>You can't cast spells while incapacitated!</span>")
 					return 0
 
-			if(ishuman(user) && !(invocation_type in list(SpI_EMOTE, SpI_NONE)))
-				if(istype(user.wear_mask, /obj/item/clothing/mask/muzzle))
-					to_chat(user, "Mmmf mrrfff!")
-					return 0
+			if(ishuman(user) && !(invocation_type in list(SpI_EMOTE, SpI_NONE)) && user.is_muzzled())
+				to_chat(user, "Mmmf mrrfff!")
+				return 0
 
 		var/spell/noclothes/spell = locate() in user.mind.learned_spells
 		if((spell_flags & NEEDSCLOTHES) && !(spell && istype(spell)))//clothes check

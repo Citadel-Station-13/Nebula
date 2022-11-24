@@ -1,15 +1,21 @@
 /obj/item/clothing/shoes
 	name = "shoes"
-	icon = 'icons/obj/clothing/obj_feet.dmi'
 	desc = "Comfortable-looking shoes."
+	icon_state = ICON_STATE_WORLD
+	icon = 'icons/clothing/feet/generic_shoes.dmi'
 	gender = PLURAL
 	siemens_coefficient = 0.9
-	body_parts_covered = FEET
+	cold_protection = SLOT_FEET
+	body_parts_covered = SLOT_FEET
+	heat_protection = SLOT_FEET
 	slot_flags = SLOT_FEET
 	permeability_coefficient = 0.50
 	force = 2
 	blood_overlay_type = "shoeblood"
-	var/overshoes = 0
+	material = /decl/material/solid/leather
+	origin_tech = "{'materials':1,'engineering':1}"
+
+	var/can_fit_under_magboots = TRUE
 	var/can_add_cuffs = TRUE
 	var/obj/item/handcuffs/attached_cuffs = null
 	var/can_add_hidden_item = TRUE
@@ -34,7 +40,7 @@
 		else if (get_dist(src, user) == 1)
 			to_chat(user, SPAN_ITALIC("Something is hidden inside."))
 
-/obj/item/clothing/shoes/attack_hand(var/mob/living/user)
+/obj/item/clothing/shoes/attack_hand(var/mob/user)
 	if (remove_hidden(user))
 		return
 	..()
@@ -47,8 +53,9 @@
 	if (istype(I, /obj/item/handcuffs))
 		add_cuffs(I, user)
 		return TRUE
-	add_hidden(I, user)
-	return TRUE
+	. = add_hidden(I, user)
+	if(!.)
+		. = ..()
 
 /obj/item/clothing/shoes/proc/add_cuffs(var/obj/item/handcuffs/cuffs, var/mob/user)
 	if (!can_add_cuffs)
@@ -62,7 +69,8 @@
 			return
 		user.visible_message(SPAN_ITALIC("\The [user] attaches \the [cuffs] to \the [src]."), range = 2)
 		verbs |= /obj/item/clothing/shoes/proc/remove_cuffs
-		slowdown_per_slot[slot_shoes] += cuffs.elastic ? 10 : 15
+		LAZYINITLIST(slowdown_per_slot[slot_shoes_str])
+		slowdown_per_slot[slot_shoes_str] += cuffs.elastic ? 10 : 15
 		attached_cuffs = cuffs
 
 /obj/item/clothing/shoes/proc/remove_cuffs(var/mob/user)
@@ -84,29 +92,30 @@
 			return
 		user.visible_message(SPAN_ITALIC("\The [user] removes \the [attached_cuffs] from \the [src]."), range = 2)
 		attached_cuffs.add_fingerprint(user)
-		slowdown_per_slot[slot_shoes] -= attached_cuffs.elastic ? 10 : 15
+		LAZYINITLIST(slowdown_per_slot[slot_shoes_str])
+		slowdown_per_slot[slot_shoes_str] -= attached_cuffs.elastic ? 10 : 15
 		verbs -= /obj/item/clothing/shoes/proc/remove_cuffs
 		attached_cuffs = null
 
 /obj/item/clothing/shoes/proc/add_hidden(var/obj/item/I, var/mob/user)
+	if (!(I.item_flags & ITEM_FLAG_CAN_HIDE_IN_SHOES)) // fail silently
+		return FALSE
 	if (!can_add_hidden_item)
 		to_chat(user, SPAN_WARNING("\The [src] can't hold anything."))
-		return
+		return TRUE
 	if (hidden_item)
 		to_chat(user, SPAN_WARNING("\The [src] already holds \an [hidden_item]."))
-		return
-	if (!(I.item_flags & ITEM_FLAG_CAN_HIDE_IN_SHOES) || (I.slot_flags & SLOT_DENYPOCKET))
-		to_chat(user, SPAN_WARNING("\The [src] can't hold the [I]."))
-		return
+		return TRUE
 	if (I.w_class > hidden_item_max_w_class)
 		to_chat(user, SPAN_WARNING("\The [I] is too large to fit in the [src]."))
-		return
+		return TRUE
 	if (do_after(user, 1 SECONDS))
 		if(!user.unEquip(I, src))
-			return
+			return TRUE
 		user.visible_message(SPAN_ITALIC("\The [user] shoves \the [I] into \the [src]."), range = 1)
 		verbs |= /obj/item/clothing/shoes/proc/remove_hidden
 		hidden_item = I
+		return TRUE
 
 /obj/item/clothing/shoes/proc/remove_hidden(var/mob/user)
 	set name = "Remove Shoe Item"
@@ -140,7 +149,8 @@
 			if (attached_cuffs.health < 1)
 				visible_message(SPAN_WARNING("\The [attached_cuffs] attached to \the [src] snap and fall away!"), range = 1)
 				verbs -= /obj/item/clothing/shoes/proc/remove_cuffs
-				slowdown_per_slot[slot_shoes] -= attached_cuffs.elastic ? 10 : 15
+				LAZYINITLIST(slowdown_per_slot[slot_shoes_str])
+				slowdown_per_slot[slot_shoes_str] -= attached_cuffs.elastic ? 10 : 15
 				QDEL_NULL(attached_cuffs)
 	return
 
@@ -157,16 +167,15 @@
 /obj/item/clothing/shoes/on_update_icon()
 	. = ..()
 	if(shine > 0 && check_state_in_icon("[icon_state]_shine", icon))
-		var/mutable_appearance/S = get_mutable_overlay(icon, "[icon_state]_shine")
+		var/mutable_appearance/S = mutable_appearance(icon, "[icon_state]_shine")
 		S.alpha = 127 * shine / 100
 		S.blend_mode = BLEND_ADD
-		overlays += S
+		add_overlay(S)
 
-/obj/item/clothing/shoes/apply_overlays(var/mob/user_mob, var/bodytype, var/image/overlay, var/slot)
-	var/image/I = ..()
-	if(shine > 0 && slot == slot_shoes_str)
-		var/mutable_appearance/S = get_mutable_overlay(I.icon, "shine")
+/obj/item/clothing/shoes/adjust_mob_overlay(var/mob/living/user_mob, var/bodytype,  var/image/overlay, var/slot, var/bodypart)
+	if(overlay && shine > 0 && slot == slot_shoes_str)
+		var/mutable_appearance/S = mutable_appearance(overlay.icon, "shine")
 		S.alpha = 127 * shine / 100
 		S.blend_mode = BLEND_ADD
-		I.overlays += S
-	return I
+		overlay.overlays += S
+	. = ..()

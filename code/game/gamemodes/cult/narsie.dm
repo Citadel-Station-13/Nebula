@@ -10,7 +10,7 @@ var/global/list/narsie_list = list()
 	pixel_y = -256
 
 	current_size = 9 //It moves/eats like a max-size singulo, aside from range. --NEO.
-	contained = 0 // Are we going to move around?
+	move_self = 1 // Are we going to move around?
 	dissipate = 0 // Do we lose energy over time?
 	grav_pull = 10 //How many tiles out do we pull?
 	consume_range = 3 //How many tiles out do we eat
@@ -32,7 +32,7 @@ var/global/list/narsie_list = list()
 	// Pixel stuff centers Narsie.
 	pixel_x = -236
 	pixel_y = -256
-	light_outer_range = 1
+	light_range = 1
 	light_color = "#3e0000"
 
 	current_size = 6
@@ -43,7 +43,7 @@ var/global/list/narsie_list = list()
 /obj/singularity/narsie/large/Initialize()
 	. = ..()
 	if(announce)
-		to_world("<font size='15' color='red'><b>[uppertext(name)] HAS RISEN</b></font>")
+		to_world(SPAN_DANGER("<font size='15'>[uppertext(name)] HAS RISEN!</font>"))
 		sound_to(world, sound('sound/effects/wind/wind_5_1.ogg'))
 
 	narsie_spawn_animation()
@@ -101,7 +101,7 @@ var/global/list/narsie_list = list()
 	if(!move_self)
 		return 0
 
-	var/movement_dir = pick(GLOB.alldirs - last_failed_movement)
+	var/movement_dir = pick(global.alldirs - last_failed_movement)
 
 	if(force_move)
 		movement_dir = force_move
@@ -119,7 +119,7 @@ var/global/list/narsie_list = list()
 	if(!move_self)
 		return 0
 
-	var/movement_dir = pick(GLOB.alldirs - last_failed_movement)
+	var/movement_dir = pick(global.alldirs - last_failed_movement)
 
 	if(force_move)
 		movement_dir = force_move
@@ -129,19 +129,19 @@ var/global/list/narsie_list = list()
 	spawn(0)
 		step(src, movement_dir)
 		narsiefloor(get_turf(loc))
-		for(var/mob/M in GLOB.player_list)
+		for(var/mob/M in global.player_list)
 			if(M.client)
 				M.see_narsie(src,movement_dir)
 	spawn(10)
 		step(src, movement_dir)
 		narsiefloor(get_turf(loc))
-		for(var/mob/M in GLOB.player_list)
+		for(var/mob/M in global.player_list)
 			if(M.client)
 				M.see_narsie(src,movement_dir)
 	return 1
 
 /obj/singularity/narsie/proc/narsiefloor(var/turf/T)//leaving "footprints"
-	if(!(istype(T, /turf/simulated/wall/cult)||istype(T, /turf/space)))
+	if(!(istype(T, /turf/simulated/wall/cult) || isspaceturf(T)))
 		if(T.icon_state != "cult-narsie")
 			T.desc = "something that goes beyond your understanding went this way"
 			T.icon = 'icons/turf/flooring/cult.dmi'
@@ -184,7 +184,7 @@ var/global/list/narsie_list = list()
 				consume(AM)
 				continue
 
-		if (dist <= consume_range && !istype(A, /turf/space))
+		if (dist <= consume_range && !isspaceturf(A))
 			var/turf/T = A
 			if(T.holy)
 				T.holy = 0 //Nar-Sie doesn't give a shit about sacred grounds.
@@ -270,7 +270,8 @@ var/global/list/narsie_list = list()
 
 /obj/singularity/narsie/proc/pickcultist() //Narsie rewards his cultists with being devoured first, then picks a ghost to follow. --NEO
 	var/list/cultists = list()
-	for(var/datum/mind/cult_nh_mind in GLOB.cult.current_antagonists)
+	var/decl/special_role/cult = GET_DECL(/decl/special_role/cultist)
+	for(var/datum/mind/cult_nh_mind in cult.current_antagonists)
 		if(!cult_nh_mind.current)
 			continue
 		if(cult_nh_mind.current.stat)
@@ -282,7 +283,7 @@ var/global/list/narsie_list = list()
 		acquire(pick(cultists))
 		return
 		//If there was living cultists, it picks one to follow.
-	for(var/mob/living/carbon/human/food in GLOB.living_mob_list_)
+	for(var/mob/living/carbon/human/food in global.living_mob_list_)
 		if(food.stat)
 			continue
 		var/turf/pos = get_turf(food)
@@ -295,7 +296,7 @@ var/global/list/narsie_list = list()
 		acquire(pick(cultists))
 		return
 		//no living cultists, pick a living human instead.
-	for(var/mob/observer/ghost/ghost in GLOB.player_list)
+	for(var/mob/observer/ghost/ghost in global.player_list)
 		if(!ghost.client)
 			continue
 		var/turf/pos = get_turf(ghost)
@@ -351,6 +352,7 @@ var/global/list/narsie_list = list()
 		consume(T)
 
 /obj/singularity/narsie/proc/narsie_spawn_animation()
+	set waitfor = FALSE
 	icon = 'icons/obj/narsie_spawn_anim.dmi'
 	set_dir(SOUTH)
 	move_self = 0

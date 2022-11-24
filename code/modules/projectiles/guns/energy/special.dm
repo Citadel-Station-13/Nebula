@@ -1,9 +1,8 @@
 /obj/item/gun/energy/ionrifle
 	name = "ion gun"
 	desc = "The Mk60 EW Halicon is a man portable anti-armor weapon designed to disable mechanical threats. Not the best of its type."
-	on_mob_icon = 'icons/obj/guns/ion_rifle.dmi'
 	icon = 'icons/obj/guns/ion_rifle.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	origin_tech = "{'combat':2,'magnets':4}"
 	w_class = ITEM_SIZE_HUGE
 	force = 10
@@ -22,31 +21,29 @@
 /obj/item/gun/energy/decloner
 	name = "biological demolecularisor"
 	desc = "A gun that discharges high amounts of controlled radiation to slowly break a target into component elements."
-	on_mob_icon = 'icons/obj/guns/decloner.dmi'
 	icon = 'icons/obj/guns/decloner.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	origin_tech = "{'combat':5,'materials':4,'powerstorage':3}"
 	max_shots = 10
 	projectile_type = /obj/item/projectile/energy/declone
 	combustion = 0
-	material = MAT_GOLD
-	matter = list(MAT_URANIUM = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/gold
+	matter = list(/decl/material/solid/metal/uranium = MATTER_AMOUNT_REINFORCEMENT)
 
 /obj/item/gun/energy/floragun
 	name = "floral somatoray"
 	desc = "A tool that discharges controlled radiation which induces mutation in plant cells."
-	on_mob_icon = 'icons/obj/guns/floral.dmi'
 	icon = 'icons/obj/guns/floral.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	charge_cost = 10
 	max_shots = 10
 	projectile_type = /obj/item/projectile/energy/floramut
 	origin_tech = "{'materials':2,'biotech':3,'powerstorage':3}"
 	self_recharge = 1
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_URANIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE
 	)
 	combustion = 0
 	firemodes = list(
@@ -56,9 +53,8 @@
 		)
 	var/decl/plantgene/gene = null
 
-/obj/item/gun/energy/floragun/add_onmob_charge_meter(image/I)
-	I.overlays += get_mutable_overlay(icon, "[I.icon_state]100", indicator_color)
-	return I
+/obj/item/gun/energy/floragun/get_charge_state(var/initial_state)
+	return "[initial_state]100"
 
 /obj/item/gun/energy/floragun/resolve_attackby(atom/A)
 	if(istype(A,/obj/machinery/portable_atmospherics/hydroponics))
@@ -98,41 +94,45 @@
 /obj/item/gun/energy/toxgun
 	name = "radpistol"
 	desc = "A specialized firearm designed to fire lethal bursts of radiation."
-	on_mob_icon = 'icons/obj/guns/toxgun.dmi'
 	icon = 'icons/obj/guns/toxgun.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	w_class = ITEM_SIZE_NORMAL
 	origin_tech = "{'combat':5,'exoticmatter':4}"
 	projectile_type = /obj/item/projectile/energy/radiation
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PHORON = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/gun/energy/plasmacutter
 	name = "plasma cutter"
 	desc = "A mining tool capable of expelling concentrated plasma bursts. You could use it to cut limbs off of xenos! Or, you know, mine stuff."
 	charge_meter = 0
-	on_mob_icon = 'icons/obj/guns/plasmacutter.dmi'
 	icon = 'icons/obj/guns/plasmacutter.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	fire_sound = 'sound/weapons/plasma_cutter.ogg'
-	slot_flags = SLOT_BELT|SLOT_BACK
+	slot_flags = SLOT_LOWER_BODY|SLOT_BACK
 	w_class = ITEM_SIZE_NORMAL
 	force = 8
 	origin_tech = "{'materials':4,'exoticmatter':4,'engineering':6,'combat':3}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	projectile_type = /obj/item/projectile/beam/plasmacutter
 	max_shots = 10
 	self_recharge = 1
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GOLD = MATTER_AMOUNT_TRACE,
-		MAT_PHORON = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE
 	)
-	var/datum/effect/effect/system/spark_spread/spark_system
+
+/obj/item/gun/energy/plasmacutter/Initialize()
+	. = ..()
+	set_extension(src, /datum/extension/tool, list(TOOL_SAW = TOOL_QUALITY_BAD))
+
+/obj/item/gun/energy/plasmacutter/get_heat()
+	. = max(..(), 3800)
 
 /obj/item/gun/energy/plasmacutter/mounted
 	name = "mounted plasma cutter"
@@ -140,42 +140,31 @@
 	max_shots = 4
 	has_safety = FALSE
 
-/obj/item/gun/energy/plasmacutter/Initialize()
-	. = ..()
-	spark_system = new /datum/effect/effect/system/spark_spread
-	spark_system.set_up(5, 0, src)
-	spark_system.attach(src)
-
-/obj/item/gun/energy/plasmacutter/Destroy()
-	QDEL_NULL(spark_system)
-	return ..()
-
 /obj/item/gun/energy/plasmacutter/proc/slice(var/mob/M = null)
 	if(!safety() && power_supply.checked_use(charge_cost)) //consumes a shot per use
 		if(M)
 			M.welding_eyecheck()//Welding tool eye check
 			if(check_accidents(M, "[M] loses grip on [src] from its sudden recoil!",SKILL_CONSTRUCTION, 60, SKILL_ADEPT))
 				return 0
-		spark_system.start()
+		spark_at(src, amount = 5, holder = src)
 		return 1
 	handle_click_empty(M)
 	return 0
 
-/obj/item/gun/energy/plasmacutter/is_special_cutting_tool()
+/obj/item/gun/energy/plasmacutter/is_special_cutting_tool(var/high_power)
 	return TRUE
 
 /obj/item/gun/energy/incendiary_laser
 	name = "dispersive blaster"
 	desc = "The A&M 'Shayatin' was the first of a now-banned class of dispersive laser weapons which, instead of firing a focused beam, scan over a target rapidly with the goal of setting it ablaze."
-	on_mob_icon = 'icons/obj/guns/incendiary_laser.dmi'
 	icon = 'icons/obj/guns/incendiary_laser.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	safety_icon = "safety"
 	origin_tech = "{'combat':7,'magnets':4,'esoteric':4}"
-	material = MAT_ALUMINIUM
+	material = /decl/material/solid/metal/aluminium
 	matter = list(
-		MAT_PLASTIC = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_DIAMOND = MATTER_AMOUNT_TRACE
+		/decl/material/solid/plastic = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/gemstone/diamond = MATTER_AMOUNT_TRACE
 	)
 	projectile_type = /obj/item/projectile/beam/incendiary_laser
 	max_shots = 4

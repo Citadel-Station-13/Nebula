@@ -4,6 +4,7 @@
 	icon_state = "globe"
 	sector_flags = OVERMAP_SECTOR_KNOWN
 	free_landing = TRUE
+
 	var/area/planetary_area
 
 	var/lightlevel = 0 		//This default makes turfs not generate light. Adjust to have exoplanents be lit.
@@ -21,13 +22,16 @@
 	var/x_size
 	var/y_size
 
-	var/landmark_type = /obj/effect/shuttle_landmark/automatic
+	var/shuttle_size = 20  		 //'diameter' of expected shuttle in turfs
+	var/landing_points_to_place  // number of landing points to place, calculated dynamically based on planet size
 
 	var/list/rock_colors = list(COLOR_ASTEROID_ROCK)
 	var/list/plant_colors = list("RANDOM")
 	var/grass_color
 	var/surface_color = COLOR_ASTEROID_ROCK
 	var/water_color = "#436499"
+	var/water_material = /decl/material/liquid/water
+	var/ice_material =   /decl/material/solid/ice
 	var/image/skybox_image
 
 	var/list/actors = list() 	//things that appear in engravings on xenoarch finds.
@@ -70,37 +74,68 @@
 	var/list/spawned_features
 
 	var/habitability_class	// if it's above bad, atmosphere will be adjusted to be better for humans (no extreme temps / oxygen to breathe)
+	var/crust_strata // Decl type for exterior walls to use for material and ore gen.
+
+	var/spawn_weight = 100	// Decides how often this planet will be picked for generation
+
+	var/obj/abstract/weather_system/weather_system = /decl/state/weather/calm // Initial weather is passed to the system as its default state.
+
+/obj/effect/overmap/visitable/sector/exoplanet/proc/get_strata()
+	return crust_strata
+
+/obj/effect/overmap/visitable/sector/exoplanet/proc/select_strata()
+	var/list/all_strata = decls_repository.get_decls_of_subtype(/decl/strata)
+	var/list/possible_strata = list()
+	for(var/stype in all_strata)
+		var/decl/strata/strata = all_strata[stype]
+		if(strata.is_valid_exoplanet_strata(src))
+			possible_strata += stype
+	if(length(possible_strata))
+		crust_strata = pick(possible_strata)
 
 /obj/effect/overmap/visitable/sector/exoplanet/Initialize(mapload, z_level)
-	if(GLOB.using_map.use_overmap)
+	if(global.overmaps_by_name[overmap_id])
 		forceMove(locate(1, 1, z_level))
 	return ..()
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/build_level(max_x, max_y)
+
 	maxx = max_x ? max_x : world.maxx
 	maxy = max_y ? max_y : world.maxy
 	x_origin = TRANSITIONEDGE + 1
 	y_origin = TRANSITIONEDGE + 1
 	x_size = maxx - 2 * (TRANSITIONEDGE + 1)
 	y_size = maxy - 2 * (TRANSITIONEDGE + 1)
+	landing_points_to_place = min(round(0.1 * (x_size * y_size) / (shuttle_size * shuttle_size)), 3)
+
+	var/planet_name = generate_planet_name()
+	SetName("[planet_name], \a [name]")
 	planetary_area = new planetary_area()
+	global.using_map.area_purity_test_exempt_areas += planetary_area.type
+	planetary_area.SetName("Surface of [planet_name]")
+
 	var/themes_num = min(length(possible_themes), rand(1, max_themes))
 	for(var/i = 1 to themes_num)
 		var/datum/exoplanet_theme/T = pickweight(possible_themes)
 		themes += new T
 		possible_themes -= T
-	name = "[generate_planet_name()], \a [name]"
+
+	if(ispath(weather_system, /decl/state/weather))
+		weather_system = new /obj/abstract/weather_system(null, map_z[1], weather_system)
+		weather_system.water_material = water_material
+		weather_system.ice_material = ice_material
 
 	generate_habitability()
 	generate_atmosphere()
 	for(var/datum/exoplanet_theme/T in themes)
 		T.adjust_atmosphere(src)
-	generate_flora()
+	select_strata()
+	generate_flora(atmosphere?.temperature || T20C)
 	generate_map()
+	generate_landing(2)
 	generate_features()
 	for(var/datum/exoplanet_theme/T in themes)
 		T.after_map_generation(src)
-	generate_landing(2)
 	generate_daycycle()
 	generate_planet_image()
 	START_PROCESSING(SSobj, src)
@@ -120,28 +155,31 @@
 	return engravings
 
 /obj/effect/overmap/visitable/sector/exoplanet/Process(wait, tick)
+
 	if(animals.len < 0.5*max_animal_count && !repopulating)
 		repopulating = 1
 		max_animal_count = round(max_animal_count * 0.5)
-
-	handle_atmosphere()
 
 	if(repopulating)
 		handle_repopulation()
 
 	if(daycycle)
+		wait = max(1, wait)
 		if(tick % round(daycycle / wait) == 0)
 			night = !night
 			daycolumn = 1
-		if(daycolumn && tick % round(daycycle_column_delay / wait) == 0)
+		if(daycolumn && (tick % round(daycycle_column_delay / wait)) == 0)
 			update_daynight()
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/update_daynight()
 	var/light = 0.1
 	if(!night)
 		light = lightlevel
-	for(var/turf/simulated/floor/exoplanet/T in block(locate(daycolumn,1,min(map_z)),locate(daycolumn,maxy,max(map_z))))
-		T.set_light(light, 0.1, 2)
+	for(var/turf/exterior/T in block(locate(daycolumn,1,min(map_z)),locate(daycolumn,maxy,max(map_z))))
+		if (light)
+			T.set_ambient_light(COLOR_WHITE, light)
+		else
+			T.clear_ambient_light()
 	daycolumn++
 	if(daycolumn > maxx)
 		daycolumn = 0
@@ -161,22 +199,24 @@
 		edges |= block(locate(1, 1, zlevel), locate(maxx, TRANSITIONEDGE, zlevel))
 		edges |= block(locate(1, maxy-TRANSITIONEDGE, zlevel),locate(maxx, maxy, zlevel))
 		for(var/turf/T in edges)
-			T.ChangeTurf(/turf/simulated/planet_edge)
+			T.ChangeTurf(/turf/exterior/planet_edge)
 		for(var/map_type in map_generators)
 			if(ispath(map_type, /datum/random_map/noise/exoplanet))
-				new map_type(null,x_origin,y_origin,zlevel,x_size,y_size,0,1,1,planetary_area, plant_colors)
+				new map_type(x_origin, y_origin, zlevel, x_size, y_size, FALSE, TRUE, planetary_area, plant_colors)
 			else
-				new map_type(null,x_origin,y_origin,zlevel,x_size,y_size,0,1,1,planetary_area)
+				new map_type(x_origin, y_origin, zlevel, x_size, y_size, FALSE, TRUE, planetary_area)
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/generate_features()
-	for(var/T in subtypesof(/datum/map_template/ruin/exoplanet))
-		var/datum/map_template/ruin/exoplanet/ruin = T
-		if(ruin_tags_whitelist && !(ruin_tags_whitelist & initial(ruin.ruin_tags)))
+	var/list/ruins = SSmapping.get_templates_by_category(MAP_TEMPLATE_CATEGORY_EXOPLANET)
+	for(var/ruin_name in ruins)
+		var/datum/map_template/ruin = ruins[ruin_name]
+		var/ruin_tags = ruin.get_ruin_tags()
+		if(ruin_tags_whitelist && !(ruin_tags_whitelist & ruin_tags))
 			continue
-		if(ruin_tags_blacklist & initial(ruin.ruin_tags))
+		if(ruin_tags_blacklist & ruin_tags)
 			continue
-		possible_features += new ruin
-	spawned_features = seedRuins(map_z, features_budget, /area/exoplanet, possible_features, maxx, maxy)
+		possible_features += ruin
+	spawned_features = seed_ruins(map_z, features_budget, /area/exoplanet, possible_features, maxx, maxy)
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/generate_daycycle()
 	if(lightlevel)
@@ -187,18 +227,21 @@
 		daycycle = rand(10 MINUTES, 40 MINUTES)
 
 //Tries to generate num landmarks, but avoids repeats.
-/obj/effect/overmap/visitable/sector/exoplanet/proc/generate_landing(num = 1)
+/obj/effect/overmap/visitable/sector/exoplanet/proc/generate_landing()
 	var/places = list()
-	var/attempts = 10*num
-	var/new_type = /obj/effect/shuttle_landmark/automatic
-	while(num)
+	var/attempts = 10*landing_points_to_place
+	var/border_padding = shuttle_size / 2 + 3
+
+	while(landing_points_to_place)
 		attempts--
-		var/turf/T = locate(rand(20, maxx-20), rand(20, maxy - 10),map_z[map_z.len])
+		var/turf/T = locate(rand(x_origin + border_padding, x_origin + x_size - border_padding), rand(y_origin + border_padding, y_origin + y_size - border_padding), map_z[1])
+
 		if(!T || (T in places)) // Two landmarks on one turf is forbidden as the landmark code doesn't work with it.
 			continue
+
 		if(attempts >= 0) // While we have the patience, try to find better spawn points. If out of patience, put them down wherever, so long as there are no repeats.
 			var/valid = 1
-			var/list/block_to_check = block(locate(T.x - 10, T.y - 10, T.z), locate(T.x + 10, T.y + 10, T.z))
+			var/list/block_to_check = block(locate(T.x - shuttle_size / 2, T.y - shuttle_size / 2, T.z), locate(T.x + shuttle_size / 2, T.y + shuttle_size / 2, T.z))
 			for(var/turf/check in block_to_check)
 				if(!istype(get_area(check), /area/exoplanet) || check.turf_flags & TURF_FLAG_NORUINS)
 					valid = 0
@@ -206,15 +249,13 @@
 			if(attempts >= 10)
 				if(check_collision(T.loc, block_to_check)) //While we have lots of patience, ensure landability
 					valid = 0
-			else //Running out of patience, but would rather not clear ruins, so switch to clearing landmarks and bypass landability check
-				new_type = /obj/effect/shuttle_landmark/automatic/clearing
 
 			if(!valid)
 				continue
 
-		num--
+		landing_points_to_place--
 		places += T
-		new new_type(T)
+		new /obj/effect/shuttle_landmark/automatic/clearing(T)
 
 /obj/effect/overmap/visitable/sector/exoplanet/get_scan_data(mob/user)
 	. = ..()
@@ -224,7 +265,7 @@
 			var/list/gases = list()
 			for(var/g in atmosphere.gas)
 				if(atmosphere.gas[g] > atmosphere.total_moles * 0.05)
-					var/decl/material/mat = decls_repository.get_decl(g)
+					var/decl/material/mat = GET_DECL(g)
 					gases += mat.gas_name
 			extra_data += "Atmosphere composition: [english_list(gases)]"
 			var/inaccuracy = rand(8,12)/10
@@ -241,8 +282,8 @@
 
 	if(LAZYLEN(spawned_features) && user.skill_check(SKILL_SCIENCE, SKILL_ADEPT))
 		var/ruin_num = 0
-		for(var/datum/map_template/ruin/exoplanet/R in spawned_features)
-			if(!(R.ruin_tags & RUIN_NATURAL))
+		for(var/datum/map_template/R in spawned_features)
+			if(!(R.get_ruin_tags() & RUIN_NATURAL))
 				ruin_num++
 		if(ruin_num)
 			extra_data += "<br>[ruin_num] possible artificial structure\s detected."
@@ -257,3 +298,4 @@
 	ambience = list('sound/effects/wind/wind_2_1.ogg','sound/effects/wind/wind_2_2.ogg','sound/effects/wind/wind_3_1.ogg','sound/effects/wind/wind_4_1.ogg','sound/effects/wind/wind_4_2.ogg','sound/effects/wind/wind_5_1.ogg')
 	always_unpowered = 1
 	area_flags = AREA_FLAG_IS_BACKGROUND | AREA_FLAG_EXTERNAL
+	is_outside = OUTSIDE_YES

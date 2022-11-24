@@ -18,12 +18,12 @@
 
 /obj/structure/barricade/spike/Initialize()
 	if(!reinf_material)
-		reinf_material = MAT_WOOD
+		reinf_material = /decl/material/solid/wood
 	. = ..()
 
 /obj/structure/barricade/Initialize()
 	if(!material)
-		material = MAT_WOOD
+		material = /decl/material/solid/wood
 	. = ..()
 	if(!istype(material))
 		return INITIALIZE_HINT_QDEL
@@ -45,7 +45,7 @@
 	..()
 	if(reinf_material)
 		icon_state = "cheval"
-		overlays = overlay_image(icon, "cheval_spikes", color = reinf_material.color, flags = RESET_COLOR)
+		add_overlay(overlay_image(icon, "cheval_spikes", color = reinf_material.color, flags = RESET_COLOR))
 	else
 		icon_state = "barricade"
 	
@@ -71,7 +71,7 @@
 	if(QDELETED(src))
 		if(severity == 1)
 			parts_type = null
-			physically_destroyed(src)
+			physically_destroyed()
 		else if(severity == 2)
 			take_damage(25)
 

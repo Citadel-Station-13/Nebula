@@ -7,7 +7,6 @@
 	extended_desc = "This highly advanced script can very slowly decrypt operational codes used in almost any network. These codes can be downloaded to an ID card to expand the available access. The system administrator will probably notice this."
 	size = 12
 	available_on_network = 0
-	available_on_syndinet = 1
 	nanomodule_path = /datum/nano_module/program/access_decrypter/
 	var/message = ""
 	var/running = FALSE
@@ -110,7 +109,7 @@
 /datum/nano_module/program/access_decrypter
 	name = "Access Database Decrypter"
 
-/datum/nano_module/program/access_decrypter/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
+/datum/nano_module/program/access_decrypter/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
 	var/datum/computer_file/program/access_decrypter/PRG = program
 	var/list/data = list()
 	if(!istype(PRG))

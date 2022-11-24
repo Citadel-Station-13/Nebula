@@ -1,9 +1,9 @@
 /datum/artifact_effect/goodfeeling
 	name = "good feeling"
 	origin_type = EFFECT_PSIONIC
-	var/global/list/messages = list("You feel good.",
-		"Everything seems to be going alright",
-		"You've got a good feeling about this",
+	var/static/list/messages = list("You feel good.",
+		"Everything seems to be going alright.",
+		"You've got a good feeling about this.",
 		"Your instincts tell you everything is going to be getting better.",
 		"There's a good feeling in the air.",
 		"Something smells... good.",
@@ -16,7 +16,7 @@
 		"Everything seems a little lighter.",
 		"The troubles of the world seem to fade away.")
 
-	var/global/list/drastic_messages = list("You want to hug everyone you meet!",
+	var/static/list/drastic_messages = list("You want to hug everyone you meet!",
 		"Everything is going so well!",
 		"You feel euphoric.",
 		"You feel giddy.",
@@ -52,4 +52,4 @@
 			to_chat(H, SPAN_NOTICE(pick(drastic_messages)))
 
 	if(prob(dizziness_prob))
-		H.dizziness += rand(3,5)
+		ADJ_STATUS(H, STAT_DIZZY, rand(3,5))

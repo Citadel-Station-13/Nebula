@@ -6,7 +6,7 @@
 	icon = 'icons/obj/trash.dmi'
 	w_class = ITEM_SIZE_SMALL
 	desc = "This is rubbish."
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	var/age = 0
 
 /obj/item/trash/Initialize(mapload, var/_age)
@@ -16,11 +16,11 @@
 
 /obj/item/trash/Initialize(var/ml)
 	if(!ml)
-		SSpersistence.track_value(src, /datum/persistent/filth/trash)
+		SSpersistence.track_value(src, /decl/persistence_handler/filth/trash)
 	. = ..()
 
 /obj/item/trash/Destroy()
-	SSpersistence.forget_value(src, /datum/persistent/filth/trash)
+	SSpersistence.forget_value(src, /decl/persistence_handler/filth/trash)
 	. = ..()
 
 /obj/item/trash/raisins

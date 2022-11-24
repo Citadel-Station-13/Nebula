@@ -4,7 +4,6 @@ var/global/datum/getrev/revdata = new()
 	var/branch
 	var/revision
 	var/date
-	var/showinfo
 
 /datum/getrev/New()
 	var/list/head_branch = file2list(".git/HEAD", "\n")
@@ -43,4 +42,4 @@ var/global/datum/getrev/revdata = new()
 	else
 		to_chat(src, "<b>Server Revision:</b> Revision Unknown")
 	to_chat(src, "Game ID: <b>[game_id]</b>")
-	to_chat(src, "Current map: [GLOB.using_map.full_name]")
+	to_chat(src, "Current map: [global.using_map.full_name]")

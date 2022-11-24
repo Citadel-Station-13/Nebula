@@ -1,17 +1,25 @@
 /turf/simulated
 	name = "station"
-	initial_gas = list(MAT_OXYGEN = MOLES_O2STANDARD, MAT_NITROGEN = MOLES_N2STANDARD)
+	initial_gas = list(
+		/decl/material/gas/oxygen = MOLES_O2STANDARD,
+		/decl/material/gas/nitrogen = MOLES_N2STANDARD
+	)
+	open_turf_type = /turf/simulated/open
+
 	var/wet = 0
 	var/image/wet_overlay = null
-	var/has_resources //Mining resources (for the large drills).
-	var/list/resources
-	var/to_be_destroyed = 0 //Used for fire, if a melting temperature was reached, it will be destroyed
-	var/max_fire_temperature_sustained = 0 //The max temperature of the fire which it was subjected to
 	var/dirt = 0
 	var/timer_id
 
 // This is not great.
 /turf/simulated/proc/wet_floor(var/wet_val = 1, var/overwrite = FALSE)
+
+	if(is_flooded(absolute = TRUE))
+		return
+
+	if(get_fluid_depth() > FLUID_QDEL_POINT)
+		return
+
 	if(wet_val < wet && !overwrite)
 		return
 
@@ -20,14 +28,13 @@
 		wet_overlay = image('icons/effects/water.dmi',src,"wet_floor")
 		overlays += wet_overlay
 
-	timer_id = addtimer(CALLBACK(src,/turf/simulated/proc/unwet_floor),8 SECONDS, TIMER_STOPPABLE|TIMER_UNIQUE|TIMER_NO_HASH_WAIT|TIMER_OVERRIDE)
+	timer_id = addtimer(CALLBACK(src,/turf/simulated/proc/unwet_floor), 8 SECONDS, (TIMER_STOPPABLE|TIMER_UNIQUE|TIMER_NO_HASH_WAIT|TIMER_OVERRIDE))
 
 /turf/simulated/proc/unwet_floor(var/check_very_wet = TRUE)
 	if(check_very_wet && wet >= 2)
 		wet--
-		timer_id = addtimer(CALLBACK(src,/turf/simulated/proc/unwet_floor), 8 SECONDS, TIMER_STOPPABLE|TIMER_UNIQUE|TIMER_NO_HASH_WAIT|TIMER_OVERRIDE)
+		timer_id = addtimer(CALLBACK(src,/turf/simulated/proc/unwet_floor), 8 SECONDS, (TIMER_STOPPABLE|TIMER_UNIQUE|TIMER_NO_HASH_WAIT|TIMER_OVERRIDE))
 		return
-
 	wet = 0
 	if(wet_overlay)
 		overlays -= wet_overlay
@@ -36,13 +43,7 @@
 /turf/simulated/clean_blood()
 	for(var/obj/effect/decal/cleanable/blood/B in contents)
 		B.clean_blood()
-	..()
-
-/turf/simulated/Initialize()
 	. = ..()
-	if(istype(loc, /area/chapel))
-		holy = 1
-	levelupdate()
 
 /turf/simulated/proc/AddTracks(var/typepath,var/bloodDNA,var/comingdir,var/goingdir,var/bloodcolor=COLOR_BLOOD_HUMAN)
 	var/obj/effect/decal/cleanable/blood/tracks/tracks = locate(typepath) in src
@@ -64,64 +65,79 @@
 
 /turf/simulated/Entered(atom/A, atom/OL)
 	. = ..()
-	if (istype(A,/mob/living))
-		var/mob/living/M = A
+	if (istype(A))
+		A.OnSimulatedTurfEntered(src)
 
-		// Dirt overlays.
-		update_dirt()
+/atom/proc/OnSimulatedTurfEntered(turf/simulated/T)
+	set waitfor = FALSE
+	return
 
-		if(istype(M, /mob/living/carbon/human))
-			var/mob/living/carbon/human/H = M
-			// Tracking blood
-			var/list/bloodDNA = null
-			var/bloodcolor=""
-			if(H.shoes)
-				var/obj/item/clothing/shoes/S = H.shoes
-				if(istype(S))
-					S.handle_movement(src, MOVING_QUICKLY(H))
-					if(S.track_blood && S.blood_DNA)
-						bloodDNA = S.blood_DNA
-						bloodcolor = S.blood_color
-						S.track_blood--
-			else
-				if(H.track_blood && H.feet_blood_DNA)
-					bloodDNA = H.feet_blood_DNA
-					bloodcolor = H.feet_blood_color
-					H.track_blood--
+/mob/living/OnSimulatedTurfEntered(turf/simulated/T)
+	T.update_dirt()
 
-			if (bloodDNA && H.species.get_move_trail(H))
-				src.AddTracks(H.species.get_move_trail(H),bloodDNA,H.dir,0,bloodcolor) // Coming
-				var/turf/simulated/from = get_step(H, GLOB.reverse_dir[H.dir])
-				if(istype(from) && from)
-					from.AddTracks(H.species.get_move_trail(H),bloodDNA,0,H.dir,bloodcolor) // Going
+	HandleBloodTrail(T)
 
-				bloodDNA = null
+	if(lying || !T.wet)
+		return
 
-		if(M.lying)
-			return
+	if(buckled || (MOVING_DELIBERATELY(src) && prob(min(100, 100/(T.wet/10)))))
+		return
 
-		if(src.wet)
+	// skillcheck for slipping
+	if(!prob(min(100, skill_fail_chance(SKILL_HAULING, 100, SKILL_MAX+1)/(3/T.wet))))
+		return
 
-			if(M.buckled || (MOVING_DELIBERATELY(M) && prob(min(100, 100/(wet/10))) ) )
-				return
+	var/slip_dist = 1
+	var/slip_stun = 6
+	var/floor_type = "wet"
 
-			// skillcheck for slipping
-			if(!prob(min(100, M.skill_fail_chance(SKILL_HAULING, 100, SKILL_MAX+1)/(3/wet))))
-				return
+	if(2 <= T.wet) // Lube
+		floor_type = "slippery"
+		slip_dist = 4
+		slip_stun = 10
 
-			var/slip_dist = 1
-			var/slip_stun = 6
-			var/floor_type = "wet"
+	// Dir check to avoid slipping up and down via ladders.
+	if(slip("the [floor_type] floor", slip_stun) && (dir in global.cardinal))
+		for(var/i = 1 to slip_dist)
+			step(src, dir)
+			sleep(1)
 
-			if(2 <= src.wet) // Lube
-				floor_type = "slippery"
-				slip_dist = 4
-				slip_stun = 10
+/mob/living/proc/HandleBloodTrail(turf/simulated/T)
+	return
 
-			if(M.slip("the [floor_type] floor", slip_stun))
-				for(var/i = 1 to slip_dist)
-					step(M, M.dir)
-					sleep(1)
+/mob/living/carbon/human/HandleBloodTrail(turf/simulated/T)
+	// Tracking blood
+	var/obj/item/source
+	var/obj/item/clothing/shoes/shoes = get_equipped_item(slot_shoes_str)
+	if(istype(shoes))
+		shoes.handle_movement(src, MOVING_QUICKLY(src))
+		if(shoes.coating && shoes.coating.total_volume > 1)
+			source = shoes
+	else
+		for(var/bp in list(BP_L_FOOT, BP_R_FOOT))
+			var/obj/item/organ/external/stomper = GET_EXTERNAL_ORGAN(src, bp)
+			if(stomper && stomper.coating && stomper.coating.total_volume > 1)
+				source = stomper
+	if(!source)
+		species.handle_trail(src, T)
+		return
+
+	var/list/bloodDNA
+	var/bloodcolor
+	var/list/blood_data = REAGENT_DATA(source.coating, /decl/material/liquid/blood)
+	if(blood_data)
+		bloodDNA = list(blood_data["blood_DNA"] = blood_data["blood_type"])
+	else
+		bloodDNA = list()
+	bloodcolor = source.coating.get_color()
+	source.remove_coating(1)
+	update_inv_shoes(1)
+
+	if(species.get_move_trail(src))
+		T.AddTracks(species.get_move_trail(src),bloodDNA, dir, 0, bloodcolor) // Coming
+		var/turf/simulated/from = get_step(src, global.reverse_dir[dir])
+		if(istype(from))
+			from.AddTracks(species.get_move_trail(src), bloodDNA, 0, dir, bloodcolor) // Going
 
 //returns 1 if made bloody, returns 0 otherwise
 /turf/simulated/add_blood(mob/living/carbon/human/M)
@@ -130,10 +146,9 @@
 
 	if(istype(M))
 		for(var/obj/effect/decal/cleanable/blood/B in contents)
-			if(!B.blood_DNA)
-				B.blood_DNA = list()
-			if(!B.blood_DNA[M.dna.unique_enzymes])
-				B.blood_DNA[M.dna.unique_enzymes] = M.dna.b_type
+			if(M.dna?.unique_enzymes && !LAZYACCESS(B.blood_DNA, M.dna.unique_enzymes))
+				LAZYSET(B.blood_DNA, M.dna.unique_enzymes, M.dna.b_type)
+				LAZYSET(B.blood_data, M.dna.unique_enzymes, REAGENT_DATA(M.vessel, M.species.blood_reagent))
 				var/datum/extension/forensic_evidence/forensics = get_or_create_extension(B, /datum/extension/forensic_evidence)
 				forensics.add_data(/datum/forensics/blood_dna, M.dna.unique_enzymes)
 			return 1 //we bloodied the floor
@@ -149,19 +164,15 @@
 	else if( istype(M, /mob/living/silicon/robot ))
 		new /obj/effect/decal/cleanable/blood/oil(src)
 
-/turf/simulated/proc/can_build_cable(var/mob/user)
-	return 0
-
 /turf/simulated/attackby(var/obj/item/thing, var/mob/user)
-	if(isCoil(thing) && can_build_cable(user))
-		var/obj/item/stack/cable_coil/coil = thing
-		coil.turf_place(src, user)
+	if(IS_COIL(thing) && try_build_cable(thing, user))
 		return TRUE
 	return ..()
 
-/turf/simulated/Initialize()
-	if(GAME_STATE >= RUNLEVEL_GAME)
-		fluid_update()
+/turf/simulated/Initialize(var/ml)
+	var/area/A = loc
+	holy = istype(A) && (A.area_flags & AREA_FLAG_HOLY)
+	levelupdate()
 	. = ..()
 
 /turf/simulated/Destroy()
@@ -171,4 +182,4 @@
 			zone.remove(src)
 		else
 			zone.rebuild()
-	. = ..() 
+	. = ..()

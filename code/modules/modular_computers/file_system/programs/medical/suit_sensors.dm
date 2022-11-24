@@ -7,7 +7,9 @@
 	program_key_state = "med_key"
 	program_menu_icon = "heart"
 	extended_desc = "This program connects to life signs monitoring system to provide basic information on crew health."
-	required_access = access_medical
+	read_access = list(access_medical)
+	requires_network = 1
+	requires_network_feature = NET_FEATURE_SECURITY
 	network_destination = "crew lifesigns monitoring system"
 	size = 11
 	category = PROG_MONITOR
@@ -51,15 +53,19 @@
 				AI.ai_actual_track(H)
 		return 1
 
-/datum/nano_module/program/crew_monitor/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
-	var/list/data = host.initial_data()
+/datum/nano_module/program/crew_monitor/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
 
+	var/list/data = host.initial_data()
 	data["isAI"] = isAI(user)
-	data["crewmembers"] = list()
+
+	var/list/crewmembers = list()
 	var/datum/computer_network/network = get_network()
 	if(network)
 		for(var/z_level in GetConnectedZlevels(network.get_router_z()))
-			data["crewmembers"] += crew_repository.health_data(z_level)
+			crewmembers += crew_repository.health_data(z_level)
+		data["crewmembers"] = sortTim(crewmembers, /proc/cmp_list_name_key_asc)
+	else
+		data["crewmembers"] = list()
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if(!ui)

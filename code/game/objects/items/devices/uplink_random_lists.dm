@@ -34,7 +34,7 @@
 		return I
 	return uplink.items_assoc[/datum/uplink_item/item/stealthy_weapons/soap]
 
-var/list/uplink_random_selections_
+var/global/list/uplink_random_selections_
 /proc/get_uplink_random_selection_by_type(var/uplist_selection_type)
 	if(!uplink_random_selections_)
 		uplink_random_selections_ = init_subtypes(/datum/uplink_random_selection)
@@ -137,8 +137,9 @@ var/list/uplink_random_selections_
 
 #ifdef DEBUG
 /proc/debug_uplink_purchage_log()
-	for(var/antag_type in GLOB.all_antag_types_)
-		var/datum/antagonist/A = GLOB.all_antag_types_[antag_type]
+	var/list/all_antag_types = decls_repository.get_decls_of_subtype(/decl/special_role)
+	for(var/antag_type in all_antag_types)
+		var/decl/special_role/A = all_antag_types[antag_type]
 		A.print_player_summary()
 
 /proc/debug_uplink_item_assoc_list()

@@ -4,12 +4,14 @@
 	icon = 'icons/obj/items/weapon/nullrod.dmi'
 	icon_state = "nullrod"
 	item_state = "nullrod"
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	force = 10
 	throw_speed = 1
 	throw_range = 4
 	throwforce = 7
 	w_class = ITEM_SIZE_NORMAL
+	material = /decl/material/solid/glass
+	health = ITEM_HEALTH_NO_DAMAGE
 
 /obj/item/nullrod/attack(mob/M, mob/living/user) //Paste from old-code to decult with a null rod.
 	admin_attack_log(user, M, "Attacked using \a [src]", "Was attacked with \a [src]", "used \a [src] to attack")
@@ -28,12 +30,13 @@
 	if ((MUTATION_CLUMSY in user.mutations) && prob(50))
 		to_chat(user, "<span class='danger'>The rod slips out of your hand and hits your head.</span>")
 		user.take_organ_damage(10)
-		user.Paralyse(20)
+		SET_STATUS_MAX(user, STAT_PARA, 20)
 		return
 
-	if(GLOB.cult && iscultist(M))
+	if(iscultist(M))
 		M.visible_message("<span class='notice'>\The [user] waves \the [src] over \the [M]'s head.</span>")
-		GLOB.cult.offer_uncult(M)
+		var/decl/special_role/cultist/cult = GET_DECL(/decl/special_role/cultist)
+		cult.offer_uncult(M)
 		return
 
 	..()
@@ -67,6 +70,8 @@
 	icon_state = "energynet"
 	throwforce = 0
 	force = 0
+	health = 100
+	max_health = 100
 	var/net_type = /obj/effect/energy_net
 
 /obj/item/energy_net/safari
@@ -137,9 +142,6 @@
 	START_PROCESSING(SSobj, src)
 
 /obj/effect/energy_net/Destroy()
-	if(istype(captured, /mob/living/carbon))
-		if(captured.handcuffed == src)
-			captured.handcuffed = null
 	if(captured)
 		unbuckle_mob()
 	STOP_PROCESSING(SSobj, src)
@@ -171,13 +173,10 @@
 	if(M.buckled)
 		M.buckled.unbuckle_mob()
 	buckle_mob(M)
-	if(istype(M, /mob/living/carbon))
-		var/mob/living/carbon/C = M
-		if(!C.handcuffed)
-			C.handcuffed = src
 	return 1
 
 /obj/effect/energy_net/post_buckle_mob(mob/living/M)
+	..()
 	if(buckled_mob)
 		layer = ABOVE_HUMAN_LAYER
 		visible_message("\The [M] was caught in [src]!")
@@ -214,9 +213,6 @@
 			health -= rand(10, 20)
 		else
 			health -= rand(1,3)
-
-	else if (MUTATION_HULK in user.mutations)
-		health = 0
 	else
 		health -= rand(5,8)
 
@@ -230,7 +226,7 @@
 	healthcheck()
 	..()
 
-obj/effect/energy_net/user_unbuckle_mob(mob/user)
+/obj/effect/energy_net/user_unbuckle_mob(mob/user)
 	return escape_net(user)
 
 

@@ -64,31 +64,21 @@ Thus, the two variables affect pump operation are set in New():
 	air1.volume = ATMOS_DEFAULT_VOLUME_PUMP
 	air2.volume = ATMOS_DEFAULT_VOLUME_PUMP
 
-/obj/machinery/atmospherics/binary/pump/AltClick()
-	Topic(src, list("power" = "1"))
-
 /obj/machinery/atmospherics/binary/pump/on
 	icon_state = "map_on"
 	use_power = POWER_USE_IDLE
 
 
 /obj/machinery/atmospherics/binary/pump/on_update_icon()
-	if(!powered())
+	if(stat & NOPOWER)
 		icon_state = "off"
 	else
 		icon_state = "[use_power ? "on" : "off"]"
 
-/obj/machinery/atmospherics/binary/pump/update_underlays()
-	if(..())
-		underlays.Cut()
-		var/turf/T = get_turf(src)
-		if(!istype(T))
-			return
-		add_underlay(T, node1, turn(dir, -180))
-		add_underlay(T, node2, dir)
+	build_device_underlays(FALSE)
 
 /obj/machinery/atmospherics/binary/pump/hide(var/i)
-	update_underlays()
+	update_icon()
 
 /obj/machinery/atmospherics/binary/pump/Process()
 	last_power_draw = 0
@@ -102,15 +92,12 @@ Thus, the two variables affect pump operation are set in New():
 
 	if(pressure_delta > 0.01 && air1.temperature > 0)
 		//Figure out how much gas to transfer to meet the target pressure.
-		var/transfer_moles = calculate_transfer_moles(air1, air2, pressure_delta, (network2)? network2.volume : 0)
+		var/datum/pipe_network/output = network_in_dir(dir)
+		var/transfer_moles = calculate_transfer_moles(air1, air2, pressure_delta, output?.volume)
 		power_draw = pump_gas(src, air1, air2, transfer_moles, power_rating)
 
 		if(transfer_moles > 0)
-			if(network1)
-				network1.update = 1
-
-			if(network2)
-				network2.update = 1
+			update_networks()
 
 	if (power_draw >= 0)
 		last_power_draw = power_draw
@@ -170,7 +157,7 @@ Thus, the two variables affect pump operation are set in New():
 			. = 1
 		if ("set")
 			var/new_pressure = input(usr,"Enter new output pressure (0-[max_pressure_setting]kPa)","Pressure control",src.target_pressure) as num
-			src.target_pressure = between(0, new_pressure, max_pressure_setting)
+			src.target_pressure = clamp(0, new_pressure, max_pressure_setting)
 			. = 1
 
 	if(.)
@@ -194,7 +181,7 @@ Thus, the two variables affect pump operation are set in New():
 	return machine.target_pressure
 
 /decl/public_access/public_variable/pump_target_output/write_var(obj/machinery/atmospherics/binary/pump/machine, new_value)
-	new_value = Clamp(new_value, 0, machine.max_pressure_setting)
+	new_value = clamp(new_value, 0, machine.max_pressure_setting)
 	. = ..()
 	if(.)
 		machine.target_pressure = new_value
@@ -218,3 +205,15 @@ Thus, the two variables affect pump operation are set in New():
 		"set_power" = /decl/public_access/public_variable/use_power,
 		"set_output_pressure" = /decl/public_access/public_variable/pump_target_output
 	)
+
+/obj/machinery/atmospherics/binary/pump/get_alt_interactions(var/mob/user)
+	. = ..()
+	LAZYADD(., /decl/interaction_handler/binary_pump_toggle)
+
+/decl/interaction_handler/binary_pump_toggle
+	name = "Switch On/Off"
+	expected_target_type = /obj/machinery/atmospherics/binary/pump
+
+/decl/interaction_handler/binary_pump_toggle/invoked(atom/target, mob/user, obj/item/prop)
+	var/obj/machinery/atmospherics/binary/pump/P = target
+	P.update_use_power(!P.use_power)

@@ -5,7 +5,9 @@
 	allow_quick_gather = 1
 	allow_quick_empty = 1
 	use_to_pickup = 1
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
+	material = /decl/material/solid/plastic
+	item_flags = ITEM_FLAG_HOLLOW
 
 /obj/item/storage/bag/handle_item_insertion(obj/item/W, prevent_warning = 0)
 	. = ..()
@@ -56,27 +58,28 @@
 	update_icon()
 
 /obj/item/storage/bag/trash/on_update_icon()
+	. = ..()
 	switch(w_class)
 		if(2) icon_state = "[initial(icon_state)]"
 		if(3) icon_state = "[initial(icon_state)]1"
 		if(4) icon_state = "[initial(icon_state)]2"
 		if(5 to INFINITY) icon_state = "[initial(icon_state)]3"
 
-/obj/item/storage/bag/trash/bluespace
+/obj/item/storage/bag/trash/advanced
 	name = "trash bag of holding"
 	max_storage_space = 56
 	desc = "The latest and greatest in custodial convenience, a trashbag that is capable of holding vast quantities of garbage."
 	icon_state = "bluetrashbag"
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	matter = list(
-		MAT_GOLD = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_URANIUM = MATTER_AMOUNT_TRACE,
-		MAT_PHORON = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE
 	)
+	origin_tech = "{'exoticmatter':5,'materials':6}"
 
-/obj/item/storage/bag/trash/bluespace/attackby(obj/item/W, mob/user)
-	if(istype(W, /obj/item/storage/backpack/holding) || istype(W, /obj/item/storage/bag/trash/bluespace))
-		to_chat(user, "<span class='warning'>The Bluespace interfaces of the two devices conflict and malfunction.</span>")
+/obj/item/storage/bag/trash/advanced/attackby(obj/item/W, mob/user)
+	if(istype(W, /obj/item/storage/backpack/holding) || istype(W, /obj/item/storage/bag/trash/advanced))
+		to_chat(user, "<span class='warning'>The spatial interfaces of the two devices conflict and malfunction.</span>")
 		qdel(W)
 		return 1
 	return ..()
@@ -109,4 +112,5 @@
 	max_storage_space = 100
 	max_w_class = ITEM_SIZE_HUGE
 	w_class = ITEM_SIZE_SMALL
-	can_hold = list(/obj/item/coin,/obj/item/cash)
+	can_hold = list(/obj/item/coin, /obj/item/cash)
+	material = /decl/material/solid/leather/synth

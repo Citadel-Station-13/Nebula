@@ -1,9 +1,11 @@
 /obj/item/inflatable
-	name = "inflatable"
-	w_class = ITEM_SIZE_NORMAL
+	name = "inflatable wall"
+	desc = "A folded membrane which rapidly expands into a large cubical shape on activation."
 	icon = 'icons/obj/structures/inflatable.dmi'
-	atmos_canpass = CANPASS_DENSITY
-	var/deploy_path = null
+	icon_state = "folded_wall"
+	material = /decl/material/solid/plastic
+	w_class = ITEM_SIZE_NORMAL
+	var/deploy_path = /obj/structure/inflatable/wall
 	var/inflatable_health
 
 /obj/item/inflatable/attack_self(mob/user)
@@ -24,12 +26,6 @@
 		R.health = inflatable_health
 	qdel(src)
 
-/obj/item/inflatable/wall
-	name = "inflatable wall"
-	desc = "A folded membrane which rapidly expands into a large cubical shape on activation."
-	icon_state = "folded_wall"
-	deploy_path = /obj/structure/inflatable/wall
-
 /obj/item/inflatable/door
 	name = "inflatable door"
 	desc = "A folded membrane which rapidly expands into a simple door on activation."
@@ -38,7 +34,7 @@
 	deploy_path = /obj/structure/inflatable/door
 
 /obj/structure/inflatable
-	name = "inflatable"
+	name = "inflatable structure"
 	desc = "An inflated membrane. Do not puncture."
 	density = 1
 	anchored = 1
@@ -47,6 +43,8 @@
 	icon_state = "wall"
 	maxhealth = 20
 	hitsound = 'sound/effects/Glasshit.ogg'
+	atmos_canpass = CANPASS_DENSITY
+	material = /decl/material/solid/plastic
 
 	var/undeploy_path = null
 	var/taped
@@ -56,7 +54,7 @@
 
 /obj/structure/inflatable/wall
 	name = "inflatable wall"
-	undeploy_path = /obj/item/inflatable/wall
+	undeploy_path = /obj/item/inflatable
 
 /obj/structure/inflatable/Initialize()
 	. = ..()
@@ -89,7 +87,7 @@
 	var/max_pressure = 0
 	var/max_local_temp = 0
 
-	for(var/check_dir in GLOB.cardinal)
+	for(var/check_dir in global.cardinal)
 		var/turf/T = get_step(get_turf(src), check_dir)
 		var/datum/gas_mixture/env = T.return_air()
 		var/pressure = env.return_pressure()
@@ -120,15 +118,21 @@
 	add_fingerprint(user)
 
 /obj/structure/inflatable/can_repair_with(obj/item/tool)
-	. = istype(tool, /obj/item/tape_roll) && (health < maxhealth)
+	. = istype(tool, /obj/item/stack/tape_roll/duct_tape) && (health < maxhealth)
 
 /obj/structure/inflatable/handle_repair(mob/user, obj/item/tool)
+	var/obj/item/stack/tape_roll/duct_tape/T = tool
 	if(taped)
 		to_chat(user, SPAN_WARNING("You cannot tape up \the [src] any further."))
 		return
+	if(T.can_use(2))
+		to_chat(user, SPAN_WARNING("You need 2 [T.plural_name] to repair \the [src]."))
+		return
+	T.use(2)
+	playsound(src, 'sound/effects/tape.ogg', 50, TRUE)
 	last_damage_message = null
 	to_chat(user, SPAN_NOTICE("You tape up some of the damage to \the [src]."))
-	health = Clamp(health + 3, 0, maxhealth)
+	health = clamp(health + 3, 0, maxhealth)
 	taped = TRUE
 
 /obj/structure/inflatable/attackby(obj/item/W, mob/user)
@@ -143,7 +147,7 @@
 
 	return FALSE
 
-/obj/structure/inflatable/physically_destroyed()
+/obj/structure/inflatable/physically_destroyed(var/skip_qdel)
 	SHOULD_CALL_PARENT(FALSE)
 	. = deflate(1)
 
@@ -154,7 +158,7 @@
 	playsound(loc, 'sound/machines/hiss.ogg', 75, 1)
 	if(violent)
 		visible_message("[src] rapidly deflates!")
-		var/obj/item/inflatable/torn/R = new /obj/item/inflatable/torn(loc)
+		var/obj/item/inflatable/torn/R = new(loc)
 		src.transfer_fingerprints_to(R)
 		qdel(src)
 	else
@@ -190,11 +194,12 @@
 
 	icon_state = "door_closed"
 	undeploy_path = /obj/item/inflatable/door
+	atmos_canpass = CANPASS_PROC
 
 	var/state = 0 //closed, 1 == open
 	var/isSwitchingStates = 0
 
-/obj/structure/inflatable/door/attack_ai(mob/user) //those aren't machinery, they're just big fucking slabs of a mineral
+/obj/structure/inflatable/door/attack_ai(mob/living/silicon/ai/user) //those aren't machinery, they're just big fucking slabs of a mineral
 	if(isAI(user)) //so the AI can't open it
 		return
 	else if(isrobot(user)) //but cyborgs can
@@ -218,7 +223,7 @@
 		if(M.client)
 			if(iscarbon(M))
 				var/mob/living/carbon/C = M
-				if(!C.handcuffed)
+				if(!C.get_equipped_item(slot_handcuffed_str))
 					SwitchState()
 			else
 				SwitchState()
@@ -251,6 +256,7 @@
 	isSwitchingStates = 0
 
 /obj/structure/inflatable/door/on_update_icon()
+	..()
 	if(state)
 		icon_state = "door_open"
 	else
@@ -276,9 +282,9 @@
 	icon = 'icons/obj/structures/inflatable.dmi'
 	icon_state = "folded_wall_torn"
 
-	attack_self(mob/user)
-		to_chat(user, "<span class='notice'>The inflatable wall is too torn to be inflated!</span>")
-		add_fingerprint(user)
+/obj/item/inflatable/torn/attack_self(mob/user)
+	to_chat(user, "<span class='notice'>The inflatable wall is too torn to be inflated!</span>")
+	add_fingerprint(user)
 
 /obj/item/inflatable/door/torn
 	name = "torn inflatable door"
@@ -286,9 +292,9 @@
 	icon = 'icons/obj/structures/inflatable.dmi'
 	icon_state = "folded_door_torn"
 
-	attack_self(mob/user)
-		to_chat(user, "<span class='notice'>The inflatable door is too torn to be inflated!</span>")
-		add_fingerprint(user)
+/obj/item/inflatable/door/torn/attack_self(mob/user)
+	to_chat(user, "<span class='notice'>The inflatable door is too torn to be inflated!</span>")
+	add_fingerprint(user)
 
 /obj/item/storage/briefcase/inflatable
 	name = "inflatable barrier box"
@@ -299,4 +305,9 @@
 	w_class = ITEM_SIZE_LARGE
 	max_storage_space = DEFAULT_LARGEBOX_STORAGE
 	can_hold = list(/obj/item/inflatable)
-	startswith = list(/obj/item/inflatable/door = 2, /obj/item/inflatable/wall = 3)
+
+/obj/item/storage/briefcase/inflatable/WillContain()
+	return list(
+			/obj/item/inflatable/door = 2, 
+			/obj/item/inflatable      = 3
+		)

@@ -25,31 +25,25 @@
 	Wires can be pulsed remotely with a signaler attached to it.  A powersink will also drain any APCs connected to the same wire the powersink is on."
 
 /datum/codex_entry/inflatable_item
-	associated_paths = list(/obj/item/inflatable)
-	mechanics_text = "Inflate by using it in your hand.  The inflatable barrier will inflate on your tile.  To deflate it, use the 'deflate' verb."
-
-/datum/codex_entry/inflatable_deployed
-	associated_paths = list(/obj/structure/inflatable)
-	mechanics_text = "To remove these safely, use the 'deflate' verb.  Hitting these with any objects will probably puncture and break it forever."
-
-/datum/codex_entry/inflatable_door
-	associated_paths = list(/obj/structure/inflatable/door)
-	mechanics_text = "Click the door to open or close it.  It only stops air while closed.<br>\
-	To remove these safely, use the 'deflate' verb.  Hitting these with any objects will probably puncture and break it forever."
+	associated_paths = list(/obj/item/inflatable, /obj/structure/inflatable, /obj/structure/inflatable/door)
+	mechanics_text = "Inflate by using it in your hand.  The inflatable barrier will inflate on your tile.  To deflate it, use the 'deflate' verb. Hitting this with any object will probably puncture and break it forever.<br>Walls are static, but doors may be clicked to open or close them. They only stop air while closed."
 
 /datum/codex_entry/welding_pack
-	associated_paths = list(/obj/item/weldpack)
+	associated_paths = list(/obj/item/chems/weldpack)
 	mechanics_text = "This pack acts as a portable source of welding fuel. Use a welder on it to refill its tank - but make sure it's not lit! You can use this kit on a fuel tank or appropriate reagent dispenser to replenish its reserves."
 	lore_text = "The Shenzhen Chain of 2133 was an industrial accident of noteworthy infamy that occurred at Earth's L3 Lagrange Point. An apprentice welder, working for the Shenzhen Space Fabrication Group, failed to properly seal her fuel port, triggering a chain reaction that spread from laborer to laborer, instantly vaporizing a crew of fourteen. Don't let this happen to you!"
 	antag_text = "In theory, you could hold an open flame to this pack and produce some pretty catastrophic results. The trick is getting out of the blast radius."
+	disambiguator = "equipment"
 
 /datum/codex_entry/gripper
 	associated_paths = list(/obj/item/gripper)
 	mechanics_text = "Click an item to pick it up with your gripper. Use it as you would normally use anything in your hand. The Drop Item verb will allow you to release the item."
+	disambiguator = "equipment"
 
 /datum/codex_entry/diffuser_item
 	associated_paths = list(/obj/item/shield_diffuser)
 	mechanics_text = "This device disrupts shields on directly adjacent tiles (in a + shaped pattern), in a similar way the floor mounted variant does. It is, however, portable and run by an internal battery. Can be recharged with a regular recharger."
+	disambiguator = "equipment"
 
 /datum/codex_entry/hacking
 	associated_strings = list("hacking")
@@ -59,7 +53,7 @@
 /datum/codex_entry/solars
 	associated_paths = list(/obj/item/solar_assembly, /obj/machinery/power/solar, /obj/machinery/power/tracker, /obj/machinery/power/solar_control)
 	associated_strings = list("solar array")
-	lore_text = "'At Greencorps we love the environment, and space. With this package you are able to help mother nature and produce energy without any usage of fossil fuel or phoron! Singularity energy is dangerous while solar energy is safe, which is why it's better. Now here is how you setup your own solar array...''"
+	lore_text = "'At Greencorps we love the environment, and space. With this package you are able to help mother nature and produce energy without any usage of fossil fuels! Singularity energy is dangerous while solar energy is safe, which is why it's better. Now here is how you setup your own solar array...''"
 	mechanics_text = "A solar array is a source of power for your ship or station, utalizing a series of panels on the outside of the ship/station. A computer console is used to control the array, with the help of a solar tracker.<BR> \
 	<BR><b>Using the console</b><BR> \
 	The solar panel control console must be connected via cables to the solar panels and tracker to excercise control. Additionally, the user must use the 'Search for devices button' to finish the connection.<BR>Using the console, you can manually rotate the array orientation to match the direction of the nearest star, after which you can set a timed tracking rate, causing the array to rotate clockwise at the set rate. Ideally though a solar tracker is connected and you set the tracking settings to auto, allowing the array to rotate on its own. \
@@ -69,7 +63,7 @@
 	2.) Place solar panel assemblies upon the knots, and then wrench the assemblies into place.<BR> \
 	3.) Insert the tracker electronics into one of the solar panel assemblies. <BR> \
 	4.) Add glass to every solar panel assembly, including the one with the tracker electronics.<BR> \
-	5.) Make a <span codexlink='computer'>computer</span> using a circuit board (solar control console).<BR> \
+	5.) Make a computer frame out of steel and install a circuit board (solar control console).<BR> \
 	If at any point you need to move a solar panel, use a crowbar to remove the glass, a wrench to unsecure the assembly, and a wirecutter to remove the cables."
 
 /datum/codex_entry/cable

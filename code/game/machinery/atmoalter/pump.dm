@@ -6,6 +6,8 @@
 	density = 1
 	w_class = ITEM_SIZE_NORMAL
 	base_type = /obj/machinery/portable_atmospherics/powered/pump
+	atom_flags = ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_CLIMBABLE
+	movable_flags = MOVABLE_FLAG_WHEELED
 
 	var/direction_out = 0 //0 = siphoning, 1 = releasing
 	var/target_pressure = ONE_ATMOSPHERE
@@ -25,7 +27,7 @@
 	. = ..()
 
 	var/list/air_mix = StandardAirMix()
-	src.air_contents.adjust_multi(MAT_OXYGEN, air_mix[MAT_OXYGEN], MAT_NITROGEN, air_mix[MAT_NITROGEN])
+	src.air_contents.adjust_multi(/decl/material/gas/oxygen, air_mix[/decl/material/gas/oxygen], /decl/material/gas/nitrogen, air_mix[/decl/material/gas/nitrogen])
 
 /obj/machinery/portable_atmospherics/powered/pump/on_update_icon()
 	overlays.Cut()
@@ -127,7 +129,7 @@
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if (!ui)
-		ui = new(user, src, ui_key, "portpump.tmpl", "Portable Pump", 480, 410, state = GLOB.physical_state)
+		ui = new(user, src, ui_key, "portpump.tmpl", "Portable Pump", 480, 410, state = global.physical_topic_state)
 		ui.set_initial_data(data)
 		ui.open()
 		ui.set_auto_update(1)

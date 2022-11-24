@@ -8,18 +8,13 @@
 	name = "giant spider"
 	desc = "A monstrously huge green spider with shimmering eyes."
 	icon = 'icons/mob/simple_animal/spider.dmi'
-	icon_state = "green"
-	icon_living = "green"
-	icon_dead = "green_dead"
 	speak_emote = list("chitters")
 	emote_hear = list("chitters")
 	emote_see = list("rubs its forelegs together", "wipes its fangs", "stops suddenly")
 	speak_chance = 5
 	turns_per_move = 5
 	see_in_dark = 10
-	response_help  = "pets"
-	response_disarm = "gently pushes aside"
-	response_harm   = "pokes"
+	response_harm = "pokes"
 	maxHealth = 125
 	health = 125
 	natural_weapon = /obj/item/natural_weapon/bite
@@ -29,18 +24,25 @@
 	pass_flags = PASS_FLAG_TABLE
 	move_to_delay = 3
 	speed = 1
-	max_gas = list(MAT_PHORON = 1, MAT_CO2 = 5, MAT_METHYL_BROMIDE = 1)
+	max_gas = list(
+		/decl/material/gas/chlorine = 1,
+		/decl/material/gas/carbon_dioxide = 5,
+		/decl/material/gas/methyl_bromide = 1
+	)
 	bleed_colour = "#0d5a71"
 	break_stuff_probability = 25
 	pry_time = 8 SECONDS
 	pry_desc = "clawing"
+	base_animal_type = /mob/living/simple_animal/hostile/giant_spider
 
-	meat_type = /obj/item/chems/food/snacks/spider
+	meat_type = /obj/item/chems/food/spider
 	meat_amount = 3
 	bone_material = null
 	bone_amount =   0
-	skin_material = MAT_SKIN_CHITIN
+	skin_material = /decl/material/solid/skin/insect
 	skin_amount =   5
+
+	glowing_eyes = TRUE
 
 	var/poison_per_bite = 6
 	var/poison_type = /decl/material/liquid/venom
@@ -49,15 +51,18 @@
 	var/allowed_eye_colours = list(COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_LIME, COLOR_DEEP_SKY_BLUE, COLOR_INDIGO, COLOR_VIOLET, COLOR_PINK)
 	var/hunt_chance = 1 //percentage chance the mob will run to a random nearby tile
 
+/mob/living/simple_animal/hostile/giant_spider/get_eye_overlay()
+	var/image/ret = ..()
+	if(ret && eye_colour)
+		ret.color = eye_colour
+	return ret
+
 /mob/living/simple_animal/hostile/giant_spider/can_do_maneuver(var/decl/maneuver/maneuver, var/silent = FALSE)
 	. = ..() && can_act()
 
 //guards - less venomous, tanky, slower, prioritises protecting nurses
 /mob/living/simple_animal/hostile/giant_spider/guard
 	desc = "A monstrously huge brown spider with shimmering eyes."
-	icon_state = "brown"
-	icon_living = "brown"
-	icon_dead = "brown_dead"
 	meat_amount = 4
 	maxHealth = 200
 	health = 200
@@ -75,9 +80,7 @@
 //nursemaids - these create webs and eggs - the weakest and least threatening
 /mob/living/simple_animal/hostile/giant_spider/nurse
 	desc = "A monstrously huge beige spider with shimmering eyes."
-	icon_state = "beige"
-	icon_living = "beige"
-	icon_dead = "beige_dead"
+	icon = 'icons/mob/simple_animal/spider_beige.dmi'
 	maxHealth = 80
 	health = 80
 	harm_intent_damage = 6 //soft
@@ -100,9 +103,7 @@
 //hunters - the most damage, fast, average health and the only caste tenacious enough to break out of nets
 /mob/living/simple_animal/hostile/giant_spider/hunter
 	desc = "A monstrously huge black spider with shimmering eyes."
-	icon_state = "black"
-	icon_living = "black"
-	icon_dead = "black_dead"
+	icon = 'icons/mob/simple_animal/spider_black.dmi'
 	maxHealth = 150
 	health = 150
 	natural_weapon = /obj/item/natural_weapon/bite/strong
@@ -123,9 +124,7 @@
 //spitters - fast, comparatively weak, very venomous; projectile attacks but will resort to melee once out of ammo
 /mob/living/simple_animal/hostile/giant_spider/spitter
 	desc = "A monstrously huge iridescent spider with shimmering eyes."
-	icon_state = "purple"
-	icon_living = "purple"
-	icon_dead = "purple_dead"
+	icon = 'icons/mob/simple_animal/spider_purple.dmi'
 	maxHealth = 90
 	health = 90
 	poison_per_bite = 15
@@ -151,20 +150,7 @@
 	maxHealth = rand(initial(maxHealth), (1.4 * initial(maxHealth)))
 	health = maxHealth
 	eye_colour = pick(allowed_eye_colours)
-	if(eye_colour)
-		var/image/I = image(icon = icon, icon_state = "[icon_state]_eyes", layer = EYE_GLOW_LAYER)
-		I.color = eye_colour
-		I.plane = EFFECTS_ABOVE_LIGHTING_PLANE
-		I.appearance_flags = RESET_COLOR
-		overlays += I
-
-/mob/living/simple_animal/hostile/giant_spider/on_update_icon()
-	if(stat == DEAD)
-		overlays.Cut()
-		var/image/I = image(icon = icon, icon_state = "[icon_dead]_eyes")
-		I.color = eye_colour
-		I.appearance_flags = RESET_COLOR
-		overlays += I
+	update_icon()
 
 /mob/living/simple_animal/hostile/giant_spider/FindTarget()
 	. = ..()
@@ -298,10 +284,11 @@ Nurse caste procs
 	if(ishuman(.))
 		var/mob/living/carbon/human/H = .
 		if(prob(infest_chance) && max_eggs)
-			var/obj/item/organ/external/O = pick(H.organs)
-			if(!BP_IS_PROSTHETIC(O) && !BP_IS_CRYSTAL(O) && (LAZYLEN(O.implants) < 2))
+			var/list/limbs = H.get_external_organs()
+			var/obj/item/organ/external/O = LAZYLEN(limbs)? pick(limbs) : null
+			if(O && !BP_IS_PROSTHETIC(O) && !BP_IS_CRYSTAL(O) && (LAZYLEN(O.implants) < 2))
 				var/eggs = new /obj/effect/spider/eggcluster(O, src)
-				O.implants += eggs
+				LAZYADD(O.implants, eggs)
 				max_eggs--
 
 /mob/living/simple_animal/hostile/giant_spider/nurse/proc/GiveUp(var/C)
@@ -365,7 +352,7 @@ Nurse caste procs
 
 						if(O.anchored)
 							continue
-						
+
 						if(is_type_in_list(O, cocoon_blacklist))
 							continue
 
@@ -385,7 +372,7 @@ Nurse caste procs
 				walk(src,0)
 				spawn(50)
 					if(busy == SPINNING_COCOON)
-						if(cocoon_target && istype(cocoon_target.loc, /turf) && get_dist(src,cocoon_target) <= 1)
+						if(cocoon_target && isturf(cocoon_target.loc) && get_dist(src,cocoon_target) <= 1)
 							var/obj/effect/spider/cocoon/C = new(cocoon_target.loc)
 							var/large_cocoon = 0
 							C.pixel_x = cocoon_target.pixel_x
@@ -438,15 +425,15 @@ Hunter caste procs
 	. = ..()
 	if(!isnull(first_stop_automation))
 		stop_automation = first_stop_automation
-	
+
 /mob/living/simple_animal/hostile/giant_spider/hunter/throw_impact(atom/hit_atom)
+	..()
 	if(isliving(hit_atom))
 		var/mob/living/target = hit_atom
 		stop_automation = FALSE
 		visible_message(SPAN_DANGER("\The [src] slams into \the [target], knocking them over!"))
-		target.Weaken(1)
+		SET_STATUS_MAX(target, STAT_WEAK, 1)
 		MoveToTarget()
-	. = ..()
 
 /******************
 Spitter caste procs

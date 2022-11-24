@@ -9,13 +9,11 @@
 	if (!loc)
 		return
 
-	if(machine && !CanMouseDrop(machine, src))
+	if(machine && (machine.CanUseTopic(src, machine.DefaultTopicState()) == STATUS_CLOSE)) // unsure if this is a good idea, but using canmousedrop was ???
 		machine = null
 
 	//Handle temperature/pressure differences between body and environment
-	var/datum/gas_mixture/environment = loc.return_air()
-	if(environment)
-		handle_environment(environment)
+	handle_environment(loc.return_air())
 
 	blinded = 0 // Placing this here just show how out of place it is.
 	// human/handle_regular_status_updates() needs a cleanup, as blindness should be handled in handle_disabilities()
@@ -36,6 +34,8 @@
 
 	handle_regular_hud_updates()
 
+	handle_status_effects()
+
 	return 1
 
 /mob/living/proc/handle_breathing()
@@ -44,20 +44,123 @@
 /mob/living/proc/handle_mutations_and_radiation()
 	return
 
+// Get valid, unique reagent holders for metabolizing. Avoids metabolizing the same holder twice in a tick.
+/mob/living/proc/get_unique_metabolizing_reagent_holders()
+	for(var/datum/reagents/metabolism/holder in list(get_contact_reagents(), get_ingested_reagents(), get_injected_reagents(), get_inhaled_reagents()))
+		LAZYDISTINCTADD(., holder)
+
 /mob/living/proc/handle_chemicals_in_body()
-	return
+	SHOULD_CALL_PARENT(TRUE)
+	chem_effects = null
+
+	// TODO: handle isSynthetic() properly via Psi's metabolism modifiers for contact reagents like acid.
+	if((status_flags & GODMODE) || isSynthetic())
+		return FALSE
+
+	// Metabolize any reagents currently in our body and keep a reference for chem dose checking.
+	var/list/metabolizing_holders = get_unique_metabolizing_reagent_holders()
+	if(length(metabolizing_holders))
+		var/list/tick_dosage_tracker = list() // Used to check if we're overdosing on anything.
+		for(var/datum/reagents/metabolism/holder as anything in metabolizing_holders)
+			holder.metabolize(tick_dosage_tracker)
+		// Check for overdosing.
+		var/size_modifier = (MOB_SIZE_MEDIUM / mob_size)
+		for(var/decl/material/R as anything in tick_dosage_tracker)
+			if(tick_dosage_tracker[R] > (R.overdose * ((R.flags & IGNORE_MOB_SIZE) ? 1 : size_modifier)))
+				R.affect_overdose(src)
+
+	// Update chem dosage.
+	// TODO: refactor chem dosage above isSynthetic() and GODMODE checks.
+	if(length(chem_doses))
+		for(var/T in chem_doses)
+
+			var/still_processing_reagent = FALSE
+			for(var/datum/reagents/holder as anything in metabolizing_holders)
+				if(holder.has_reagent(T))
+					still_processing_reagent = TRUE
+					break
+			if(still_processing_reagent)
+				continue
+			var/decl/material/R = GET_DECL(T)
+			var/dose = LAZYACCESS(chem_doses, T) - R.metabolism*2
+			LAZYSET(chem_doses, T, dose)
+			if(LAZYACCESS(chem_doses, T) <= 0)
+				LAZYREMOVE(chem_doses, T)
+
+	if(apply_chemical_effects())
+		updatehealth()
+
+	return TRUE
+
+/mob/living/proc/apply_chemical_effects()
+	var/burn_regen = GET_CHEMICAL_EFFECT(src, CE_REGEN_BURN)
+	var/brute_regen = GET_CHEMICAL_EFFECT(src, CE_REGEN_BRUTE)
+	if(burn_regen || brute_regen)
+		heal_organ_damage(brute_regen, burn_regen)
+		return TRUE
+
 
 /mob/living/proc/handle_random_events()
 	return
 
+/mob/living
+	var/weakref/last_weather
+
+/mob/living/proc/is_outside()
+	var/turf/T = loc
+	return istype(T) && T.is_outside()
+
+/mob/living/proc/get_affecting_weather()
+	var/turf/my_turf = get_turf(src)
+	if(!istype(my_turf))
+		return
+	var/turf/actual_loc = loc
+	// If we're standing in the rain, use the turf weather.
+	. = istype(actual_loc) && actual_loc.weather
+	if(!.) // If we're under or inside shelter, use the z-level rain (for ambience)
+		. = global.weather_by_z["[my_turf.z]"]
+
 /mob/living/proc/handle_environment(var/datum/gas_mixture/environment)
-	return
+
+	SHOULD_CALL_PARENT(TRUE)
+
+	// Handle physical effects of weather.
+	var/decl/state/weather/weather_state
+	var/obj/abstract/weather_system/weather = get_affecting_weather()
+	if(weather)
+		weather_state = weather.weather_system.current_state
+		if(istype(weather_state))
+			weather_state.handle_exposure(src, get_weather_exposure(weather), weather)
+
+	// Refresh weather ambience.
+	// Show messages and play ambience.
+	if(client && get_preference_value(/datum/client_preference/play_ambiance) == PREF_YES)
+
+		// Work out if we need to change or cancel the current ambience sound.
+		var/send_sound
+		var/mob_ref = weakref(src)
+		if(istype(weather_state))
+			var/ambient_sounds = !is_outside() ? weather_state.ambient_indoors_sounds : weather_state.ambient_sounds
+			var/ambient_sound = length(ambient_sounds) && pick(ambient_sounds)
+			if(global.current_mob_ambience[mob_ref] == ambient_sound)
+				return
+			send_sound = ambient_sound
+			global.current_mob_ambience[mob_ref] = send_sound
+		else if(mob_ref in global.current_mob_ambience)
+			global.current_mob_ambience -= mob_ref
+		else
+			return
+
+		// Push sound to client. Pipe dream TODO: crossfade between the new and old weather ambience.
+		sound_to(src, sound(null, repeat = 0, wait = 0, volume = 0, channel = sound_channels.weather_channel))
+		if(send_sound)
+			sound_to(src, sound(send_sound, repeat = TRUE, wait = 0, volume = 30, channel = sound_channels.weather_channel))
 
 //This updates the health and status of the mob (conscious, unconscious, dead)
 /mob/living/proc/handle_regular_status_updates()
 	updatehealth()
 	if(stat != DEAD)
-		if(paralysis)
+		if(HAS_STATUS(src, STAT_PARA))
 			set_stat(UNCONSCIOUS)
 		else if (status_flags & FAKEDEATH)
 			set_stat(UNCONSCIOUS)
@@ -65,82 +168,17 @@
 			set_stat(CONSCIOUS)
 		return 1
 
-/mob/living/proc/handle_statuses()
-	handle_stunned()
-	handle_weakened()
-	handle_paralysed()
-	handle_stuttering()
-	handle_silent()
-	handle_drugged()
-	handle_slurring()
-	handle_confused()
-
-/mob/living/proc/handle_stunned()
-	if(stunned)
-		AdjustStunned(-1)
-		if(!stunned)
-			update_icons()
-	return stunned
-
-/mob/living/proc/handle_weakened()
-	if(weakened)
-		weakened = max(weakened-1,0)
-		if(!weakened)
-			update_icons()
-	return weakened
-
-/mob/living/proc/handle_stuttering()
-	if(stuttering)
-		stuttering = max(stuttering-1, 0)
-	return stuttering
-
-/mob/living/proc/handle_silent()
-	if(silent)
-		silent = max(silent-1, 0)
-	return silent
-
-/mob/living/proc/handle_drugged()
-	return adjust_drugged(-1)
-
-/mob/living/proc/handle_slurring()
-	if(slurring)
-		slurring = max(slurring-1, 0)
-	return slurring
-
-/mob/living/proc/handle_paralysed()
-	if(paralysis)
-		AdjustParalysis(-1)
-		if(!paralysis)
-			update_icons()
-	return paralysis
-
 /mob/living/proc/handle_disabilities()
 	handle_impaired_vision()
 	handle_impaired_hearing()
 
-/mob/living/proc/handle_confused()
-	if(confused)
-		confused = max(0, confused - 1)
-	return confused
-
 /mob/living/proc/handle_impaired_vision()
-	//Eyes
-	if(sdisabilities & BLINDED || stat)	//blindness from disability or unconsciousness doesn't get better on its own
-		eye_blind = max(eye_blind, 1)
-	else if(eye_blind)			//blindness, heals slowly over time
-		eye_blind = max(eye_blind-1,0)
-	else if(eye_blurry)			//blurry eyes heal slowly
-		eye_blurry = max(eye_blurry-1, 0)
+	if((sdisabilities & BLINDED) || stat) //blindness from disability or unconsciousness doesn't get better on its own
+		SET_STATUS_MAX(src, STAT_BLIND, 2)
 
 /mob/living/proc/handle_impaired_hearing()
-	//Ears
-	if(sdisabilities & DEAFENED)	//disabled-deaf, doesn't get better on its own
-		setEarDamage(null, max(ear_deaf, 1))
-	else if(ear_damage < 25)
-		adjustEarDamage(-0.05, -1)	// having ear damage impairs the recovery of ear_deaf
-	else if(ear_damage < 100)
-		adjustEarDamage(-0.05, 0)	// deafness recovers slowly over time, unless ear_damage is over 100. TODO meds that heal ear_damage
-
+	if((sdisabilities & DEAFENED) || stat) //disabled-deaf, doesn't get better on its own
+		SET_STATUS_MAX(src, STAT_TINNITUS, 1)
 
 //this handles hud updates. Calls update_vision() and handle_hud_icons()
 /mob/living/proc/handle_regular_hud_updates()
@@ -157,13 +195,13 @@
 	if(stat == DEAD)
 		return
 
-	if(eye_blind)
+	if(GET_STATUS(src, STAT_BLIND))
 		overlay_fullscreen("blind", /obj/screen/fullscreen/blind)
 	else
 		clear_fullscreen("blind")
 		set_fullscreen(disabilities & NEARSIGHTED, "impaired", /obj/screen/fullscreen/impaired, 1)
-		set_fullscreen(eye_blurry, "blurry", /obj/screen/fullscreen/blurry)
-		set_fullscreen(drugged, "high", /obj/screen/fullscreen/high)
+		set_fullscreen(GET_STATUS(src, STAT_BLURRY), "blurry", /obj/screen/fullscreen/blurry)
+		set_fullscreen(GET_STATUS(src, STAT_DRUGGY), "high", /obj/screen/fullscreen/high)
 
 	set_fullscreen(stat == UNCONSCIOUS, "blackout", /obj/screen/fullscreen/blackout)
 
@@ -176,8 +214,9 @@
 	else if(eyeobj)
 		if(eyeobj.owner != src)
 			reset_view(null)
-	else if(z_eye) return
-	else if(!client.adminobs)
+	else if(z_eye)
+		return
+	else if(client && !client.adminobs)
 		reset_view(null)
 
 /mob/living/proc/update_sight()

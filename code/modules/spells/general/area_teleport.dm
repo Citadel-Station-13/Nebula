@@ -3,7 +3,7 @@
 	desc = "This spell teleports you to a type of area of your selection."
 	feedback = "TP"
 	school = "conjuration"
-	charge_max = 600
+	charge_max = 60 SECONDS
 	spell_flags = NEEDSCLOTHES
 	invocation = "Scyar Nila!"
 	invocation_type = SpI_SHOUT
@@ -26,7 +26,8 @@
 	var/area/thearea
 	if(!randomise_selection)
 		thearea = input("Area to teleport to", "Teleport") as null|anything in wizteleportlocs
-		if(!thearea) return
+		if(!thearea)
+			return
 	else
 		thearea = pick(wizteleportlocs)
 	return list(wizteleportlocs[thearea])
@@ -40,6 +41,11 @@
 		return
 	return
 
+/spell/area_teleport/check_valid_targets(list/targets)
+	// Teleport should function across z's, so we make sure that happens
+	// without this check, it only works for teleporting to areas you can see
+	return islist(targets) && length(targets)
+
 /spell/area_teleport/after_cast()
 	return
 
@@ -49,6 +55,6 @@
 	if(!invocation_area || !chosenarea)
 		..()
 	else
-		invocation += "[uppertext(chosenarea.name)]"
+		invocation += "[uppertext(chosenarea.proper_name)]"
 		..()
 	return

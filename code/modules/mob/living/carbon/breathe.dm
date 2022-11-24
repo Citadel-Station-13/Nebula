@@ -14,7 +14,7 @@
 	var/datum/gas_mixture/breath = null
 
 	//First, check if we can breathe at all
-	if(handle_drowning() || (is_asystole() && !(CE_STABLE in chem_effects) && active_breathe)) //crit aka circulatory shock
+	if(handle_drowning() || (is_asystole() && !GET_CHEMICAL_EFFECT(src, CE_STABLE) && active_breathe)) //crit aka circulatory shock
 		losebreath = max(2, losebreath + 1)
 
 	if(losebreath>0) //Suffocating so do not take a breath
@@ -40,7 +40,8 @@
 	if(internal)
 		if (!contents.Find(internal))
 			set_internals(null)
-		if (!(wear_mask && (wear_mask.item_flags & ITEM_FLAG_AIRTIGHT)))
+		var/obj/item/mask = get_equipped_item(slot_wear_mask_str)
+		if (!mask || !(mask.item_flags & ITEM_FLAG_AIRTIGHT))
 			set_internals(null)
 		if(internal)
 			if (internals)
@@ -51,14 +52,14 @@
 				internals.icon_state = "internal0"
 	return null
 
-/mob/living/carbon/proc/get_breath_from_environment(var/volume_needed=STD_BREATH_VOLUME)
+/mob/living/carbon/proc/get_breath_from_environment(var/volume_needed=STD_BREATH_VOLUME, var/atom/location = src.loc)
 	if(volume_needed <= 0)
 		return
 	var/datum/gas_mixture/breath = null
 
 	var/datum/gas_mixture/environment
-	if(loc)
-		environment = loc.return_air()
+	if(location)
+		environment = location.return_air()
 
 	if(environment)
 		breath = environment.remove_volume(volume_needed)
@@ -66,10 +67,10 @@
 
 	if(breath && breath.total_moles)
 		//handle mask filtering
-		if(istype(wear_mask, /obj/item/clothing/mask) && breath)
-			var/obj/item/clothing/mask/M = wear_mask
+		var/obj/item/clothing/mask/M = get_equipped_item(slot_wear_mask_str)
+		if(istype(M) && breath)
 			var/datum/gas_mixture/filtered = M.filter_air(breath)
-			loc.assume_air(filtered)
+			location.assume_air(filtered)
 		return breath
 	return null
 
@@ -77,7 +78,8 @@
 /mob/living/carbon/proc/handle_chemical_smoke(var/datum/gas_mixture/environment)
 	if(species && environment.return_pressure() < species.breath_pressure/5)
 		return //pressure is too low to even breathe in.
-	if(wear_mask && (wear_mask.item_flags & ITEM_FLAG_BLOCK_GAS_SMOKE_EFFECT))
+	var/obj/item/mask = get_equipped_item(slot_wear_mask_str)
+	if(mask && (mask.item_flags & ITEM_FLAG_BLOCK_GAS_SMOKE_EFFECT))
 		return
 
 	for(var/obj/effect/effect/smoke/chem/smoke in view(1, src))
@@ -95,4 +97,10 @@
 
 /mob/living/carbon/proc/handle_post_breath(datum/gas_mixture/breath)
 	if(breath)
-		loc.assume_air(breath) //by default, exhale
+		//by default, exhale
+		var/datum/gas_mixture/internals_air = internal?.return_air()
+		var/datum/gas_mixture/loc_air = loc?.return_air()
+		if(internals_air?.return_pressure() < loc_air.return_pressure()) // based on the assumption it has a one-way valve for gas release
+			internals_air?.merge(breath)
+		else
+			loc_air?.merge(breath)

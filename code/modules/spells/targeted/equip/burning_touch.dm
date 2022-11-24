@@ -21,9 +21,9 @@
 	force = 10
 	damtype = BURN
 	simulated = 0
+	health = ITEM_HEALTH_NO_DAMAGE
 	var/burn_power = 0
 	var/burn_timer
-	var/obj/item/organ/external/hand/connected
 
 /obj/item/flame/hands/pickup(var/mob/user)
 	burn_power = 0
@@ -42,11 +42,12 @@
 		return
 	var/mob/living/carbon/human/user = src.loc
 	var/obj/item/organ/external/hand
-	if(src == user.l_hand)
-		hand = user.get_organ(BP_L_HAND)
-	else
-		hand = user.get_organ(BP_R_HAND)
-	hand.take_external_damage(burn=2 * burn_power)
+	if(src == user.get_equipped_item(BP_L_HAND))
+		hand = GET_INTERNAL_ORGAN(user, BP_L_HAND)
+	else if(src == user.get_equipped_item(BP_R_HAND))
+		hand = GET_INTERNAL_ORGAN(user, BP_R_HAND)
+	if(hand)
+		hand.take_external_damage(burn = 2 * burn_power)
 	if(burn_power > 5)
 		user.fire_stacks += 15
 		user.IgniteMob()

@@ -4,25 +4,21 @@
 	name = "power sink"
 	desc = "A nulling power sink which drains energy from electrical systems."
 	icon = 'icons/obj/items/device/powersink.dmi'
-	icon_state = "powersink0"
-	item_state = "electronic"
+	icon_state = ICON_STATE_WORLD
 	w_class = ITEM_SIZE_LARGE
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	throwforce = 5
 	throw_speed = 1
 	throw_range = 2
 
-	material = MAT_STEEL
-	matter = list(MAT_WASTE = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/metallic_hydrogen = MATTER_AMOUNT_REINFORCEMENT)
 
 	origin_tech = "{'powerstorage':3,'esoteric':5}"
 	var/drain_rate = 1500000		// amount of power to drain per tick
-	var/apc_drain_rate = 5000 		// Max. amount drained from single APC. In Watts.
-	var/dissipation_rate = 20000	// Passive dissipation of drained power. In Watts.
 	var/power_drained = 0 			// Amount of power drained.
 	var/max_power = 5e9				// Detonation point.
 	var/mode = 0					// 0 = off, 1=clamped (off), 2=operating
-	var/datum/powernet/PN			// Our powernet
 
 	var/const/DISCONNECTED = 0
 	var/const/CLAMPED_OFF = 1
@@ -31,7 +27,14 @@
 	var/obj/structure/cable/attached		// the attached cable
 
 /obj/item/powersink/on_update_icon()
-	icon_state = "powersink[mode == OPERATING]"
+	. = ..()
+	z_flags &= ~ZMM_MANGLE_PLANES
+	if(mode == OPERATING)
+		if(plane == HUD_PLANE)
+			add_overlay("[icon_state]-on")
+		else
+			add_overlay(emissive_overlay(icon, "[icon_state]-on"))
+			z_flags |= ~ZMM_MANGLE_PLANES
 
 /obj/item/powersink/proc/set_mode(value)
 	if(value == mode)
@@ -66,7 +69,7 @@
 	. = ..()
 
 /obj/item/powersink/attackby(var/obj/item/I, var/mob/user)
-	if(isScrewdriver(I))
+	if(IS_SCREWDRIVER(I))
 		if(mode == DISCONNECTED)
 			var/turf/T = loc
 			if(isturf(T) && !!T.is_plating())
@@ -125,7 +128,7 @@
 	var/datum/powernet/PN = attached.powernet
 	var/drained = 0
 	if(PN)
-		set_light(0.5, 0.1, 12)
+		set_light(12)
 		PN.trigger_warning()
 		// found a powernet, so drain up to max power from it
 		drained = PN.draw_power(drain_rate)

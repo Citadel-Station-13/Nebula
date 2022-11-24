@@ -13,6 +13,10 @@
 	start_time = world.time
 	source_name = source.get_source_name()
 
+/datum/alarm_source/Destroy()
+	source = null
+	. = ..()
+
 /datum/alarm
 	var/atom/origin					//Used to identify the alarm area.
 	var/list/sources = new()		//List of sources triggering the alarm. Used to determine when the alarm should be cleared.
@@ -61,6 +65,7 @@
 	var/datum/alarm_source/AS = sources_assoc[source]
 	sources -= AS
 	sources_assoc -= source
+	qdel(AS)
 
 /datum/alarm/proc/alarm_z()
 	if(origin)
@@ -86,7 +91,7 @@
 	if(camera_repository.camera_cache_id != cache_id)
 		cameras = null
 		cache_id = camera_repository.camera_cache_id
-	// If the alarm origin has changed area, for example a borg containing an alarming camera, reset the list of cameras
+	// If the alarm origin has changed area, reset the list of cameras
 	else if(cameras && (last_camera_area != alarm_area()))
 		cameras = null
 
@@ -110,7 +115,7 @@
 /atom/proc/get_alarm_z()
 	return get_z(src)
 
-area/get_alarm_z()
+/area/get_alarm_z()
 	return contents.len ? get_z(contents[1]) : 0
 
 /atom/proc/get_alarm_area()
@@ -121,10 +126,10 @@ area/get_alarm_z()
 
 /atom/proc/get_alarm_name()
 	var/area/A = get_area(src)
-	return A.name
+	return A.get_alarm_name()
 
 /area/get_alarm_name()
-	return name
+	return proper_name
 
 /mob/get_alarm_name()
 	return name
@@ -141,15 +146,5 @@ area/get_alarm_z()
 
 /area/get_alarm_cameras()
 	return get_cameras()
-
-/mob/living/silicon/robot/get_alarm_cameras()
-	var/list/cameras = ..()
-	if(camera)
-		cameras += camera
-
-	return cameras
-
-/mob/living/silicon/robot/syndicate/get_alarm_cameras()
-	return list()
 
 #undef ALARM_RESET_DELAY

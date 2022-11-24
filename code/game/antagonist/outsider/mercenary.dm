@@ -1,10 +1,7 @@
-GLOBAL_DATUM_INIT(mercs, /datum/antagonist/mercenary, new)
-
-/datum/antagonist/mercenary
-	id = MODE_MERCENARY
-	role_text = "Mercenary"
+/decl/special_role/mercenary
+	name = "Mercenary"
 	antag_indicator = "hudsyndicate"
-	role_text_plural = "Mercenaries"
+	name_plural = "Mercenaries"
 	landmark_id = "Syndicate-Spawn"
 	leader_welcome_text = "You are the leader of the mercenary strikeforce; hail to the chief. Use :t to speak to your underlings."
 	welcome_text = "To speak on the strike team's private channel use :t."
@@ -16,26 +13,22 @@ GLOBAL_DATUM_INIT(mercs, /datum/antagonist/mercenary, new)
 	initial_spawn_req = 4
 	initial_spawn_target = 6
 	min_player_age = 14
+	default_access = list(access_mercenary)
 
 	faction = "mercenary"
 
-	base_to_load = /datum/map_template/ruin/antag_spawn/mercenary
+	base_to_load = "Mercenary Base"
+	default_outfit = /decl/hierarchy/outfit/mercenary
 
-/datum/antagonist/mercenary/create_global_objectives()
+/decl/special_role/mercenary/create_global_objectives()
 	if(!..())
 		return 0
 	global_objectives = list()
 	global_objectives |= new /datum/objective/nuclear
 	return 1
 
-/datum/antagonist/mercenary/equip(var/mob/living/carbon/human/player)
-	if(!..())
-		return 0
-
-	var/decl/hierarchy/outfit/mercenary = outfit_by_type(/decl/hierarchy/outfit/mercenary)
-	mercenary.equip(player)
-
-	var/obj/item/radio/uplink/U = new(get_turf(player), player.mind, DEFAULT_TELECRYSTAL_AMOUNT)
-	player.put_in_hands(U)
-
-	return 1
+/decl/special_role/mercenary/equip(var/mob/living/carbon/human/player)
+	. = ..()
+	if(.)
+		var/obj/item/radio/uplink/U = new(get_turf(player), player.mind, DEFAULT_TELECRYSTAL_AMOUNT)
+		player.put_in_hands(U)

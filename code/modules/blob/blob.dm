@@ -3,7 +3,7 @@
 	desc = "A pulsating mass of interwoven tendrils."
 	icon = 'icons/mob/blob.dmi'
 	icon_state = "blob"
-	light_outer_range = 2
+	light_range = 2
 	light_color = BLOB_COLOR_PULS
 	density = 1
 	opacity = 1
@@ -30,7 +30,11 @@
 	. = ..()
 	health = maxHealth
 	update_icon()
-	START_PROCESSING(SSobj, src)
+	START_PROCESSING(SSblob, src)
+
+/obj/effect/blob/Destroy()
+	STOP_PROCESSING(SSblob, src)
+	. = ..()
 
 /obj/effect/blob/CanPass(var/atom/movable/mover, var/turf/target, var/height = 0, var/air_group = 0)
 	if(air_group || height == 0)
@@ -47,11 +51,11 @@
 	else
 		icon_state = "blob_damaged"
 
-/obj/effect/blob/Process(wait, times_fired)
+/obj/effect/blob/Process(wait, tick)
 	regen()
-	if(times_fired % attack_freq)
+	if(tick % attack_freq)
 		return
-	attempt_attack(GLOB.alldirs)
+	attempt_attack(global.alldirs)
 
 /obj/effect/blob/proc/take_damage(var/damage)
 	health -= damage
@@ -66,7 +70,7 @@
 	update_icon()
 
 /obj/effect/blob/proc/expand(var/turf/T)
-	if(istype(T, /turf/unsimulated/) || istype(T, /turf/space))
+	if(istype(T, /turf/unsimulated/) || isspaceturf(T))
 		return
 	if(istype(T, /turf/simulated/wall))
 		var/turf/simulated/wall/SW = T
@@ -119,6 +123,7 @@
 		new expandType(T, min(health, 30))
 
 /obj/effect/blob/proc/pulse(var/forceLeft, var/list/dirs)
+	set waitfor = FALSE
 	sleep(4)
 	var/pushDir = pick(dirs)
 	var/turf/T = get_step(src, pushDir)
@@ -130,7 +135,7 @@
 	if(forceLeft)
 		B.pulse(forceLeft - 1, dirs)
 
-/obj/effect/blob/proc/attack_living(var/mob/living/L)
+/obj/effect/blob/proc/attack_living(var/mob/L)
 	if(!L)
 		return
 	var/blob_damage = pick(BRUTE, BURN)
@@ -161,7 +166,7 @@
 	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 	user.do_attack_animation(src)
 	playsound(loc, 'sound/effects/attackblob.ogg', 50, 1)
-	if(isWirecutter(W))
+	if(IS_WIRECUTTER(W))
 		if(prob(user.skill_fail_chance(SKILL_SCIENCE, 90, SKILL_EXPERT)))
 			to_chat(user, SPAN_WARNING("You fail to collect a sample from \the [src]."))
 			return
@@ -177,11 +182,11 @@
 
 	var/damage = 0
 	switch(W.damtype)
-		if("fire")
+		if(BURN)
 			damage = (W.force / fire_resist)
-			if(isWelder(W))
+			if(IS_WELDER(W))
 				playsound(loc, 'sound/items/Welder.ogg', 100, 1)
-		if("brute")
+		if(BRUTE)
 			damage = (W.force / brute_resist)
 
 	take_damage(damage)
@@ -200,7 +205,6 @@
 	light_color = BLOB_COLOR_CORE
 	layer = BLOB_CORE_LAYER
 
-	var/growth_range = 8 // Maximal distance for new blob pieces from this core.
 	var/blob_may_process = 1
 	var/reported_low_damage = FALSE
 	var/times_to_pulse = 0
@@ -213,7 +217,7 @@ the master core becomes more vulnereable to damage as it weakens,
 but it also becomes more aggressive, and channels more of its energy into regenerating rather than spreading
 regen() will cover update_icon() for this proc
 */
-/obj/effect/blob/core/proc/process_core_health() 
+/obj/effect/blob/core/proc/process_core_health()
 	switch(get_health_percent())
 		if(75 to INFINITY)
 			brute_resist = 3.5
@@ -262,17 +266,15 @@ regen() will cover update_icon() for this proc
 			icon_state = "blob_factory"
 
 /obj/effect/blob/core/Process()
-	set waitfor = 0
 	if(!blob_may_process)
 		return
 	blob_may_process = 0
-	sleep(0)
 	process_core_health()
 	regen()
 	for(var/I in 1 to times_to_pulse)
-		pulse(20, GLOB.alldirs)
-	attempt_attack(GLOB.alldirs)
-	attempt_attack(GLOB.alldirs)
+		pulse(20, global.alldirs)
+	attempt_attack(global.alldirs)
+	attempt_attack(global.alldirs)
 	blob_may_process = 1
 
 // Blob has a very small probability of growing these when spreading. These will spread the blob further.
@@ -282,7 +284,6 @@ regen() will cover update_icon() for this proc
 	icon_state = "blob_node"
 	maxHealth = 125
 	regen_rate = 1
-	growth_range = 4
 	damage_min = 15
 	damage_max = 20
 	layer = BLOB_NODE_LAYER
@@ -346,8 +347,12 @@ regen() will cover update_icon() for this proc
 	item_state = "blob_tendril"
 	w_class = ITEM_SIZE_LARGE
 	attack_verb = list("smacked", "smashed", "whipped")
+	material = /decl/material/solid/plantmatter
 	var/is_tendril = TRUE
 	var/types_of_tendril = list("solid", "fire")
+
+/obj/item/blob_tendril/get_heat()
+	. = max(..(), damtype == BURN ? 1000 : 0)
 
 /obj/item/blob_tendril/Initialize()
 	. = ..()
@@ -384,11 +389,11 @@ regen() will cover update_icon() for this proc
 	icon_state = "core_sample"
 	item_state = "blob_core"
 	w_class = ITEM_SIZE_NORMAL
-	origin_tech = "{'materials':4,'bluespace':5,'biotech':7}"
+	origin_tech = "{'materials':4,'wormholes':5,'biotech':7}"
 	is_tendril = FALSE
 
 /obj/item/blob_tendril/core/aux
 	name = "asteroclast auxiliary nucleus sample"
 	desc = "A sample taken from an asteroclast's auxiliary nucleus."
 	icon_state = "core_sample_2"
-	origin_tech = "{'materials':2,'bluespace':3,'biotech':4}"
+	origin_tech = "{'materials':2,'wormholes':3,'biotech':4}"

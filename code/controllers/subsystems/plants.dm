@@ -41,16 +41,11 @@ PROCESSING_SUBSYSTEM_DEF(plants)
 			plant_product_sprites |= copytext(icostate,1,split)
 
 	// Populate the global seed datum list.
-	for(var/type in typesof(/datum/seed)-/datum/seed)
+	for(var/type in subtypesof(/datum/seed))
 		var/datum/seed/S = new type
 		S.update_growth_stages()
 		seeds[S.name] = S
 		S.roundstart = 1
-
-	// Make sure any seed packets that were mapped in are updated
-	// correctly (since the seed datums did not exist a tick ago).
-	for(var/obj/item/seeds/S in world)
-		S.update_seed()
 
 	//Might as well mask the gene types while we're at it.
 	var/list/gene_datums = decls_repository.get_decls_of_subtype(/decl/plantgene)
@@ -82,15 +77,11 @@ PROCESSING_SUBSYSTEM_DEF(plants)
 	var/datum/seed/seed = new()
 	seed.randomize()
 	seed.name = "[seed.uid]"
+	seed.base_seed_value = rand(10, 15)
 	seeds[seed.name] = seed
 
 	if(survive_on_station)
-		if(seed.consume_gasses)
-			seed.consume_gasses[MAT_PHORON] = null
-			seed.consume_gasses[MAT_CO2] = null
-		if(seed.chems && !isnull(seed.chems[/decl/material/liquid/acid/polyacid]))
-			seed.chems[/decl/material/liquid/acid/polyacid] = null // Eating through the hull will make these plants completely inviable, albeit very dangerous.
-			seed.chems -= null // Setting to null does not actually remove the entry, which is weird.
+		seed.consume_gasses = null
 		seed.set_trait(TRAIT_IDEAL_HEAT,293)
 		seed.set_trait(TRAIT_HEAT_TOLERANCE,20)
 		seed.set_trait(TRAIT_IDEAL_LIGHT,4)

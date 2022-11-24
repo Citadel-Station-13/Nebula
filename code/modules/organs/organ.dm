@@ -1,40 +1,49 @@
-var/list/organ_cache = list()
-
 /obj/item/organ
 	name = "organ"
 	icon = 'icons/obj/surgery.dmi'
 	germ_level = 0
 	w_class = ITEM_SIZE_TINY
 	default_action_type = /datum/action/item_action/organ
+	material = /decl/material/solid/meat
+	origin_tech = "{'materials':1,'biotech':1}"
+	throwforce = 2
+	abstract_type = /obj/item/organ
 
 	// Strings.
-	var/organ_tag = "organ"           // Unique identifier.
-	var/parent_organ = BP_CHEST       // Organ holding this object.
+	var/organ_tag = "organ"                // Unique identifier.
+	var/parent_organ = BP_CHEST            // Organ holding this object.
 
 	// Status tracking.
-	var/status = 0                    // Various status flags (such as robotic)
-	var/vital                         // Lose a vital limb, die immediately.
+	var/status = 0                         // Various status flags (such as robotic)
+	var/organ_properties = 0               // A flag for telling what capabilities this organ has. ORGAN_PROP_PROSTHETIC, ORGAN_PROP_CRYSTAL, etc..
+	var/vital                              // Lose a vital limb, die immediately.
 
 	// Reference data.
-	var/mob/living/carbon/human/owner // Current mob owning the organ.
-	var/datum/dna/dna                 // Original DNA.
-	var/datum/species/species         // Original species.
+	var/mob/living/carbon/human/owner      // Current mob owning the organ.
+	var/datum/dna/dna                      // Original DNA.
+	var/decl/species/species               // Original species.
+	var/decl/bodytype/bodytype             // Original bodytype.
+	var/list/ailments                      // Current active ailments if any.
 
 	// Damage vars.
-	var/damage = 0                    // Current damage to the organ
-	var/min_broken_damage = 30        // Damage before becoming broken
-	var/max_damage = 30               // Damage cap
-	var/rejecting                     // Is this organ already being rejected?
-
-	var/death_time
-
-	// Bioprinter stats
-	var/can_be_printed = TRUE
-	var/print_cost
+	var/damage = 0                         // Current damage to the organ
+	var/min_broken_damage = 30             // Damage before becoming broken
+	var/max_damage = 30                    // Damage cap, including scarring
+	var/absolute_max_damage = 0            // Lifetime damage cap, ignoring scarring.
+	var/rejecting                          // Is this organ already being rejected?
+	var/death_time                         // REALTIMEOFDAY at moment of death.
+	var/scale_max_damage_to_species_health // Whether or not we should scale the damage values of this organ to the owner species.
 
 /obj/item/organ/Destroy()
-	owner = null
-	dna = null
+	if(owner)
+		owner.remove_organ(src, FALSE, FALSE, TRUE, TRUE, FALSE) //Tell our parent we're unisntalling in place
+		owner = null
+	else
+		do_uninstall(TRUE, FALSE, FALSE, FALSE) //Don't ignore children here since we might own/contain them
+	species = null
+	bodytype = null
+	QDEL_NULL(dna)
+	QDEL_NULL_LIST(ailments)
 	return ..()
 
 /obj/item/organ/proc/refresh_action_button()
@@ -49,57 +58,115 @@ var/list/organ_cache = list()
 /obj/item/organ/proc/is_broken()
 	return (damage >= min_broken_damage || (status & ORGAN_CUT_AWAY) || (status & ORGAN_BROKEN))
 
-//Second argument may be a dna datum; if null will be set to holder's dna.
-/obj/item/organ/Initialize(mapload, var/datum/dna/given_dna)
-	. = ..(mapload)
-	if(!istype(given_dna))
-		given_dna = null
-
-	if(max_damage)
-		min_broken_damage = Floor(max_damage / 2)
-	else
-		max_damage = min_broken_damage * 2
-
-	if(iscarbon(loc))
-		owner = loc
-		if(!given_dna && owner.dna)
-			given_dna = owner.dna
+//Third rgument may be a dna datum; if null will be set to holder's dna.
+/obj/item/organ/Initialize(mapload, material_key, var/datum/dna/given_dna)
+	. = ..(mapload, material_key)
+	if(. != INITIALIZE_HINT_QDEL)
+		if(!BP_IS_PROSTHETIC(src))
+			setup_as_organic(given_dna)
 		else
-			log_debug("[src] spawned in [owner] without a proper DNA.")
+			setup_as_prosthetic()
 
-	if (given_dna)
-		set_dna(given_dna)
-	if (!species)
-		species = get_species_by_key(GLOB.using_map.default_species)
-	species.resize_organ(src)
+/obj/item/organ/proc/setup_as_organic(var/datum/dna/given_dna)
+	//Null DNA setup
+	if(!given_dna)
+		if(dna)
+			given_dna = dna //Use existing if possible
+		else if(owner)
+			if(owner.dna)
+				given_dna = owner.dna //Grab our owner's dna if we don't have any, and they have
+			else
+				//The owner having no DNA can be a valid reason to keep our dna null in some cases
+				log_debug("obj/item/organ/setup_as_organic(): [src] had null dna, with a owner with null dna!")
+				dna = null //#TODO: Not sure that's really legal
+				return
+		else
+			//If we have NO OWNER and given_dna, just make one up for consistency
+			given_dna = new/datum/dna()
+			given_dna.check_integrity() //Defaults everything
 
+	set_dna(given_dna)
+	initialize_reagents()
+	return TRUE
+
+//Allows specialization of roboticize() calls on initialization meant to be used when loading prosthetics
+// NOTE: This wouldn't be necessary if prothetics were a subclass
+/obj/item/organ/proc/setup_as_prosthetic(var/forced_model = /decl/prosthetics_manufacturer/basic_human)
+	if(!species)
+		if(owner?.species)
+			set_species(owner.species)
+		else
+			set_species(global.using_map.default_species)
+
+	if(istype(material))
+		robotize(forced_model, apply_material = material.type)
+	else
+		robotize(forced_model)
+	return TRUE
+
+//Called on initialization to add the neccessary reagents
+
+/obj/item/organ/initialize_reagents(populate = TRUE)
+	if(reagents)
+		return
 	create_reagents(5 * (w_class-1)**2)
+	. = ..()
+
+/obj/item/organ/populate_reagents()
 	reagents.add_reagent(/decl/material/liquid/nutriment/protein, reagents.maximum_volume)
 
-	update_icon()
-
 /obj/item/organ/proc/set_dna(var/datum/dna/new_dna)
-	if(new_dna)
-		dna = new_dna.Clone()
-		if(!blood_DNA)
-			blood_DNA = list()
-		blood_DNA.Cut()
-		blood_DNA[dna.unique_enzymes] = dna.b_type
-		species = get_species_by_key(dna.species)
-		if (!species)
-			crash_with("Invalid DNA species. Expected a valid species name as string, was: [log_info_line(dna.species)]")
+	QDEL_NULL(dna)
+	dna = new_dna.Clone()
+	if(!blood_DNA)
+		blood_DNA = list()
+	blood_DNA.Cut()
+	blood_DNA[dna.unique_enzymes] = dna.b_type
+	set_species(dna.species)
+
+/obj/item/organ/proc/set_species(var/specie_name)
+	if(istext(specie_name))
+		species = get_species_by_key(specie_name)
+	else
+		species = specie_name
+	if(!species)
+		species = get_species_by_key(global.using_map.default_species)
+		PRINT_STACK_TRACE("Invalid species. Expected a valid species name as string, was: [log_info_line(specie_name)]")
+
+	bodytype = owner?.bodytype || species.default_bodytype
+	species.resize_organ(src)
+
+	// Adjust limb health proportinate to total species health.
+	var/total_health_coefficient = scale_max_damage_to_species_health ? (species.total_health / DEFAULT_SPECIES_HEALTH) : 1
+
+	//Use initial value to prevent scaling down each times we change the species during init
+	absolute_max_damage = initial(absolute_max_damage)
+	min_broken_damage = initial(min_broken_damage)
+	max_damage = initial(max_damage)
+
+	if(absolute_max_damage)
+		absolute_max_damage = max(1, FLOOR(absolute_max_damage * total_health_coefficient))
+		min_broken_damage = max(1, FLOOR(absolute_max_damage * 0.5))
+	else
+		min_broken_damage = max(1, FLOOR(min_broken_damage * total_health_coefficient))
+		absolute_max_damage = max(1, FLOOR(min_broken_damage * 2))
+	max_damage = absolute_max_damage // resets scarring, but ah well
+
+	reset_status()
 
 /obj/item/organ/proc/die()
 	damage = max_damage
 	status |= ORGAN_DEAD
 	STOP_PROCESSING(SSobj, src)
-	death_time = world.time
-	if(owner && vital)
+	QDEL_NULL_LIST(ailments)
+	death_time = REALTIMEOFDAY
+	if(owner?.species?.is_vital_organ(owner, src))
 		owner.death()
+	update_icon()
 
 /obj/item/organ/Process()
 
-	if(loc != owner)
+	if(loc != owner) //#FIXME: looks like someone was trying to hide a bug :P That probably could break organs placed inside a wrapper though
 		owner = null
 
 	//dead already, no need for more processing
@@ -132,9 +199,23 @@ var/list/organ_cache = list()
 		handle_rejection()
 		handle_germ_effects()
 
+	if(owner && length(ailments))
+		for(var/datum/ailment/ailment in ailments)
+			handle_ailment(ailment)
+
 	//check if we've hit max_damage
 	if(damage >= max_damage)
 		die()
+
+/obj/item/organ/proc/handle_ailment(var/datum/ailment/ailment)
+	if(ailment.treated_by_reagent_type)
+		for(var/datum/reagents/source as anything in owner.get_metabolizing_reagent_holders())
+			for(var/reagent_type in source.reagent_volumes)
+				if(ailment.treated_by_medication(source.reagent_volumes[reagent_type]))
+					ailment.was_treated_by_medication(source, reagent_type)
+					return
+	if(ailment.treated_by_chem_effect && owner.has_chemical_effect(ailment.treated_by_chem_effect, ailment.treated_by_chem_effect_strength))
+		ailment.was_treated_by_chem_effect()
 
 /obj/item/organ/proc/is_preserved()
 	if(istype(loc,/obj/item/organ))
@@ -163,16 +244,16 @@ var/list/organ_cache = list()
 		//aiming for germ level to go from ambient to INFECTION_LEVEL_TWO in an average of 15 minutes, when immunity is full.
 		if(antibiotics < 5 && prob(round(germ_level/6 * owner.immunity_weakness() * 0.01)))
 			if(germ_immunity > 0)
-				germ_level += Clamp(round(1/germ_immunity), 1, 10) // Immunity starts at 100. This doubles infection rate at 50% immunity. Rounded to nearest whole.
+				germ_level += clamp(round(1/germ_immunity), 1, 10) // Immunity starts at 100. This doubles infection rate at 50% immunity. Rounded to nearest whole.
 			else // Will only trigger if immunity has hit zero. Once it does, 10x infection rate.
 				germ_level += 10
 
 	if(germ_level >= INFECTION_LEVEL_ONE)
 		var/fever_temperature = (owner.species.heat_level_1 - owner.species.body_temperature - 5)* min(germ_level/INFECTION_LEVEL_TWO, 1) + owner.species.body_temperature
-		owner.bodytemperature += between(0, (fever_temperature - T20C)/BODYTEMP_COLD_DIVISOR + 1, fever_temperature - owner.bodytemperature)
+		owner.bodytemperature += clamp(0, (fever_temperature - T20C)/BODYTEMP_COLD_DIVISOR + 1, fever_temperature - owner.bodytemperature)
 
 	if (germ_level >= INFECTION_LEVEL_TWO)
-		var/obj/item/organ/external/parent = owner.get_organ(parent_organ)
+		var/obj/item/organ/external/parent = GET_EXTERNAL_ORGAN(owner, parent_organ)
 		//spread germs
 		if (antibiotics < 5 && parent.germ_level < germ_level && ( parent.germ_level < INFECTION_LEVEL_ONE*2 || prob(owner.immunity_weakness() * 0.3) ))
 			parent.germ_level++
@@ -189,7 +270,7 @@ var/list/organ_cache = list()
 		return
 	if(dna)
 		if(!rejecting)
-			if(owner.blood_incompatible(dna.b_type, species))
+			if(owner.blood_incompatible(dna.b_type))
 				rejecting = 1
 		else
 			rejecting++ //Rejection severity increases over time.
@@ -203,32 +284,35 @@ var/list/organ_cache = list()
 						germ_level += rand(2,3)
 					if(501 to INFINITY)
 						germ_level += rand(3,5)
-						owner.reagents.add_reagent(/decl/material/liquid/coagulated_blood, rand(1,2))
-
-/obj/item/organ/proc/receive_chem(chemical)
-	return 0
+						var/decl/blood_type/blood_decl = dna?.b_type && get_blood_type_by_name(dna.b_type)
+						if(istype(blood_decl))
+							owner.reagents.add_reagent(blood_decl.transfusion_fail_reagent, round(rand(2,4) * blood_decl.transfusion_fail_percentage))
+						else
+							owner.reagents.add_reagent(/decl/material/liquid/coagulated_blood, rand(1,2))
 
 /obj/item/organ/proc/remove_rejuv()
 	qdel(src)
 
 /obj/item/organ/proc/rejuvenate(var/ignore_prosthetic_prefs)
+	SHOULD_CALL_PARENT(TRUE)
 	damage = 0
+	reset_status()
+	if(!ignore_prosthetic_prefs && owner?.client?.prefs && owner.client.prefs.real_name == owner.real_name)
+		for(var/decl/aspect/aspect as anything in owner.personal_aspects)
+			if(aspect.applies_to_organ(organ_tag))
+				aspect.apply(owner)
+
+/obj/item/organ/proc/reset_status()
 	status = initial(status)
-	if(!ignore_prosthetic_prefs && owner && owner.client && owner.client.prefs && owner.client.prefs.real_name == owner.real_name)
-		var/status = owner.client.prefs.organ_data[organ_tag]
-		if(status == "assisted")
-			mechassist()
-		else if(status == "mechanical")
-			robotize()
-	if(species)
-		species.post_organ_rejuvenate(src, owner)
+	if(species) // qdel clears species ref
+		species.apply_species_organ_modifications(src)
 
 //Germs
 /obj/item/organ/proc/handle_antibiotics()
 	if(!owner || !germ_level)
 		return
 
-	var/antibiotics = owner.chem_effects[CE_ANTIBIOTIC]
+	var/antibiotics = GET_CHEMICAL_EFFECT(owner, CE_ANTIBIOTIC)
 	if (!antibiotics)
 		return
 
@@ -246,57 +330,19 @@ var/list/organ_cache = list()
 	CRASH("Not Implemented")
 
 /obj/item/organ/proc/heal_damage(amount)
-	if (can_recover())
-		damage = between(0, damage - round(amount, 0.1), max_damage)
+	if(can_recover())
+		damage = clamp(0, damage - round(amount, 0.1), max_damage)
 
-
-/obj/item/organ/proc/robotize() //Being used to make robutt hearts, etc
-	status = ORGAN_PROSTHETIC
+/obj/item/organ/proc/robotize(var/company = /decl/prosthetics_manufacturer/basic_human, var/skip_prosthetics = 0, var/keep_organs = 0, var/apply_material = /decl/material/solid/metal/steel, var/check_bodytype, var/check_species)
+	BP_SET_PROSTHETIC(src)
+	QDEL_NULL(dna)
 	reagents?.clear_reagents()
-
-/obj/item/organ/proc/mechassist() //Used to add things like pacemakers, etc
-	status = ORGAN_ASSISTED
-
-/**
- *  Remove an organ
- *
- *  drop_organ - if true, organ will be dropped at the loc of its former owner
- *
- *  Also, Observer Pattern Implementation: Dismembered Handling occurs here.
- */
-/obj/item/organ/proc/removed(var/mob/living/user, var/drop_organ=1)
-
-	if(!istype(owner))
-		return
-	GLOB.dismembered_event.raise_event(owner, src)
-
-	action_button_name = null
-
-	if(drop_organ)
-		dropInto(owner.loc)
-
-	START_PROCESSING(SSobj, src)
-	rejecting = null
-	if(!BP_IS_PROSTHETIC(src) && species && reagents?.total_volume < 5)
-		owner.vessel.trans_to(src, 5 - reagents.total_volume, 1, 1)
-
-	if(owner && vital)
-		if(user)
-			admin_attack_log(user, owner, "Removed a vital organ ([src]).", "Had a vital organ ([src]) removed.", "removed a vital organ ([src]) from")
-		owner.death()
-
-	owner = null
-
-/obj/item/organ/proc/replaced(var/mob/living/carbon/human/target, var/obj/item/organ/external/affected)
-	owner = target
-	action_button_name = initial(action_button_name)
-	forceMove(owner) //just in case
-	if(BP_IS_PROSTHETIC(src))
-		set_dna(owner.dna)
-	return 1
+	material = GET_DECL(apply_material)
+	matter = null
+	create_matter()
 
 /obj/item/organ/attack(var/mob/target, var/mob/user)
-	if(status & ORGAN_PROSTHETIC || !istype(target) || !istype(user) || (user != target && user.a_intent == I_HELP))
+	if(BP_IS_PROSTHETIC(src) || !istype(target) || !istype(user) || (user != target && user.a_intent == I_HELP))
 		return ..()
 
 	if(alert("Do you really want to use this organ as food? It will be useless for anything else afterwards.",,"Ew, no.","Bon appetit!") == "Ew, no.")
@@ -309,7 +355,7 @@ var/list/organ_cache = list()
 	if(!user.unEquip(src))
 		return
 
-	var/obj/item/chems/food/snacks/organ/O = new(get_turf(src))
+	var/obj/item/chems/food/organ/O = new(get_turf(src))
 	O.SetName(name)
 	O.appearance = src
 	if(reagents && reagents.total_volume)
@@ -326,14 +372,12 @@ var/list/organ_cache = list()
 	return !(status & (ORGAN_CUT_AWAY|ORGAN_MUTATED|ORGAN_DEAD))
 
 /obj/item/organ/proc/can_recover()
-	return (max_damage > 0) && !(status & ORGAN_DEAD) || death_time >= world.time - ORGAN_RECOVERY_THRESHOLD
+	return (max_damage > 0) && !(status & ORGAN_DEAD) || death_time >= REALTIMEOFDAY - ORGAN_RECOVERY_THRESHOLD
 
 /obj/item/organ/proc/get_scan_results(var/tag = FALSE)
 	. = list()
 	if(BP_IS_CRYSTAL(src))
 		. += tag ? "<span class='average'>Crystalline</span>" : "Crystalline"
-	else if(BP_IS_ASSISTED(src))
-		. += tag ? "<span class='average'>Assisted</span>" : "Assisted"
 	else if(BP_IS_PROSTHETIC(src))
 		. += tag ? "<span class='average'>Mechanical</span>" : "Mechanical"
 	if(status & ORGAN_CUT_AWAY)
@@ -387,3 +431,133 @@ var/list/organ_cache = list()
 
 /obj/item/organ/proc/get_mechanical_assisted_descriptor()
 	return "mechanically-assisted [name]"
+
+var/global/list/ailment_reference_cache = list()
+/proc/get_ailment_reference(var/ailment_type)
+	if(!ispath(ailment_type, /datum/ailment))
+		return
+	if(!global.ailment_reference_cache[ailment_type])
+		global.ailment_reference_cache[ailment_type] = new ailment_type
+	return global.ailment_reference_cache[ailment_type]
+
+/obj/item/organ/proc/get_possible_ailments()
+	. = list()
+	for(var/ailment_type in subtypesof(/datum/ailment))
+		var/datum/ailment/ailment = ailment_type
+		if(initial(ailment.category) == ailment_type)
+			continue
+		ailment = get_ailment_reference(ailment_type)
+		if(ailment.can_apply_to(src))
+			. += ailment_type
+	for(var/datum/ailment/ailment in ailments)
+		. -= ailment.type
+
+/obj/item/organ/emp_act(severity)
+	. = ..()
+	if(BP_IS_PROSTHETIC(src))
+		if(length(ailments) < 3 && prob(15 - (5 * length(ailments))))
+			var/list/possible_ailments = get_possible_ailments()
+			if(length(possible_ailments))
+				add_ailment(pick(possible_ailments))
+
+/obj/item/organ/proc/add_ailment(var/datum/ailment/ailment)
+	if(ispath(ailment, /datum/ailment))
+		ailment = get_ailment_reference(ailment)
+	if(!istype(ailment) || !ailment.can_apply_to(src))
+		return FALSE
+	LAZYADD(ailments, new ailment.type(src))
+	return TRUE
+
+/obj/item/organ/proc/add_random_ailment()
+	var/list/possible_ailments = get_possible_ailments()
+	if(length(possible_ailments))
+		add_ailment(pick(possible_ailments))
+
+/obj/item/organ/proc/remove_ailment(var/datum/ailment/ailment)
+	if(ispath(ailment, /datum/ailment))
+		for(var/datum/ailment/ext_ailment in ailments)
+			if(ailment == ext_ailment.type)
+				LAZYREMOVE(ailments, ext_ailment)
+				return TRUE
+	else if(istype(ailment))
+		for(var/datum/ailment/ext_ailment in ailments)
+			if(ailment == ext_ailment)
+				LAZYREMOVE(ailments, ext_ailment)
+				return TRUE
+	return FALSE
+
+/obj/item/organ/proc/has_diagnosable_ailments(var/mob/user, var/scanner = FALSE)
+	for(var/datum/ailment/ailment in ailments)
+		if(ailment.manual_diagnosis_string && !scanner)
+			LAZYADD(., ailment.replace_tokens(message = ailment.manual_diagnosis_string, user = user))
+		else if(ailment.scanner_diagnosis_string && scanner)
+			LAZYADD(., ailment.replace_tokens(message = ailment.scanner_diagnosis_string, user = user))
+
+//Handles only the installation of the organ, without triggering any callbacks.
+//if we're an internal organ, having a null "target" is legal if we have an "affected"
+//CASES:
+// 1. When creating organs and running their init this is called to properly set them up
+// 2. When installing an organ through surgery this is called.
+// 3. When attaching a detached organ through surgery this is called.
+// The organ may be inside an external organ that's not inside a mob, or inside a mob
+//detached : If true, the organ will be installed in a detached state, otherwise it will be added in an attached state
+/obj/item/organ/proc/do_install(var/mob/living/carbon/human/target, var/obj/item/organ/external/affected, var/in_place = FALSE, var/update_icon = TRUE, var/detached = FALSE)
+	//Make sure to force the flag accordingly
+	set_detached(detached)
+
+	owner = target
+	action_button_name = initial(action_button_name)
+	if(owner)
+		forceMove(owner)
+		if(!(status & ORGAN_CUT_AWAY)) //Don't run ailments if we're still detached
+			for(var/datum/ailment/ailment in ailments)
+				ailment.begin_ailment_event()
+	else if(affected)
+		forceMove(affected) //When installed in a limb with no owner
+	return src
+
+//Handles uninstalling the organ from its owner and parent limb, without triggering effects or deep updates
+//CASES:
+// 1. Before deletion to clear our references.
+// 2. Called through removal on surgery or dismemberement
+// 3. Called when we're changing a mob's species.
+//detach: If detach is true, we're going to set the organ to detached, and add it to the detached organs list, and remove it from processing lists.
+//        If its false, we just remove the organ from all lists
+/obj/item/organ/proc/do_uninstall(var/in_place = FALSE, var/detach = FALSE, var/ignore_children = FALSE, var/update_icon = TRUE)
+	action_button_name = null
+	screen_loc = null
+	rejecting = null
+	for(var/datum/ailment/ailment in ailments)
+		if(ailment.timer_id)
+			deltimer(ailment.timer_id)
+			ailment.timer_id = null
+
+	//When we detach, we set the ORGAN_CUT_AWAY flag on, depending on whether the organ supports it or not
+	if(detach)
+		set_detached(TRUE)
+	else
+		owner = null
+	return src
+
+//Events handling for checks and effects that should happen when removing the organ through interactions. Called by the owner mob.
+/obj/item/organ/proc/on_remove_effects(var/mob/living/last_owner)
+	START_PROCESSING(SSobj, src)
+
+//Events handling for checks and effects that should happen when installing the organ through interactions. Called by the owner mob.
+/obj/item/organ/proc/on_add_effects()
+	STOP_PROCESSING(SSobj, src)
+
+//Since some types of organs completely ignore being detached, moved it to an overridable organ proc for external prosthetics
+/obj/item/organ/proc/set_detached(var/is_detached)
+	if(is_detached)
+		status |= ORGAN_CUT_AWAY
+	else
+		status &= ~ORGAN_CUT_AWAY
+
+//Some checks to avoid doing type checks for nothing
+/obj/item/organ/proc/is_internal()
+	return FALSE
+
+// If an organ is inside a holder, the holder should be handling damage in their explosion_act() proc.
+/obj/item/organ/explosion_act(severity)
+	return !owner && ..()

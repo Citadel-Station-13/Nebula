@@ -1,20 +1,20 @@
 /obj/item/chameleon
 	name = "chameleon projector"
 	icon = 'icons/obj/items/device/chameleon_proj.dmi'
-	icon_state = "shield0"
+	icon_state = ICON_STATE_WORLD
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
-	item_state = "electronic"
-	throwforce = 5.0
+	slot_flags = SLOT_LOWER_BODY
+	throwforce = 5
 	throw_speed = 1
 	throw_range = 5
 	w_class = ITEM_SIZE_SMALL
 	origin_tech = "{'esoteric':4,'magnets':4}"
+	material = /decl/material/solid/plastic
 	var/can_use = 1
 	var/obj/effect/dummy/chameleon/active_dummy = null
 	var/saved_item = /obj/item/trash/cigbutt
-	var/saved_icon = 'icons/obj/clothing/obj_mask.dmi'
-	var/saved_icon_state = "cigbutt"
+	var/saved_icon = 'icons/clothing/mask/smokables/cigarette.dmi'
+	var/saved_icon_state = "butt"
 	var/saved_overlays
 
 /obj/item/chameleon/dropped()
@@ -66,10 +66,7 @@
 
 /obj/item/chameleon/proc/disrupt(var/delete_dummy = 1)
 	if(active_dummy)
-		var/datum/effect/effect/system/spark_spread/spark_system = new /datum/effect/effect/system/spark_spread
-		spark_system.set_up(5, 0, src)
-		spark_system.attach(src)
-		spark_system.start()
+		spark_at(src, amount = 5, cardinal_only = TRUE, holder = src)
 		eject_all()
 		if(delete_dummy)
 			qdel(active_dummy)

@@ -150,7 +150,7 @@
 
 	if(!istype(W) || W.item_flags & ITEM_FLAG_NO_BLUDGEON) return
 
-	if(isScrewdriver(W) || isCrowbar(W) || isWrench(W))
+	if(IS_SCREWDRIVER(W) || IS_CROWBAR(W) || IS_WRENCH(W))
 		to_chat(user, ("<span class='notice'>It's a holowindow, you can't dismantle it!</span>"))
 	else
 		if(W.damtype == BRUTE || W.damtype == BURN)
@@ -199,8 +199,6 @@
 	else if (src.density)
 		flick(text("[]deny", src.base_state), src)
 
-	return
-
 /obj/machinery/door/window/holowindoor/shatter(var/display_message = 1)
 	src.set_density(0)
 	playsound(src, "shatter", 70, 1)
@@ -209,13 +207,13 @@
 	qdel(src)
 
 /obj/structure/bed/chair/holochair/attackby(obj/item/W, mob/user)
-	if(istype(W, /obj/item/wrench))
+	if(IS_WRENCH(W))
 		to_chat(user, ("<span class='notice'>It's a holochair, you can't dismantle it!</span>"))
-	return
 
 /obj/item/holo
 	damtype = PAIN
 	no_attack_log = 1
+	health = ITEM_HEALTH_NO_DAMAGE
 
 /obj/item/holo/esword
 	name = "holosword"
@@ -241,9 +239,7 @@
 /obj/item/holo/esword/handle_shield(mob/user, var/damage, atom/damage_source = null, mob/attacker = null, var/def_zone = null, var/attack_text = "the attack")
 	. = ..()
 	if(.)
-		var/datum/effect/effect/system/spark_spread/spark_system = new /datum/effect/effect/system/spark_spread()
-		spark_system.set_up(5, 0, user.loc)
-		spark_system.start()
+		spark_at(user.loc, amount=5)
 		playsound(user.loc, 'sound/weapons/blade1.ogg', 50, 1)
 
 /obj/item/holo/esword/get_parry_chance(mob/user)
@@ -253,7 +249,7 @@
 	. = ..()
 	item_color = pick("red","blue","green","purple")
 
-/obj/item/holo/esword/attack_self(mob/living/user)
+/obj/item/holo/esword/attack_self(mob/user)
 	active = !active
 	if (active)
 		force = 30
@@ -358,7 +354,7 @@
 	active_power_usage = 6
 	power_channel = ENVIRON
 
-/obj/machinery/readybutton/attack_ai(mob/user)
+/obj/machinery/readybutton/attack_ai(mob/living/silicon/ai/user)
 	to_chat(user, "The AI is not to interact with these devices!")
 	return
 
@@ -409,12 +405,8 @@
 //Holocarp
 
 /mob/living/simple_animal/hostile/carp/holodeck
-	icon = 'icons/mob/hologram.dmi'
-	icon_state = "Carp"
-	icon_living = "Carp"
-	icon_dead = "Carp"
+	icon = 'icons/mob/simple_animal/holocarp.dmi'
 	alpha = 127
-	icon_gib = null
 	meat_amount = 0
 	meat_type = null
 
@@ -422,11 +414,12 @@
 	return
 
 /mob/living/simple_animal/hostile/carp/holodeck/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE)
 	return
 
 /mob/living/simple_animal/hostile/carp/holodeck/Initialize()
 	. = ..()
-	set_light(0.5, 0.1, 2) //hologram lighting
+	set_light(2) //hologram lighting
 
 /mob/living/simple_animal/hostile/carp/holodeck/proc/set_safety(var/safe)
 	if (safe)
@@ -438,7 +431,7 @@
 		faction = "carp"
 		natural_weapon.force = initial(natural_weapon.force)
 
-/mob/living/simple_animal/hostile/carp/holodeck/gib()
+/mob/living/simple_animal/hostile/carp/holodeck/gib(anim="gibbed-m",do_gibs)
 	death()
 
 /mob/living/simple_animal/hostile/carp/holodeck/death()

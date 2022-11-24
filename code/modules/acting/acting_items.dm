@@ -19,7 +19,7 @@
 /obj/machinery/acting/changer
 	name = "Quickee's Plastic Surgeon"
 	desc = "For when you need to be someone else right now."
-	icon = 'icons/obj/surgery.dmi'
+	icon = 'icons/obj/machines/fabricators/bioprinter.dmi'
 	icon_state = "bioprinter"
 	anchored = 1
 	density = 1
@@ -27,7 +27,7 @@
 /obj/machinery/acting/changer/attack_hand(var/mob/user)
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
-		H.change_appearance(APPEARANCE_ALL, H.loc, H, H.generate_valid_species(), state = GLOB.z_state)
+		H.change_appearance(APPEARANCE_ALL, H.loc, H, H.generate_valid_species(), state = global.z_topic_state)
 		var/getName = sanitize(input(H, "Would you like to change your name to something else?", "Name change") as null|text, MAX_NAME_LEN)
 		if(getName)
 			H.real_name = getName

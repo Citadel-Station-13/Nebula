@@ -15,6 +15,7 @@
 	w_class = ITEM_SIZE_NORMAL
 	max_w_class = ITEM_SIZE_SMALL
 	max_storage_space = DEFAULT_BOX_STORAGE
+	material = /decl/material/solid/metal/steel
 	var/lock_type = /datum/extension/lockable/storage
 	var/icon_locking = "secureb"
 	var/icon_opened = "secure0"
@@ -33,18 +34,17 @@
 		. = ..()
 
 
-/obj/item/storage/secure/MouseDrop(over_object, src_location, over_location)
+/obj/item/storage/secure/handle_mouse_drop(atom/over, mob/user)
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
-	if (lock.locked)
-		src.add_fingerprint(usr)
-		return
-	..()
-
+	if(lock.locked)
+		add_fingerprint(user)
+		return TRUE
+	. = ..()
 
 /obj/item/storage/secure/attack_self(var/mob/user)
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
-	lock.ui_interact(user)		
-	
+	lock.ui_interact(user)
+
 /obj/item/storage/secure/examine(mob/user, distance)
 	. = ..()
 	if(distance <= 1)
@@ -58,17 +58,20 @@
 
 /obj/item/storage/secure/on_update_icon()
 	. = ..()
-
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
 	if(!istype(lock))
 		return
-		
-	overlays.Cut()
 	if(lock.emagged)
-		overlays += image(icon, icon_locking)
+		add_overlay(icon_locking)
 	else if(lock.open)
-		overlays += image(icon, icon_opened)
+		add_overlay(icon_opened)
 
+/obj/item/storage/secure/open(mob/user)
+	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
+	if(lock.locked)
+		add_fingerprint(user)
+		return
+	. = ..()
 
 // -----------------------------
 //        Secure Briefcase
@@ -86,6 +89,7 @@
 	max_w_class = ITEM_SIZE_NORMAL
 	max_storage_space = DEFAULT_BACKPACK_STORAGE
 	use_sound = 'sound/effects/storage/briefcase.ogg'
+	matter = list(/decl/material/solid/plastic = MATTER_AMOUNT_REINFORCEMENT)
 
 /obj/item/storage/secure/briefcase/attack_hand(mob/user as mob)
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
@@ -96,7 +100,7 @@
 	else
 		..()
 		for(var/mob/M in range(1))
-			if (M.s_active == src)
+			if (M.active_storage == src)
 				src.close(M)
 	src.add_fingerprint(user)
 	return
@@ -120,10 +124,8 @@
 	icon_locking = "safeb"
 	icon_opened = "safe0"
 
-/obj/item/storage/secure/safe/Initialize()
-	. = ..()
-	new /obj/item/paper(src)
-	new /obj/item/pen(src)
-
-/obj/item/storage/secure/safe/attack_hand(mob/user)
-	return attack_self(user)
+/obj/item/storage/secure/safe/WillContain()
+	return list(
+		/obj/item/pen,
+		/obj/item/paper
+	)

@@ -40,7 +40,6 @@
 	var/max_patrol_dist = 250
 	var/RequiresAccessToToggle = 0 // If 1, will check access to be turned on/off
 
-	var/target_patience = 5
 	var/frustration = 0
 	var/max_frustration = 0
 
@@ -48,7 +47,7 @@
 
 /mob/living/bot/Initialize()
 	. = ..()
-	update_icons()
+	update_icon()
 
 	botcard = new /obj/item/card/id(src)
 	botcard.access = botcard_access?.Copy()
@@ -68,9 +67,9 @@
 	if(health <= 0)
 		death()
 		return
-	weakened = 0
-	stunned = 0
-	paralysis = 0
+	set_status(STAT_WEAK, 0)
+	set_status(STAT_STUN, 0)
+	set_status(STAT_PARA, 0)
 
 	if(on && !client && !busy)
 		handleAI()
@@ -81,8 +80,6 @@
 		set_stat(CONSCIOUS)
 	else
 		health = maxHealth - getFireLoss() - getBruteLoss()
-	setOxyLoss(0)
-	setToxLoss(0)
 
 /mob/living/bot/death()
 	explode()
@@ -98,7 +95,7 @@
 		else
 			to_chat(user, "<span class='warning'>Access denied.</span>")
 		return
-	else if(isScrewdriver(O))
+	else if(IS_SCREWDRIVER(O))
 		if(!locked)
 			open = !open
 			to_chat(user, "<span class='notice'>Maintenance panel is now [open ? "opened" : "closed"].</span>")
@@ -106,7 +103,7 @@
 		else
 			to_chat(user, "<span class='notice'>You need to unlock the controls first.</span>")
 		return
-	else if(isWelder(O))
+	else if(IS_WELDER(O))
 		if(health < maxHealth)
 			if(open)
 				health = min(maxHealth, health + 10)
@@ -119,11 +116,14 @@
 	else
 		..()
 
-/mob/living/bot/attack_ai(var/mob/user)
+/mob/living/bot/attack_ai(var/mob/living/user)
 	Interact(user)
 
-/mob/living/bot/attack_hand(var/mob/user)
-	Interact(user)
+/mob/living/bot/default_interaction(mob/user)
+	. = ..()
+	if(!.)
+		Interact(user)
+		return TRUE
 
 /mob/living/bot/proc/Interact(var/mob/user)
 	add_fingerprint(user)
@@ -153,7 +153,7 @@
 	popup.open()
 
 /mob/living/bot/DefaultTopicState()
-	return GLOB.default_state
+	return global.default_topic_state
 
 /mob/living/bot/OnTopic(mob/user, href_list)
 	if(href_list["command"])
@@ -348,8 +348,8 @@
 	if(stat)
 		return 0
 	on = 1
-	set_light(0.5, 0.1, light_strength)
-	update_icons()
+	set_light(light_strength)
+	update_icon()
 	resetTarget()
 	patrol_path = list()
 	ignore_list = list()
@@ -358,7 +358,7 @@
 /mob/living/bot/proc/turn_off()
 	on = 0
 	set_light(0)
-	update_icons()
+	update_icon()
 
 /mob/living/bot/proc/explode()
 	qdel(src)
@@ -375,7 +375,7 @@
 
 	//	for(var/turf/simulated/t in oview(src,1))
 
-	for(var/d in GLOB.cardinal)
+	for(var/d in global.cardinal)
 		var/turf/simulated/T = get_step(src, d)
 		if(istype(T) && !T.density)
 			if(!LinkBlockedWithAccess(src, T, ID))

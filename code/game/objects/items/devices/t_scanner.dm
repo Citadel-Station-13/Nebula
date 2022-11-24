@@ -4,11 +4,10 @@
 	name = "\improper T-ray scanner"
 	desc = "A terahertz-ray emitter and scanner, capable of penetrating conventional hull materials."
 	icon = 'icons/obj/items/device/t_ray_scanner.dmi'
-	icon_state = "t-ray0"
-	slot_flags = SLOT_BELT
+	icon_state = ICON_STATE_WORLD
+	slot_flags = SLOT_LOWER_BODY
 	w_class = ITEM_SIZE_SMALL
-	item_state = "electronic"
-	material = MAT_ALUMINIUM
+	material = /decl/material/solid/metal/aluminium
 	origin_tech = "{'magnets':1,'engineering':1}"
 	action_button_name = "Toggle T-Ray scanner"
 
@@ -18,7 +17,7 @@
 	var/list/active_scanned = list() //assoc list of objects being scanned, mapped to their overlay
 	var/client/user_client //since making sure overlays are properly added and removed is pretty important, so we track the current user explicitly
 
-	var/global/list/overlay_cache = list() //cache recent overlays
+	var/static/list/overlay_cache = list() //cache recent overlays
 
 /obj/item/t_scanner/Destroy()
 	. = ..()
@@ -26,7 +25,8 @@
 		set_active(FALSE)
 
 /obj/item/t_scanner/on_update_icon()
-	icon_state = "t-ray[on]"
+	. = ..()
+	add_overlay("[icon_state]-[on? "on" : "off"]")
 
 /obj/item/t_scanner/emp_act()
 	audible_message(src, "<span class = 'notice'> \The [src] buzzes oddly.</span>")

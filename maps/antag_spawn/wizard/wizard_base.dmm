@@ -1,15 +1,14 @@
 //MAP CONVERTED BY dmm2tgm.py THIS HEADER COMMENT PREVENTS RECONVERSION, DO NOT REMOVE
 "aa" = (
-/turf/space/bluespace,
+/turf/space/infinity,
 /area/space)
 "ab" = (
 /turf/unsimulated/wall,
 /area/map_template/wizard_station)
 "ac" = (
-/turf/unsimulated/wall/fakeglass{
-	icon_state = "fakewindows";
-	dir = 8
-	},
+/obj/structure/table/woodentable,
+/obj/item/storage/backpack/cultpack,
+/turf/simulated/floor/carpet,
 /area/map_template/wizard_station)
 "ad" = (
 /turf/unsimulated/wall/fakeglass{
@@ -24,84 +23,90 @@
 /area/map_template/wizard_station)
 "af" = (
 /obj/structure/table/woodentable,
+/obj/item/storage/backpack/satchel/grey/withwallet,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"ag" = (
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"ah" = (
+/obj/structure/undies_wardrobe,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"ai" = (
+/turf/unsimulated/wall/fakeglass{
+	dir = 8
+	},
+/area/map_template/wizard_station)
+"aj" = (
+/obj/structure/door/wood,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"ak" = (
+/obj/structure/table/woodentable,
 /obj/item/flashlight/lamp/green{
 	on = 0;
 	pixel_x = -3;
 	pixel_y = 8
 	},
-/obj/item/chems/food/drinks/flask/barflask,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ag" = (
-/obj/structure/bed/padded,
-/obj/item/bedsheet/rd,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ah" = (
-/obj/structure/table/woodentable,
-/obj/item/storage/backpack/satchel/grey/withwallet,
-/obj/item/clothing/glasses/monocle,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ai" = (
-/obj/structure/table/woodentable,
-/obj/effect/landmark{
-	name = "Teleport-Scroll"
-	},
-/obj/item/toy/figure/ninja,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"aj" = (
-/obj/effect/landmark/start{
-	name = "wizard"
-	},
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ak" = (
-/obj/structure/aliumizer,
+/obj/item/chems/drinks/flask/barflask,
 /turf/simulated/floor/carpet,
 /area/map_template/wizard_station)
 "al" = (
 /obj/structure/table/woodentable,
-/obj/item/storage/backpack/cultpack,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"am" = (
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"an" = (
-/obj/item/radio/intercom/syndicate{
-	dir = 8;
-	pixel_x = 22
-	},
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ao" = (
-/obj/structure/table/woodentable,
-/obj/item/storage/backpack/satchel/grey/withwallet,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ap" = (
-/obj/structure/undies_wardrobe,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"aq" = (
-/obj/structure/door/wood,
-/turf/simulated/floor/carpet,
-/area/map_template/wizard_station)
-"ar" = (
-/obj/structure/bookcase{
-	name = "Forbidden Knowledge"
-	},
-/obj/effect/decal/cleanable/cobweb,
+/obj/item/dice,
 /turf/unsimulated/floor{
 	dir = 8;
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
+"am" = (
+/obj/structure/bed/padded,
+/obj/item/bedsheet/rd,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"an" = (
+/obj/structure/table/woodentable,
+/obj/item/dice/d20,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"ao" = (
+/obj/structure/table/woodentable,
+/obj/item/storage/backpack/satchel/grey/withwallet,
+/obj/item/clothing/glasses/eyepatch/monocle,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"ap" = (
+/mob/living/carbon/human/monkey{
+	name = "Murphey"
+	},
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"aq" = (
+/obj/structure/table/woodentable,
+/obj/item/chems/food/chawanmushi,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"ar" = (
+/obj/structure/table/woodentable,
+/obj/abstract/landmark{
+	name = "Teleport-Scroll"
+	},
+/obj/item/toy/figure/ninja,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
 "as" = (
 /obj/structure/table/woodentable,
-/obj/item/dice,
+/obj/item/megaphone,
 /turf/unsimulated/floor{
 	dir = 8;
 	icon_state = "wood"
@@ -115,13 +120,68 @@
 /area/map_template/wizard_station)
 "au" = (
 /obj/structure/table/woodentable,
-/obj/item/dice/d20,
+/obj/item/cash/c1,
 /turf/unsimulated/floor{
 	dir = 8;
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
 "av" = (
+/obj/structure/table/woodentable,
+/obj/machinery/chemical_dispenser/bar_soft/full,
+/obj/item/radio/intercom/wizard{
+	dir = 8;
+	pixel_x = 22
+	},
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"aw" = (
+/obj/machinery/vending/magivend,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"ax" = (
+/obj/structure/bed/chair/wood/wings{
+	dir = 8
+	},
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"ay" = (
+/obj/abstract/landmark/start{
+	name = "wizard"
+	},
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"az" = (
+/obj/structure/aliumizer,
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"aA" = (
+/obj/item/radio/intercom/wizard{
+	dir = 8;
+	pixel_x = 22
+	},
+/turf/simulated/floor/carpet,
+/area/map_template/wizard_station)
+"aB" = (
+/obj/structure/bookcase{
+	name = "Forbidden Knowledge"
+	},
+/obj/effect/decal/cleanable/cobweb,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"aC" = (
 /obj/structure/bookcase{
 	name = "bookcase (Tactics)"
 	},
@@ -130,7 +190,15 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"aw" = (
+"aD" = (
+/obj/structure/bookcase,
+/obj/item/book/manual/nuclear,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"aE" = (
 /obj/structure/bookcase{
 	name = "Forbidden Knowledge"
 	},
@@ -139,39 +207,35 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"ax" = (
-/mob/living/carbon/human/monkey{
-	name = "Murphey"
+"aF" = (
+/turf/unsimulated/wall/fakeglass{
+	dir = 1
 	},
+/area/map_template/wizard_station)
+"aG" = (
+/turf/unsimulated/floor{
+	icon = 'icons/misc/beach.dmi';
+	icon_state = "seashallow";
+	name = "water"
+	},
+/area/map_template/wizard_station)
+"aH" = (
+/obj/structure/bookcase,
+/obj/item/book/manual/robotics_cyborgs,
 /turf/unsimulated/floor{
 	dir = 8;
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"ay" = (
-/turf/unsimulated/wall/fakeglass{
-	dir = 1;
-	icon_state = "fakewindows"
-	},
-/area/map_template/wizard_station)
-"az" = (
-/turf/unsimulated/floor{
-	dir = 2;
-	icon = 'icons/misc/beach.dmi';
-	icon_state = "seashallow";
-	name = "water"
-	},
-/area/map_template/wizard_station)
-"aA" = (
+"aI" = (
 /obj/item/bikehorn/rubberducky,
 /turf/unsimulated/floor{
-	dir = 2;
 	icon = 'icons/misc/beach.dmi';
 	icon_state = "seashallow";
 	name = "water"
 	},
 /area/map_template/wizard_station)
-"aB" = (
+"aJ" = (
 /obj/effect/floor_decal/spline/fancy/wood{
 	dir = 8
 	},
@@ -179,22 +243,20 @@
 	pixel_y = 32
 	},
 /turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
+	icon_state = "freezerfloor"
 	},
 /area/map_template/wizard_station)
-"aC" = (
+"aK" = (
 /obj/structure/hygiene/toilet{
 	pixel_y = 8
 	},
 /turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
+	icon_state = "freezerfloor"
 	},
 /area/map_template/wizard_station)
-"aD" = (
+"aL" = (
 /obj/structure/table/woodentable,
-/obj/item/radio/intercom/syndicate{
+/obj/item/radio/intercom/wizard{
 	dir = 4;
 	pixel_x = -22
 	},
@@ -203,9 +265,15 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"aE" = (
+"aM" = (
+/obj/structure/closet/coffin,
+/turf/unsimulated/floor{
+	icon_state = "cult";
+	name = "plating"
+	},
+/area/map_template/wizard_station)
+"aN" = (
 /obj/structure/bed/chair/wood/wings{
-	icon_state = "wooden_chair_wings";
 	dir = 4
 	},
 /turf/unsimulated/floor{
@@ -213,25 +281,7 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"aF" = (
-/obj/structure/table/woodentable,
-/obj/item/chems/food/snacks/chawanmushi,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"aG" = (
-/obj/structure/bed/chair/wood/wings{
-	icon_state = "wooden_chair_wings";
-	dir = 8
-	},
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"aH" = (
+"aO" = (
 /obj/structure/table/woodentable,
 /obj/item/storage/box/cups,
 /turf/unsimulated/floor{
@@ -239,7 +289,7 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"aI" = (
+"aP" = (
 /obj/structure/closet,
 /obj/item/clothing/suit/wizrobe/red,
 /obj/item/clothing/shoes/sandal,
@@ -249,7 +299,15 @@
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"aJ" = (
+"aQ" = (
+/obj/structure/table/woodentable,
+/obj/item/storage/bag/cash,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"aR" = (
 /obj/structure/closet,
 /obj/item/clothing/suit/wizrobe/marisa,
 /obj/item/clothing/shoes/sandal/marisa,
@@ -259,7 +317,15 @@
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"aK" = (
+"aS" = (
+/obj/structure/table/woodentable,
+/obj/item/storage/candle_box,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"aT" = (
 /obj/structure/closet,
 /obj/item/clothing/suit/wizrobe/magusblue,
 /obj/item/clothing/head/wizard/magus,
@@ -268,52 +334,35 @@
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"aL" = (
+"aU" = (
 /obj/structure/closet,
-/obj/item/chems/food/drinks/bottle/pwine,
-/obj/item/chems/food/drinks/bottle/agedwhiskey,
-/obj/item/chems/food/drinks/bottle/cognac,
+/obj/item/chems/drinks/bottle/pwine,
+/obj/item/chems/drinks/bottle/agedwhiskey,
+/obj/item/chems/drinks/bottle/cognac,
 /turf/unsimulated/floor{
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"aM" = (
-/turf/unsimulated/wall/fakeglass{
-	icon_state = "fakewindows2";
-	dir = 1
-	},
-/area/map_template/wizard_station)
-"aN" = (
+"aV" = (
 /obj/effect/floor_decal/spline/fancy/wood{
 	dir = 8
 	},
 /turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
+	icon_state = "freezerfloor"
 	},
 /area/map_template/wizard_station)
-"aO" = (
+"aW" = (
 /turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
+	icon_state = "freezerfloor"
 	},
 /area/map_template/wizard_station)
-"aP" = (
+"aX" = (
 /obj/structure/door/iron,
 /turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
+	icon_state = "freezerfloor"
 	},
 /area/map_template/wizard_station)
-"aQ" = (
-/obj/structure/table/woodentable,
-/obj/item/megaphone,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"aR" = (
+"aY" = (
 /obj/structure/table/woodentable,
 /obj/item/storage/box/donut,
 /turf/unsimulated/floor{
@@ -321,93 +370,68 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"aS" = (
-/obj/structure/table/woodentable,
-/obj/item/cash/c1,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"aT" = (
+"aZ" = (
 /obj/structure/door/wood,
 /turf/unsimulated/floor{
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"aU" = (
-/turf/unsimulated/floor{
-	icon_state = "lino"
-	},
-/area/map_template/wizard_station)
-"aV" = (
-/turf/unsimulated/wall/fakeglass,
-/area/map_template/wizard_station)
-"aW" = (
-/obj/item/soap,
-/turf/unsimulated/floor{
-	dir = 2;
-	icon = 'icons/misc/beach.dmi';
-	icon_state = "seashallow";
-	name = "water"
-	},
-/area/map_template/wizard_station)
-"aX" = (
-/obj/effect/floor_decal/spline/fancy/wood{
-	dir = 8
-	},
-/obj/item/radio/intercom/syndicate{
-	dir = 1;
-	pixel_y = -22
-	},
-/turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
-	},
-/area/map_template/wizard_station)
-"aY" = (
-/obj/structure/hygiene/sink{
-	dir = 4;
-	icon_state = "sink";
-	pixel_x = 11;
-	pixel_y = 0
-	},
-/obj/item/storage/mirror{
-	pixel_x = 32
-	},
-/turf/unsimulated/floor{
-	icon_state = "freezerfloor";
-	dir = 2
-	},
-/area/map_template/wizard_station)
-"aZ" = (
-/obj/machinery/vending/magivend,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
 "ba" = (
-/obj/structure/table/woodentable,
-/obj/item/chems/food/snacks/milosoup,
+/obj/structure/door/silver,
 /turf/unsimulated/floor{
 	dir = 8;
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
 "bb" = (
-/obj/structure/table/woodentable,
-/obj/machinery/chemical_dispenser/bar_soft/full,
-/obj/item/radio/intercom/syndicate{
-	dir = 8;
-	pixel_x = 22
+/turf/unsimulated/floor{
+	icon_state = "lino"
 	},
+/area/map_template/wizard_station)
+"bc" = (
+/turf/unsimulated/wall/fakeglass,
+/area/map_template/wizard_station)
+"bd" = (
+/obj/item/soap,
+/turf/unsimulated/floor{
+	icon = 'icons/misc/beach.dmi';
+	icon_state = "seashallow";
+	name = "water"
+	},
+/area/map_template/wizard_station)
+"be" = (
+/obj/effect/floor_decal/spline/fancy/wood{
+	dir = 8
+	},
+/obj/item/radio/intercom/wizard{
+	dir = 1;
+	pixel_y = -22
+	},
+/turf/unsimulated/floor{
+	icon_state = "freezerfloor"
+	},
+/area/map_template/wizard_station)
+"bf" = (
+/obj/structure/hygiene/sink{
+	dir = 4;
+	pixel_x = 11
+	},
+/obj/structure/mirror{
+	pixel_x = 32
+	},
+/turf/unsimulated/floor{
+	icon_state = "freezerfloor"
+	},
+/area/map_template/wizard_station)
+"bg" = (
+/obj/structure/table/woodentable,
+/obj/item/chems/food/milosoup,
 /turf/unsimulated/floor{
 	dir = 8;
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"bc" = (
+"bh" = (
 /obj/structure/closet,
 /obj/item/clothing/under/psysuit,
 /obj/item/clothing/suit/wizrobe/psypurple,
@@ -415,7 +439,13 @@
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"bd" = (
+"bi" = (
+/turf/unsimulated/wall/fakeglass{
+	dir = 1;
+	icon_state = "fakewindows2"
+	},
+/area/map_template/wizard_station)
+"bj" = (
 /obj/structure/closet,
 /obj/item/clothing/shoes/sandal/marisa{
 	desc = "A set of fancy shoes that are as functional as they are comfortable.";
@@ -425,7 +455,7 @@
 /obj/item/clothing/suit/wizrobe/gentlecoat,
 /obj/item/clothing/head/wizard/cap,
 /obj/item/staff/gentcane,
-/obj/item/radio/intercom/syndicate{
+/obj/item/radio/intercom/wizard{
 	dir = 1;
 	pixel_y = -22
 	},
@@ -433,7 +463,7 @@
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"be" = (
+"bk" = (
 /obj/structure/closet,
 /obj/item/clothing/suit/wizrobe/magusred,
 /obj/item/clothing/head/wizard/magus,
@@ -442,61 +472,22 @@
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"bf" = (
+"bl" = (
 /obj/structure/closet,
 /obj/item/storage/briefcase,
 /turf/unsimulated/floor{
 	icon_state = "lino"
 	},
 /area/map_template/wizard_station)
-"bg" = (
-/obj/structure/bookcase,
-/obj/item/book/manual/nuclear,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"bh" = (
-/obj/structure/bookcase,
-/obj/item/book/manual/robotics_cyborgs,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"bi" = (
-/obj/structure/bookcase,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"bj" = (
-/obj/structure/table/woodentable,
-/obj/item/storage/bag/cash,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"bk" = (
-/obj/structure/table/woodentable,
-/obj/item/storage/candle_box,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
-"bl" = (
-/obj/structure/door/silver,
-/turf/unsimulated/floor{
-	dir = 8;
-	icon_state = "wood"
-	},
-/area/map_template/wizard_station)
 "bm" = (
-/obj/item/radio/intercom/syndicate{
+/obj/structure/bookcase,
+/turf/unsimulated/floor{
+	dir = 8;
+	icon_state = "wood"
+	},
+/area/map_template/wizard_station)
+"bn" = (
+/obj/item/radio/intercom/wizard{
 	dir = 1;
 	pixel_y = -22
 	},
@@ -505,53 +496,46 @@
 	icon_state = "wood"
 	},
 /area/map_template/wizard_station)
-"bn" = (
-/obj/structure/closet/coffin,
-/turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
-	},
-/area/map_template/wizard_station)
 "bo" = (
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bp" = (
-/obj/item/radio/intercom/syndicate{
+/obj/item/radio/intercom/wizard{
 	pixel_y = 22
 	},
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bq" = (
 /obj/structure/cult/pylon,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "br" = (
 /obj/structure/kitchenspike,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bs" = (
 /obj/item/remains/human,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "lava"
+	icon_state = "lava";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bt" = (
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "lava"
+	icon_state = "lava";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bu" = (
@@ -561,7 +545,7 @@
 	},
 /area/map_template/wizard_station)
 "bv" = (
-/obj/structure/flora/ausbushes/fullgrass,
+/obj/structure/flora/bush/fullgrass,
 /turf/unsimulated/floor{
 	icon_state = "grass0";
 	name = "grass"
@@ -572,34 +556,41 @@
 	name = "Experiment 35b"
 	},
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "lava"
+	icon_state = "lava";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bx" = (
 /obj/structure/cult/talisman,
-/obj/item/material/knife/ritual,
+/obj/item/knife/ritual,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "by" = (
-/obj/effect/gateway/active/cult,
+/obj/structure/table/woodentable,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bz" = (
-/obj/structure/table/marble,
-/obj/item/flashlight/slime,
+/obj/effect/gateway/active/cult,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bA" = (
+/obj/structure/table/marble,
+/obj/item/flashlight/slime,
+/turf/unsimulated/floor{
+	icon_state = "cult";
+	name = "plating"
+	},
+/area/map_template/wizard_station)
+"bB" = (
 /mob/living/simple_animal/hostile/retaliate/goat{
 	name = "Experiment 97d"
 	},
@@ -608,26 +599,18 @@
 	name = "grass"
 	},
 /area/map_template/wizard_station)
-"bB" = (
-/obj/structure/flora/ausbushes/grassybush,
+"bC" = (
+/obj/structure/flora/bush/grassybush,
 /turf/unsimulated/floor{
 	icon_state = "grass0";
 	name = "grass"
 	},
 /area/map_template/wizard_station)
-"bC" = (
+"bD" = (
 /obj/structure/flora/pottedplant/unusual,
 /turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
-	},
-/area/map_template/wizard_station)
-"bD" = (
-/obj/structure/table/woodentable,
-/obj/item/cat_hide,
-/turf/unsimulated/floor{
-	name = "plating";
-	icon_state = "cult"
+	icon_state = "cult";
+	name = "plating"
 	},
 /area/map_template/wizard_station)
 "bE" = (
@@ -940,13 +923,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-ay
-aM
-aV
+aF
+bi
+bc
 ab
 aa
 aa
@@ -960,6 +940,9 @@ ab
 ab
 ab
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -979,13 +962,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-az
-az
-aW
+aG
+aG
+bd
 ab
 aa
 aa
@@ -1006,6 +986,9 @@ aa
 aa
 aa
 aa
+aa
+aa
+aa
 "}
 (10,1,1) = {"
 aa
@@ -1018,13 +1001,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aA
-az
-az
+aI
+aG
+aG
 ab
 aa
 aa
@@ -1038,6 +1018,9 @@ bt
 bt
 bt
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1057,13 +1040,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aB
-aN
-aX
+aJ
+aV
+be
 ab
 aa
 aa
@@ -1084,6 +1064,9 @@ aa
 aa
 aa
 aa
+aa
+aa
+aa
 "}
 (12,1,1) = {"
 aa
@@ -1096,13 +1079,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aC
-aO
-aY
+aK
+aW
+bf
 ab
 aa
 aa
@@ -1123,6 +1103,9 @@ aa
 aa
 aa
 aa
+aa
+aa
+aa
 "}
 (13,1,1) = {"
 aa
@@ -1134,13 +1117,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
 ab
 ab
-aP
+aX
 ab
 ab
 ab
@@ -1151,11 +1131,14 @@ aa
 aa
 ab
 ab
-ay
-aM
-aV
+aF
+bi
+bc
 ab
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1172,16 +1155,13 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
 ab
+aE
+aL
+at
 aw
 aD
-at
-aZ
-bg
 ab
 ab
 aa
@@ -1201,144 +1181,144 @@ aa
 aa
 aa
 aa
+aa
+aa
+aa
 "}
 (15,1,1) = {"
 aa
 aa
 aa
-aa
-aa
-aa
 ab
 ab
 ab
 ab
 ab
 ab
-ar
+aB
 at
 at
 at
 at
 at
+bm
+ab
+aF
 bi
+bc
 ab
-ay
 aM
-aV
-ab
-bn
 bo
 bo
 bo
 bo
 bo
-bC
+bD
 ab
 ab
 ab
 ab
 ab
 ab
+aa
+aa
+aa
 "}
 (16,1,1) = {"
 aa
 aa
 aa
-aa
-aa
-aa
+ai
+ak
+ar
 ac
 af
-ai
+ab
 al
-ao
-ab
+at
+aN
 as
+aN
 at
-aE
 aQ
-aE
-at
-bj
 ab
 at
 at
-bm
+bn
 ab
 bo
 bo
-ac
+ai
 ab
-ac
+ai
 bo
 bo
-ac
+ai
 bE
 bE
 bE
 bH
 ab
+aa
+aa
+aa
 "}
 (17,1,1) = {"
 aa
 aa
 aa
-aa
-aa
-aa
 ad
+am
+ay
+ag
 ag
 aj
-am
-am
+at
+at
 aq
+aY
+bg
 at
 at
-aF
-aR
 ba
 at
 at
-bl
 at
-at
-at
-bl
+ba
 bo
 bo
 ad
+bz
+ad
+bo
 by
-ad
-bo
-bD
 ad
 bE
 bE
 bG
 bE
 ab
+aa
+aa
+aa
 "}
 (18,1,1) = {"
 aa
 aa
 aa
-aa
-aa
-aa
 ae
+ao
+az
+aA
 ah
-ak
+ab
 an
 ap
-ab
+ax
 au
 ax
-aG
-aS
-aG
 at
-bk
+aS
 ab
 at
 at
@@ -1357,45 +1337,48 @@ bF
 bE
 bE
 ab
+aa
+aa
+aa
 "}
 (19,1,1) = {"
 aa
 aa
 aa
-aa
-aa
-aa
 ab
 ab
 ab
 ab
 ab
 ab
-av
+aC
 at
 at
 at
 at
 at
+bm
+ab
+aF
 bi
+bc
 ab
-ay
 aM
-aV
-ab
-bn
 bo
 bo
 bo
 bo
 bo
-bC
+bD
 ab
 ab
 ab
 ab
 ab
 ab
+aa
+aa
+aa
 "}
 (20,1,1) = {"
 aa
@@ -1406,16 +1389,13 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
 ab
+aC
+aO
+at
 av
 aH
-at
-bb
-bh
 ab
 ab
 aa
@@ -1425,11 +1405,14 @@ ab
 ab
 br
 bo
-bz
+bA
 bo
 br
 ab
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1446,13 +1429,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
 ab
 ab
-aT
+aZ
 ab
 ab
 ab
@@ -1463,11 +1443,14 @@ aa
 aa
 ab
 ab
-ay
-aM
-aV
+aF
+bi
+bc
 ab
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1486,13 +1469,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aI
-aU
-bc
+aP
+bb
+bh
 ab
 aa
 aa
@@ -1504,8 +1484,11 @@ aa
 ab
 bu
 bu
-bB
+bC
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1525,13 +1508,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aJ
-aU
-bd
+aR
+bb
+bj
 ab
 aa
 aa
@@ -1545,6 +1525,9 @@ bu
 bu
 bu
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1564,13 +1547,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aK
-aU
-be
+aT
+bb
+bk
 ab
 aa
 aa
@@ -1581,9 +1561,12 @@ aa
 aa
 ab
 bu
-bA
+bB
 bu
 ab
+aa
+aa
+aa
 aa
 aa
 aa
@@ -1603,13 +1586,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-aL
 aU
-bf
+bb
+bl
 ab
 aa
 aa
@@ -1630,6 +1610,9 @@ aa
 aa
 aa
 aa
+aa
+aa
+aa
 "}
 (26,1,1) = {"
 aa
@@ -1642,13 +1625,10 @@ aa
 aa
 aa
 aa
-aa
-aa
-aa
 ab
-ay
-aM
-aV
+aF
+bi
+bc
 ab
 aa
 aa
@@ -1662,6 +1642,9 @@ ab
 ab
 ab
 ab
+aa
+aa
+aa
 aa
 aa
 aa

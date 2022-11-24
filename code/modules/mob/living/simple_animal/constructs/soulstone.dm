@@ -1,22 +1,26 @@
 /obj/item/soulstone
 	name = "soul stone shard"
-	icon = 'icons/obj/wizard.dmi'
-	icon_state = "soulstone"
-	item_state = "electronic"
+	icon = 'icons/obj/items/soulstone.dmi'
+	icon_state = ICON_STATE_WORLD
 	desc = "A strange, ridged chunk of some glassy red material. Achingly cold to the touch."
 	w_class = ITEM_SIZE_SMALL
-	slot_flags = SLOT_BELT
-	origin_tech = "{'bluespace':4,'materials':4}"
-
+	slot_flags = SLOT_LOWER_BODY
+	origin_tech = "{'wormholes':4,'materials':4}"
+	material = /decl/material/solid/gemstone/crystal
 	var/full = SOULSTONE_EMPTY
 	var/is_evil = 1
 	var/mob/living/simple_animal/shade = null
-	var/smashing = 0
-	var/soulstatus = null
 
 /obj/item/soulstone/Initialize(var/mapload)
 	shade = new /mob/living/simple_animal/shade(src)
 	. = ..(mapload)
+
+/obj/item/soulstone/on_update_icon()
+	. = ..()
+	if(full == SOULSTONE_ESSENCE)
+		add_overlay("[icon_state]-glow")
+	else if(full == SOULSTONE_CRACKED)
+		SetName("cracked soulstone")
 
 /obj/item/soulstone/shatter()
 	playsound(loc, "shatter", 70, 1)
@@ -24,7 +28,6 @@
 
 /obj/item/soulstone/full
 	full = SOULSTONE_ESSENCE
-	icon_state = "soulstone2"
 
 /obj/item/soulstone/Destroy()
 	QDEL_NULL(shade)
@@ -38,15 +41,6 @@
 		to_chat(user,"The shard has gone transparent, a seeming window into a dimension of unspeakable horror.")
 	if(full == SOULSTONE_CRACKED)
 		to_chat(user, "This one is cracked and useless.")
-
-/obj/item/soulstone/on_update_icon()
-	if(full == SOULSTONE_EMPTY)
-		icon_state = "soulstone"
-	if(full == SOULSTONE_ESSENCE)
-		icon_state = "soulstone2" //TODO: A spookier sprite. Also unique sprites.
-	if(full == SOULSTONE_CRACKED)
-		icon_state = "soulstone"//TODO: cracked sprite
-		SetName("cracked soulstone")
 
 /obj/item/soulstone/attackby(var/obj/item/I, var/mob/user)
 	..()
@@ -87,7 +81,7 @@
 	if(!shade.key) // No key = hasn't been used
 		to_chat(user, "<span class='notice'>You cut your finger and let the blood drip on \the [src].</span>")
 		user.remove_blood_simple(1)
-		var/datum/ghosttrap/cult/shade/S = get_ghost_trap("soul stone")
+		var/decl/ghosttrap/S = GET_DECL(/decl/ghosttrap/cult_shade)
 		S.request_player(shade, "The soul stone shade summon ritual has been performed. ")
 	else if(!shade.client) // Has a key but no client - shade logged out
 		to_chat(user, "<span class='notice'>\The [shade] in \the [src] is dormant.</span>")
@@ -106,7 +100,7 @@
 
 /obj/structure/constructshell
 	name = "empty shell"
-	icon = 'icons/obj/wizard.dmi'
+	icon = 'icons/obj/structures/construct.dmi'
 	icon_state = "construct"
 	desc = "A wicked machine used by those skilled in magical arts. It is inactive."
 
@@ -136,7 +130,8 @@
 		C.key = S.shade.key
 		//C.cancel_camera()
 		if(S.is_evil)
-			GLOB.cult.add_antagonist(C.mind)
+			var/decl/special_role/cult = GET_DECL(/decl/special_role/cultist)
+			cult.add_antagonist(C.mind)
 		qdel(S)
 		qdel(src)
 

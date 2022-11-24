@@ -9,18 +9,18 @@
 	idle_power_usage = 15
 
 	uncreated_component_parts = list(
-		/obj/item/stock_parts/power/apc/buildable
+		/obj/item/stock_parts/power/apc
 	)
 	public_variables = list(
 		/decl/public_access/public_variable/gas,
 		/decl/public_access/public_variable/pressure,
-		/decl/public_access/public_variable/temperature		
+		/decl/public_access/public_variable/temperature
 	)
 	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/meter = 1)
 
-	frame_type = /obj/item/machine_chassis/pipe_meter/base
+	frame_type = /obj/item/machine_chassis/pipe_meter
 	construct_state = /decl/machine_construction/default/panel_closed/item_chassis
-	base_type = /obj/machinery/meter/buildable
+	base_type = /obj/machinery/meter
 
 /obj/machinery/meter/Initialize()
 	. = ..()
@@ -32,12 +32,12 @@
 /obj/machinery/meter/proc/set_target(atom/new_target)
 	clear_target()
 	target = new_target
-	GLOB.destroyed_event.register(target, src, .proc/clear_target)
+	events_repository.register(/decl/observ/destroyed, target, src, .proc/clear_target)
 
 /obj/machinery/meter/proc/clear_target()
 	if(target)
-		GLOB.destroyed_event.unregister(target, src)
-		target = null	
+		events_repository.unregister(/decl/observ/destroyed, target, src)
+		target = null
 
 /obj/machinery/meter/return_air()
 	if(target)
@@ -90,7 +90,7 @@
 	else if(src.target)
 		var/datum/gas_mixture/environment = target.return_air()
 		if(environment)
-			to_chat(user, "The pressure gauge reads [round(environment.return_pressure(), 0.01)] kPa; [round(environment.temperature,0.01)]K ([round(environment.temperature-T0C,0.01)]&deg;C)")
+			to_chat(user, "The pressure gauge reads [round(environment.return_pressure(), 0.01)] kPa; [round(environment.temperature,0.01)]K ([round(environment.temperature-T0C,0.01)]&deg;C).")
 		else
 			to_chat(user, "The sensor error light is blinking.")
 	else
@@ -103,13 +103,10 @@
 		set_target(loc)
 	. = ..()
 
-/obj/machinery/meter/buildable
-	uncreated_component_parts = null
-
 /obj/machinery/meter/starts_with_radio
 	uncreated_component_parts = list(
 		/obj/item/stock_parts/radio/transmitter/basic/buildable,
-		/obj/item/stock_parts/power/apc/buildable
+		/obj/item/stock_parts/power/apc
 	)
 
 /decl/stock_part_preset/radio/basic_transmitter/meter

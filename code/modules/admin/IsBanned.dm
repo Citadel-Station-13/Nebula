@@ -21,7 +21,7 @@
 		key_cache[key] = 0
 		return list("reason"="guest", "desc"="\nReason: Guests not allowed. Please sign in with a byond account.")
 
-	var/client/C = GLOB.ckey_directory[ckeytext]
+	var/client/C = global.ckey_directory[ckeytext]
 	//If this isn't here, then topic call spam will result in all clients getting kicked with a connecting too fast error.
 	if (C && ckeytext == C.ckey && address == C.address && computer_id == C.computer_id)
 		key_cache[key] = 0
@@ -77,8 +77,9 @@
 			var/bantype = query.item[9]
 
 			var/expires = ""
+			var/mins_readable = minutes_to_readable(duration)
 			if(text2num(duration) > 0)
-				expires = " The ban is for [duration] minutes and expires on [expiration] (server time)."
+				expires = " The ban is for [mins_readable] and expires on [expiration] (server time)."
 
 			var/desc = "\nReason: You, or another user of this computer or connection ([pckey]) is banned from playing here. The ban reason is:\n[reason]\nThis ban was applied by [ackey] on [bantime], [expires]"
 

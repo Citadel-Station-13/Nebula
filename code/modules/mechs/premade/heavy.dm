@@ -2,20 +2,27 @@
 	name = "Heavy exosuit"
 	desc = "A heavily armored combat exosuit."
 
+/obj/item/mech_component/manipulators/heavy/painted
+	color = COLOR_TITANIUM
+
+/obj/item/mech_component/propulsion/heavy/painted
+	color = COLOR_TITANIUM
+
+/obj/item/mech_component/sensors/heavy/painted
+	color = COLOR_TITANIUM
+
+/obj/item/mech_component/chassis/heavy/painted
+	color = COLOR_TITANIUM
+
 /mob/living/exosuit/premade/heavy/Initialize()
 	if(!arms)
-		arms = new /obj/item/mech_component/manipulators/heavy(src)
-		arms.color = COLOR_TITANIUM
+		arms = new /obj/item/mech_component/manipulators/heavy/painted(src)
 	if(!legs)
-		legs = new /obj/item/mech_component/propulsion/heavy(src)
-		legs.color = COLOR_TITANIUM
+		legs = new /obj/item/mech_component/propulsion/heavy/painted(src)
 	if(!head)
-		head = new /obj/item/mech_component/sensors/heavy(src)
-		head.color = COLOR_TITANIUM
+		head = new /obj/item/mech_component/sensors/heavy/painted(src)
 	if(!body)
-		body = new /obj/item/mech_component/chassis/heavy(src)
-		body.color = COLOR_TITANIUM
-
+		body = new /obj/item/mech_component/chassis/heavy/painted(src)
 	. = ..()
 
 /mob/living/exosuit/premade/heavy/spawn_mech_equipment()
@@ -33,7 +40,7 @@
 	action_delay = 15
 	max_damage = 90
 	power_use = 60
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/mech_component/propulsion/heavy
 	name = "heavy legs"
@@ -44,7 +51,7 @@
 	turn_delay = 5
 	max_damage = 160
 	power_use = 100
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/mech_component/sensors/heavy
 	name = "heavy sensors"
@@ -53,12 +60,12 @@
 	icon_state = "heavy_head"
 	max_damage = 120
 	power_use = 0
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/mech_component/sensors/heavy/prebuild()
 	..()
 	software = new(src)
-	software.installed_software = list(MECH_SOFTWARE_WEAPONS, MECH_SOFTWARE_ADVWEAPONS)
+	software.installed_software = list(MECH_SOFTWARE_WEAPONS)
 
 /obj/item/mech_component/chassis/heavy
 	name = "reinforced exosuit chassis"
@@ -71,8 +78,20 @@
 	mech_health = 500
 	power_use = 50
 	has_hardpoints = list(HARDPOINT_BACK)
-	material = MAT_STEEL
-	matter = list(MAT_URANIUM = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/metal/uranium = MATTER_AMOUNT_REINFORCEMENT)
+
+/obj/item/mech_component/chassis/heavy/prebuild()
+	pilot_positions = list(
+		list(
+			"[NORTH]" = list("x" = 8,  "y" = 8),
+			"[SOUTH]" = list("x" = 9,  "y" = 2),
+			"[EAST]"  = list("x" = 4,  "y" = 8),
+			"[WEST]"  = list("x" = 12, "y" = 8)
+		)
+	)
+
+	. = ..()
 
 /obj/item/mech_component/chassis/heavy/prebuild()
 	. = ..()
@@ -93,3 +112,15 @@
 	install_system(new /obj/item/mech_equipment/mounted_system/taser(src), HARDPOINT_LEFT_HAND)
 	install_system(new /obj/item/mech_equipment/mounted_system/taser/laser(src), HARDPOINT_RIGHT_HAND)
 	install_system(new /obj/item/mech_equipment/shields(src), HARDPOINT_BACK)
+
+/obj/structure/mech_wreckage/heavy
+	name = "heavy exosuit wreckage"
+	loot_pool = list(
+		/obj/item/mech_equipment/mounted_system/taser =       80,
+		/obj/item/mech_equipment/mounted_system/taser/laser = 80,
+		/obj/item/mech_equipment/shields =                    80,
+		/obj/item/mech_component/manipulators/heavy/painted = 40,
+		/obj/item/mech_component/propulsion/heavy/painted =   40,
+		/obj/item/mech_component/sensors/heavy/painted =      40,
+		/obj/item/mech_component/chassis/heavy/painted =      40
+	)

@@ -43,7 +43,7 @@ Targeted spells have two useful flags: INCLUDEUSER and SELECTABLE. These are exp
 
 	if(max_targets == 0) //unlimited
 		if(range == -2)
-			targets = GLOB.living_mob_list_
+			targets = global.living_mob_list_
 		else
 			for(var/mob/living/target in view_or_range(range, holder, selection_type))
 				targets += target
@@ -55,7 +55,7 @@ Targeted spells have two useful flags: INCLUDEUSER and SELECTABLE. These are exp
 			var/list/possible_targets = list()
 			var/list/starting_targets
 			if(range == -2)
-				starting_targets = GLOB.living_mob_list_
+				starting_targets = global.living_mob_list_
 			else
 				starting_targets = view_or_range(range, holder, selection_type)
 
@@ -87,7 +87,7 @@ Targeted spells have two useful flags: INCLUDEUSER and SELECTABLE. These are exp
 		var/list/starting_targets
 
 		if(range == -2)
-			starting_targets = GLOB.living_mob_list_
+			starting_targets = global.living_mob_list_
 		else
 			starting_targets = view_or_range(range, holder, selection_type)
 
@@ -146,30 +146,30 @@ Targeted spells have two useful flags: INCLUDEUSER and SELECTABLE. These are exp
 	target.adjustOxyLoss(amt_dam_oxy)
 	if(ishuman(target))
 		var/mob/living/carbon/human/H = target
-		for(var/obj/item/organ/internal/affecting in H.internal_organs)
+		for(var/obj/item/organ/internal/affecting in H.get_internal_organs())
 			if(affecting && istype(affecting))
 				affecting.heal_damage(amt_organ, amt_organ)
-		for(var/obj/item/organ/external/affecting in H.organs)
+		for(var/obj/item/organ/external/affecting in H.get_external_organs())
 			if(affecting && istype(affecting))
 				var/dam = BP_IS_PROSTHETIC(affecting) ? -amt_dam_robo : amt_organ
 				affecting.heal_damage(dam, dam, robo_repair = BP_IS_PROSTHETIC(affecting))
-		H.vessel.add_reagent(H.species.blood_reagent, amt_blood)
+		H.adjust_blood(amt_blood)
 		H.adjustBrainLoss(amt_brain)
 		H.radiation += min(H.radiation, amt_radiation)
-		H.fixblood()
-	target.regenerate_icons()
+
+	target.update_icon()
 	//disabling
-	target.Weaken(amt_weakened)
-	target.Paralyse(amt_paralysis)
-	target.Stun(amt_stunned)
+	SET_STATUS_MAX(target, STAT_WEAK, amt_weakened)
+	SET_STATUS_MAX(target, STAT_PARA, amt_paralysis)
+	SET_STATUS_MAX(target, STAT_STUN, amt_stunned)
 	if(amt_weakened || amt_paralysis || amt_stunned)
 		if(target.buckled)
 			target.buckled = null
-	target.eye_blind += amt_eye_blind
-	target.eye_blurry += amt_eye_blurry
-	target.dizziness += amt_dizziness
-	target.confused += amt_confused
-	target.stuttering += amt_stuttering
+	ADJ_STATUS(target, STAT_BLIND, amt_eye_blind)
+	ADJ_STATUS(target, STAT_BLURRY, amt_eye_blurry)
+	ADJ_STATUS(target, STAT_DIZZY, amt_dizziness)
+	ADJ_STATUS(target, STAT_CONFUSE, amt_confused)
+	ADJ_STATUS(target, STAT_STUTTER, amt_stuttering)
 	if(effect_state)
 		var/obj/o = new /obj/effect/temporary(get_turf(target), effect_duration, 'icons/effects/effects.dmi', effect_state)
 		o.color = effect_color

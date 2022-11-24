@@ -8,7 +8,7 @@
 	power_usage = 100
 	origin_tech = "{'powerstorage':2,'programming':3}"
 	external_slot = TRUE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 	var/obj/item/aicard/stored_card
 	var/power_usage_idle = 100
@@ -32,7 +32,7 @@
 			return
 		do_insert_ai(user, W)
 		return TRUE
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		to_chat(user, "You manually remove \the [stored_card] from \the [src].")
 		do_eject_ai(user)
 

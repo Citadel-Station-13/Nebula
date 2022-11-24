@@ -14,7 +14,7 @@
 	var/obj/machinery/disperser/front/front
 	var/obj/machinery/disperser/middle/middle
 	var/obj/machinery/disperser/back/back
-	var/const/link_range = 10 //How far can the above stuff be maximum before we start complaining
+	var/link_range = 10 //How far can the above stuff be maximum before we start complaining
 
 	var/overmapdir = 0
 
@@ -25,7 +25,7 @@
 	var/range = 1 //range of the explosion
 	var/strength = 1 //strength of the explosion
 	var/next_shot = 0 //round time where the next shot can start from
-	var/const/coolinterval = 2 MINUTES //time to wait between safe shots in deciseconds
+	var/coolinterval = 2 MINUTES //time to wait between safe shots in deciseconds
 
 /obj/machinery/computer/ship/disperser/Initialize()
 	. = ..()
@@ -54,13 +54,13 @@
 		middle = M
 		back = B
 		if(is_valid_setup())
-			GLOB.destroyed_event.register(F, src, .proc/release_links)
-			GLOB.destroyed_event.register(M, src, .proc/release_links)
-			GLOB.destroyed_event.register(B, src, .proc/release_links)
+			events_repository.register(/decl/observ/destroyed, F, src, .proc/release_links)
+			events_repository.register(/decl/observ/destroyed, M, src, .proc/release_links)
+			events_repository.register(/decl/observ/destroyed, B, src, .proc/release_links)
 			return TRUE
 	return FALSE
 
-obj/machinery/computer/ship/disperser/proc/is_valid_setup()
+/obj/machinery/computer/ship/disperser/proc/is_valid_setup()
 	if(front && middle && back)
 		var/everything_in_range = (get_dist(src, front) < link_range) && (get_dist(src, middle) < link_range) && (get_dist(src, back) < link_range)
 		var/everything_in_order = (middle.Adjacent(front) && middle.Adjacent(back)) && (front.dir == middle.dir && middle.dir == back.dir)
@@ -68,9 +68,9 @@ obj/machinery/computer/ship/disperser/proc/is_valid_setup()
 	return FALSE
 
 /obj/machinery/computer/ship/disperser/proc/release_links()
-	GLOB.destroyed_event.unregister(front, src, .proc/release_links)
-	GLOB.destroyed_event.unregister(middle, src, .proc/release_links)
-	GLOB.destroyed_event.unregister(back, src, .proc/release_links)
+	events_repository.unregister(/decl/observ/destroyed, front, src, .proc/release_links)
+	events_repository.unregister(/decl/observ/destroyed, middle, src, .proc/release_links)
+	events_repository.unregister(/decl/observ/destroyed, back, src, .proc/release_links)
 	front = null
 	middle = null
 	back = null
@@ -133,7 +133,7 @@ obj/machinery/computer/ship/disperser/proc/is_valid_setup()
 		data["strength"] = strength
 		data["range"] = range
 		data["next_shot"] = round(get_next_shot_seconds())
-		data["nopower"] = !data["faillink"] && (!front.powered() || !middle.powered() || !back.powered())
+		data["nopower"] = !data["faillink"] && ((front.stat | middle.stat | back.stat) & NOPOWER)
 		data["skill"] = user.get_skill_value(core_skill) > skill_offset
 
 		var/charge = SPAN_BOLD("UNKNOWN ERROR")

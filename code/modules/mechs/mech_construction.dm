@@ -45,9 +45,9 @@
 	if(target == selected_hardpoint)
 		clear_selected_hardpoint()
 
-	GLOB.destroyed_event.unregister(module_to_forget, src, .proc/forget_module)
+	events_repository.unregister(/decl/observ/destroyed, module_to_forget, src, .proc/forget_module)
 
-	var/obj/screen/movable/exosuit/hardpoint/H = hardpoint_hud_elements[target]
+	var/obj/screen/exosuit/hardpoint/H = hardpoint_hud_elements[target]
 	H.holding = null
 
 	hud_elements -= module_to_forget
@@ -60,21 +60,9 @@
 			pilot.client.screen -= module_to_forget
 
 /mob/living/exosuit/proc/install_system(var/obj/item/system, var/system_hardpoint, var/mob/user)
-
+	set waitfor = FALSE
 	if(hardpoints_locked || hardpoints[system_hardpoint])
 		return FALSE
-
-	if(user)
-		var/delay = 30 * user.skill_delay_mult(SKILL_DEVICES)
-		if(delay > 0)
-			user.visible_message(SPAN_NOTICE("\The [user] begins trying to install \the [system] into \the [src]."))
-			if(!do_after(user, delay, src) || user.get_active_hand() != system)
-				return FALSE
-
-			if(user.unEquip(system))
-				to_chat(user, SPAN_NOTICE("You install \the [system] in \the [src]'s [system_hardpoint]."))
-				playsound(user.loc, 'sound/items/Screwdriver.ogg', 100, 1)
-			else return FALSE
 
 	var/obj/item/mech_equipment/ME = system
 	if(istype(ME))
@@ -90,15 +78,31 @@
 					break
 			if(!found)
 				return FALSE
-		ME.installed(src)
-		GLOB.destroyed_event.register(system, src, .proc/forget_module)
+	else
+		return FALSE	
 
-	
+	if(user)
+		var/delay = 30 * user.skill_delay_mult(SKILL_DEVICES)
+		if(delay > 0)
+			user.visible_message(
+				SPAN_NOTICE("\The [user] begins trying to install \the [system] into \the [src]."),
+				SPAN_NOTICE("You begin trying to install \the [system] into \the [src].")
+			)
+			if(!do_after(user, delay, src) || user.get_active_hand() != system)
+				return FALSE
+
+			if(user.unEquip(system))
+				to_chat(user, SPAN_NOTICE("You install \the [system] in \the [src]'s [system_hardpoint]."))
+				playsound(user.loc, 'sound/items/Screwdriver.ogg', 100, 1)
+			else return FALSE
+
+	events_repository.register(/decl/observ/destroyed, system, src, .proc/forget_module)
 
 	system.forceMove(src)
 	hardpoints[system_hardpoint] = system
+	ME.installed(src)
 
-	var/obj/screen/movable/exosuit/hardpoint/H = hardpoint_hud_elements[system_hardpoint]
+	var/obj/screen/exosuit/hardpoint/H = hardpoint_hud_elements[system_hardpoint]
 	H.holding = system
 
 	system.screen_loc = H.screen_loc
@@ -108,10 +112,10 @@
 	refresh_hud()
 	queue_icon_update()
 
-	return 1
+	return TRUE
 
 /mob/living/exosuit/proc/remove_system(var/system_hardpoint, var/mob/user, var/force)
-
+	set waitfor = FALSE
 	if((hardpoints_locked && !force) || !hardpoints[system_hardpoint])
 		return 0
 
@@ -134,9 +138,9 @@
 	system.forceMove(get_turf(src))
 	system.screen_loc = null
 	system.layer = initial(system.layer)
-	GLOB.destroyed_event.unregister(system, src, .proc/forget_module)
+	events_repository.unregister(/decl/observ/destroyed, system, src, .proc/forget_module)
 
-	var/obj/screen/movable/exosuit/hardpoint/H = hardpoint_hud_elements[system_hardpoint]
+	var/obj/screen/exosuit/hardpoint/H = hardpoint_hud_elements[system_hardpoint]
 	H.holding = null
 
 	for(var/thing in pilots)

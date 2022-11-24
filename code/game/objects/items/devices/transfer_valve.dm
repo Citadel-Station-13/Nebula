@@ -3,6 +3,7 @@
 	desc = "A small, versatile valve with dual-headed heat-resistant pipes. This mechanism is the standard size for coupling with portable gas tanks."
 	icon = 'icons/obj/assemblies.dmi'
 	icon_state = "valve_1"
+	material = /decl/material/solid/metal/stainlesssteel
 	var/obj/item/tank/tank_one
 	var/obj/item/tank/tank_two
 	var/obj/item/attached_device
@@ -10,8 +11,6 @@
 	var/valve_open = 0
 	var/toggle = 1
 	movable_flags = MOVABLE_FLAG_PROXMOVE
-
-/obj/item/transfer_valve/proc/process_activation(var/obj/item/D)
 
 /obj/item/transfer_valve/IsAssemblyHolder()
 	return 1
@@ -61,7 +60,7 @@
 		A.holder = src
 		A.toggle_secure()	//this calls update_icon(), which calls update_icon() on the holder (i.e. the bomb).
 
-		GLOB.bombers += "[key_name(user)] attached a [item] to a transfer valve."
+		global.bombers += "[key_name(user)] attached a [item] to a transfer valve."
 		message_admins("[key_name_admin(user)] attached a [item] to a transfer valve. (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[location.x];Y=[location.y];Z=[location.z]'>JMP</a>)")
 		log_game("[key_name_admin(user)] attached a [item] to a transfer valve.")
 		attacher = user
@@ -70,10 +69,9 @@
 
 
 /obj/item/transfer_valve/HasProximity(atom/movable/AM)
-	if(!attached_device)	return
-	attached_device.HasProximity(AM)
-	return
-
+	. = ..()
+	if(. && attached_device)
+		attached_device.HasProximity(AM)
 
 /obj/item/transfer_valve/attack_self(mob/user)
 	ui_interact(user)
@@ -122,7 +120,7 @@
 			attached_device.attack_self(usr)
 	return 1 // Returning 1 sends an update to attached UIs
 
-/obj/item/transfer_valve/process_activation(var/obj/item/D)
+/obj/item/transfer_valve/proc/process_activation(var/obj/item/D)
 	if(toggle)
 		toggle = 0
 		toggle_valve()
@@ -130,7 +128,7 @@
 			toggle = 1
 
 /obj/item/transfer_valve/on_update_icon()
-	overlays.Cut()
+	. = ..()
 	underlays.Cut()
 
 	if(!tank_one && !tank_two && !attached_device)
@@ -139,13 +137,13 @@
 	icon_state = "valve"
 
 	if(tank_one)
-		overlays += "[tank_one.icon_state]"
+		add_overlay(new/mutable_appearance(tank_one))
 	if(tank_two)
 		var/icon/J = new(icon, icon_state = "[tank_two.icon_state]")
 		J.Shift(WEST, 13)
 		underlays += J
 	if(attached_device)
-		overlays += "device"
+		add_overlay("device")
 
 /obj/item/transfer_valve/proc/remove_tank(obj/item/tank/T)
 	if(tank_one == T)
@@ -199,7 +197,7 @@
 		else
 			attacher_name = "[attacher.name]([attacher.ckey])"
 
-		var/log_str = "Bomb valve opened in <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[bombturf.x];Y=[bombturf.y];Z=[bombturf.z]'>[A.name]</a> "
+		var/log_str = "Bomb valve opened in <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[bombturf.x];Y=[bombturf.y];Z=[bombturf.z]'>[A.proper_name]</a> "
 		log_str += "with [attached_device ? attached_device : "no device"] attacher: [attacher_name]"
 
 		if(attacher)
@@ -211,7 +209,7 @@
 			last_touch_info = "(<A HREF='?_src_=holder;adminmoreinfo=\ref[mob]'>?</A>)"
 
 		log_str += " Last touched by: [src.fingerprintslast][last_touch_info]"
-		GLOB.bombers += log_str
+		global.bombers += log_str
 		message_admins(log_str, 0, 1)
 		log_game(log_str)
 		merge_gases()

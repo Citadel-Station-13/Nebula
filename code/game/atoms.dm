@@ -14,60 +14,20 @@
 	var/list/climbers
 	var/climb_speed_mult = 1
 	var/explosion_resistance = 0
+	var/icon_scale_x = 1 // Holds state of horizontal scaling applied.
+	var/icon_scale_y = 1 // Ditto, for vertical scaling.
+	var/icon_rotation = 0 // And one for rotation as well.
+	var/transform_animate_time = 0 // If greater than zero, transform-based adjustments (scaling, rotating) will visually occur over this time.
+	var/tmp/currently_exploding = FALSE
+	var/tmp/default_pixel_x
+	var/tmp/default_pixel_y
+	var/tmp/default_pixel_z
+	var/tmp/default_pixel_w
+	var/is_spawnable_type = FALSE
 
-/atom/New(loc, ...)
-	//atom creation method that preloads variables at creation
-	if(GLOB.use_preloader && (src.type == GLOB._preloader.target_path))//in case the instanciated atom is creating other atoms in New()
-		GLOB._preloader.load(src)
-
-	var/do_initialize = SSatoms.atom_init_stage
-	var/list/created = SSatoms.created_atoms
-	if(do_initialize > INITIALIZATION_INSSATOMS_LATE)
-		args[1] = do_initialize == INITIALIZATION_INNEW_MAPLOAD
-		if(SSatoms.InitAtom(src, args))
-			//we were deleted
-			return
-	else if(created)
-		var/list/argument_list
-		if(length(args) > 1)
-			argument_list = args.Copy(2)
-		if(argument_list || do_initialize == INITIALIZATION_INSSATOMS_LATE)
-			created[src] = argument_list
-
-	if(atom_flags & ATOM_FLAG_CLIMBABLE)
-		verbs += /atom/proc/climb_on
-
-//Called after New if the map is being loaded. mapload = TRUE
-//Called from base of New if the map is not being loaded. mapload = FALSE
-//This base must be called or derivatives must set initialized to TRUE
-//must not sleep
-//Other parameters are passed from New (excluding loc)
-//Must return an Initialize hint. Defined in __DEFINES/subsystems.dm
-
-/atom/proc/Initialize(mapload, ...)
+// This is called by the maploader prior to Initialize to perform static modifications to vars set on the map. Intended use case: adjust tag vars on duplicate templates.
+/atom/proc/modify_mapped_vars(map_hash)
 	SHOULD_CALL_PARENT(TRUE)
-	if(atom_flags & ATOM_FLAG_INITIALIZED)
-		crash_with("Warning: [src]([type]) initialized multiple times!")
-	atom_flags |= ATOM_FLAG_INITIALIZED
-
-	if(light_max_bright && light_outer_range)
-		update_light()
-
-	if(opacity)
-		updateVisibility(src)
-		var/turf/T = loc
-		if(istype(T))
-			T.RecalculateOpacity()
-
-	return INITIALIZE_HINT_NORMAL
-
-//called if Initialize returns INITIALIZE_HINT_LATELOAD
-/atom/proc/LateInitialize()
-	return
-
-/atom/Destroy()
-	QDEL_NULL(reagents)
-	. = ..()
 
 /atom/proc/reveal_blood()
 	return
@@ -119,7 +79,12 @@
 // If you want to use this, the atom must have the PROXMOVE flag, and the moving
 // atom must also have the PROXMOVE flag currently to help with lag. ~ ComicIronic
 /atom/proc/HasProximity(atom/movable/AM)
-	return
+	SHOULD_CALL_PARENT(TRUE)
+	set waitfor = FALSE
+	if(!istype(AM))
+		PRINT_STACK_TRACE("DEBUG: HasProximity called with [AM] on [src] ([usr]).")
+		return FALSE
+	return TRUE
 
 /atom/proc/emp_act(var/severity)
 	return
@@ -127,6 +92,7 @@
 /atom/proc/set_density(var/new_density)
 	if(density != new_density)
 		density = !!new_density
+		events_repository.raise_event(/decl/observ/density_set, src, !density, density)
 
 /atom/proc/bullet_act(obj/item/projectile/P, def_zone)
 	P.on_hit(src, 0, def_zone)
@@ -165,78 +131,6 @@
 			found += A.search_contents_for(path,filter_path)
 	return found
 
-
-
-
-/*
-Beam code by Gunbuddy
-
-Beam() proc will only allow one beam to come from a source at a time.  Attempting to call it more than
-once at a time per source will cause graphical errors.
-Also, the icon used for the beam will have to be vertical and 32x32.
-The math involved assumes that the icon is vertical to begin with so unless you want to adjust the math,
-its easier to just keep the beam vertical.
-*/
-/atom/proc/Beam(atom/BeamTarget,icon_state="b_beam",icon='icons/effects/beam.dmi',time=50, maxdistance=10)
-	//BeamTarget represents the target for the beam, basically just means the other end.
-	//Time is the duration to draw the beam
-	//Icon is obviously which icon to use for the beam, default is beam.dmi
-	//Icon_state is what icon state is used. Default is b_beam which is a blue beam.
-	//Maxdistance is the longest range the beam will persist before it gives up.
-	var/EndTime=world.time+time
-	while(BeamTarget&&world.time<EndTime&&get_dist(src,BeamTarget)<maxdistance&&z==BeamTarget.z)
-	//If the BeamTarget gets deleted, the time expires, or the BeamTarget gets out
-	//of range or to another z-level, then the beam will stop.  Otherwise it will
-	//continue to draw.
-
-		set_dir(get_dir(src,BeamTarget))	//Causes the source of the beam to rotate to continuosly face the BeamTarget.
-
-		for(var/obj/effect/overlay/beam/O in orange(10,src))	//This section erases the previously drawn beam because I found it was easier to
-			if(O.BeamSource==src)				//just draw another instance of the beam instead of trying to manipulate all the
-				qdel(O)							//pieces to a new orientation.
-		var/Angle=round(Get_Angle(src,BeamTarget))
-		var/icon/I=new(icon,icon_state)
-		I.Turn(Angle)
-		var/DX=(32*BeamTarget.x+BeamTarget.pixel_x)-(32*x+pixel_x)
-		var/DY=(32*BeamTarget.y+BeamTarget.pixel_y)-(32*y+pixel_y)
-		var/N=0
-		var/length=round(sqrt((DX)**2+(DY)**2))
-		for(N,N<length,N+=32)
-			var/obj/effect/overlay/beam/X=new(loc)
-			X.BeamSource=src
-			if(N+32>length)
-				var/icon/II=new(icon,icon_state)
-				II.DrawBox(null,1,(length-N),32,32)
-				II.Turn(Angle)
-				X.icon=II
-			else X.icon=I
-			var/Pixel_x=round(sin(Angle)+32*sin(Angle)*(N+16)/32)
-			var/Pixel_y=round(cos(Angle)+32*cos(Angle)*(N+16)/32)
-			if(DX==0) Pixel_x=0
-			if(DY==0) Pixel_y=0
-			if(Pixel_x>32)
-				for(var/a=0, a<=Pixel_x,a+=32)
-					X.x++
-					Pixel_x-=32
-			if(Pixel_x<-32)
-				for(var/a=0, a>=Pixel_x,a-=32)
-					X.x--
-					Pixel_x+=32
-			if(Pixel_y>32)
-				for(var/a=0, a<=Pixel_y,a+=32)
-					X.y++
-					Pixel_y-=32
-			if(Pixel_y<-32)
-				for(var/a=0, a>=Pixel_y,a-=32)
-					X.y--
-					Pixel_y+=32
-			X.pixel_x=Pixel_x
-			X.pixel_y=Pixel_y
-		sleep(3)	//Changing this to a lower value will cause the beam to follow more smoothly with movement, but it will also be more laggy.
-					//I've found that 3 ticks provided a nice balance for my use.
-	for(var/obj/effect/overlay/beam/O in orange(10,src)) if(O.BeamSource==src) qdel(O)
-
-
 // A type overriding /examine() should either return the result of ..() or return TRUE if not calling ..()
 // Calls to ..() should generally not supply any arguments and instead rely on BYOND's automatic argument passing
 // There is no need to check the return value of ..(), this is only done by the calling /examinate() proc to validate the call chain
@@ -251,8 +145,9 @@ its easier to just keep the beam vertical.
 			f_name = "a "
 		f_name += "<font color ='[blood_color]'>stained</font> [name][infix]!"
 
-	to_chat(user, "\icon[src] That's [f_name] [suffix]")
+	to_chat(user, "[html_icon(src)] That's [f_name] [suffix]")
 	to_chat(user, desc)
+	events_repository.raise_event(/decl/observ/atom_examined, src, user, distance)
 	return TRUE
 
 // called by mobs when e.g. having the atom as their machine, loc (AKA mob being inside the atom) or buckled var set.
@@ -263,11 +158,30 @@ its easier to just keep the beam vertical.
 //called to set the atom's dir and used to add behaviour to dir-changes
 /atom/proc/set_dir(new_dir)
 	SHOULD_CALL_PARENT(TRUE)
+
+	// This attempts to mimic BYOND's handling of diagonal directions and cardinal icon states.
 	var/old_dir = dir
-	if(new_dir == old_dir)
-		return FALSE
+	if((atom_flags & ATOM_FLAG_BLOCK_DIAGONAL_FACING) && !IsPowerOfTwo(new_dir))
+		if(old_dir & new_dir)
+			new_dir = old_dir
+		else
+			new_dir &= global.adjacentdirs[old_dir]
+
+	. = new_dir != dir
+	if(!.)
+		return
+
 	dir = new_dir
-	return TRUE
+	if(light_source_solo)
+		light_source_solo.source_atom.update_light()
+	else if(light_source_multi)
+		var/datum/light_source/L
+		for(var/thing in light_source_multi)
+			L = thing
+			if(L.light_angle)
+				L.source_atom.update_light()
+
+	events_repository.raise_event(/decl/observ/dir_set, src, old_dir, new_dir)
 
 /atom/proc/set_icon_state(var/new_icon_state)
 	SHOULD_CALL_PARENT(TRUE)
@@ -283,10 +197,13 @@ its easier to just keep the beam vertical.
 	on_update_icon(arglist(args))
 
 /atom/proc/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE) //Don't call the stub plz
 	return
 
 /atom/proc/get_contained_external_atoms()
-	. = contents
+	for(var/atom/movable/AM in contents)
+		if(!QDELETED(AM) && AM.simulated)
+			LAZYADD(., AM)
 
 /atom/proc/dump_contents()
 	for(var/thing in get_contained_external_atoms())
@@ -298,24 +215,29 @@ its easier to just keep the beam vertical.
 				M.client.eye = M.client.mob
 				M.client.perspective = MOB_PERSPECTIVE
 
-/atom/proc/physically_destroyed()
+/atom/proc/physically_destroyed(var/skip_qdel)
 	SHOULD_CALL_PARENT(TRUE)
 	dump_contents()
+	if(!skip_qdel && !QDELETED(src))
+		qdel(src)
 	. = TRUE
 
 /atom/proc/try_detonate_reagents(var/severity = 3)
 	if(reagents)
 		for(var/rtype in reagents.reagent_volumes)
-			var/decl/material/R = decls_repository.get_decl(rtype)
+			var/decl/material/R = GET_DECL(rtype)
 			R.explosion_act(src, severity)
 
 /atom/proc/explosion_act(var/severity)
 	SHOULD_CALL_PARENT(TRUE)
-	. = (severity <= 3)
-	if(.)
-		for(var/atom/movable/AM in contents)
-			AM.explosion_act(severity++)
-		try_detonate_reagents(severity)
+	if(!currently_exploding)
+		currently_exploding = TRUE
+		. = (severity <= 3)
+		if(.)
+			for(var/atom/movable/AM in get_contained_external_atoms())
+				AM.explosion_act(severity++)
+			try_detonate_reagents(severity)
+		currently_exploding = FALSE
 
 /atom/proc/emag_act(var/remaining_charges, var/mob/user, var/emag_source)
 	return NO_EMAG_ACT
@@ -333,6 +255,7 @@ its easier to just keep the beam vertical.
 	. = TRUE
 
 /atom/proc/hitby(atom/movable/AM, var/datum/thrownthing/TT)//already handled by throw impact
+	SHOULD_CALL_PARENT(TRUE)
 	if(isliving(AM))
 		var/mob/living/M = AM
 		M.apply_damage(TT.speed*5, BRUTE)
@@ -349,10 +272,10 @@ its easier to just keep the beam vertical.
 	blood_color = COLOR_BLOOD_HUMAN
 	if(istype(M))
 		if (!istype(M.dna, /datum/dna))
-			M.dna = new /datum/dna(null)
+			M.dna = new /datum/dna()
 			M.dna.real_name = M.real_name
 		M.check_dna()
-		blood_color = M.species.get_blood_colour(M)
+		blood_color = M.species.get_blood_color(M)
 	. = 1
 	return 1
 
@@ -360,6 +283,7 @@ its easier to just keep the beam vertical.
 	vomit.reagents.add_reagent(/decl/material/liquid/acid/stomach, 5)
 
 /atom/proc/clean_blood()
+	SHOULD_CALL_PARENT(TRUE)
 	if(!simulated)
 		return
 	fluorescent = 0
@@ -371,15 +295,15 @@ its easier to just keep the beam vertical.
 		if(forensics)
 			forensics.remove_data(/datum/forensics/blood_dna)
 			forensics.remove_data(/datum/forensics/gunshot_residue)
-		return 1
+		return TRUE
 
 /atom/proc/get_global_map_pos()
-	if(!islist(GLOB.global_map) || isemptylist(GLOB.global_map)) return
+	if(!islist(global.global_map) || !length(global.global_map)) return
 	var/cur_x = null
 	var/cur_y = null
 	var/list/y_arr = null
-	for(cur_x=1,cur_x<=GLOB.global_map.len,cur_x++)
-		y_arr = GLOB.global_map[cur_x]
+	for(cur_x=1,cur_x<=global.global_map.len,cur_x++)
+		y_arr = global.global_map[cur_x]
 		cur_y = y_arr.Find(src.z)
 		if(cur_y)
 			break
@@ -392,12 +316,6 @@ its easier to just keep the beam vertical.
 
 /atom/proc/checkpass(passflag)
 	return pass_flags&passflag
-
-/atom/proc/isinspace()
-	if(istype(get_turf(src), /turf/space))
-		return 1
-	else
-		return 0
 
 // Show a message to all mobs and objects in sight of this atom
 // Use for objects performing visible actions
@@ -425,7 +343,7 @@ its easier to just keep the beam vertical.
 // message is the message output to anyone who can hear.
 // deaf_message (optional) is what deaf people will see.
 // hearing_distance (optional) is the range, how many tiles away the message can be heard.
-/atom/proc/audible_message(var/message, var/deaf_message, var/hearing_distance = world.view, var/checkghosts = null)
+/atom/proc/audible_message(var/message, var/deaf_message, var/hearing_distance = world.view, var/checkghosts = null, var/radio_message)
 	var/turf/T = get_turf(src)
 	var/list/mobs = list()
 	var/list/objs = list()
@@ -451,18 +369,6 @@ its easier to just keep the beam vertical.
 
 /atom/movable/onDropInto(var/atom/movable/AM)
 	return loc // If onDropInto returns something, then dropInto will attempt to drop AM there.
-
-/atom/proc/InsertedContents()
-	return contents
-
-//all things climbable
-
-/atom/attack_hand(mob/user)
-	..()
-	if(LAZYLEN(climbers) && !(user in climbers))
-		user.visible_message("<span class='warning'>[user.name] shakes \the [src].</span>", \
-					"<span class='notice'>You shake \the [src].</span>")
-		object_shaken()
 
 // Called when hitting the atom with a grab.
 // Will skip attackby() and afterattack() if returning TRUE.
@@ -546,14 +452,14 @@ its easier to just keep the beam vertical.
 
 /atom/proc/object_shaken()
 	for(var/mob/living/M in climbers)
-		M.Weaken(1)
+		SET_STATUS_MAX(M, STAT_WEAK, 1)
 		to_chat(M, "<span class='danger'>You topple as you are shaken off \the [src]!</span>")
 		climbers.Cut(1,2)
 
 	for(var/mob/living/M in get_turf(src))
 		if(M.lying) return //No spamming this on people.
 
-		M.Weaken(3)
+		SET_STATUS_MAX(M, STAT_WEAK, 3)
 		to_chat(M, "<span class='danger'>You topple as \the [src] moves under you!</span>")
 
 		if(prob(25))
@@ -565,11 +471,7 @@ its easier to just keep the beam vertical.
 				M.adjustBruteLoss(damage)
 				return
 
-			var/obj/item/organ/external/affecting
-			var/list/limbs = BP_ALL_LIMBS //sanity check, can otherwise be shortened to affecting = pick(BP_ALL_LIMBS)
-			if(limbs.len)
-				affecting = H.get_organ(pick(limbs))
-
+			var/obj/item/organ/external/affecting = pick(H.get_external_organs())
 			if(affecting)
 				to_chat(M, "<span class='danger'>You land heavily on your [affecting.name]!</span>")
 				affecting.take_external_damage(damage, 0)
@@ -583,17 +485,20 @@ its easier to just keep the beam vertical.
 			H.updatehealth()
 	return
 
-/atom/MouseDrop_T(mob/target, mob/user)
-	var/mob/living/H = user
-	if(istype(H) && can_climb(H) && target == user)
-		do_climb(target)
-	else
-		return ..()
-
 /atom/proc/get_color()
 	return color
 
+/atom/proc/set_color(new_color)
+	color = new_color
+
 /atom/proc/get_cell()
+	return
+
+// This proc will retrieve any radios associated with this atom,
+// for use in handle_message_mode or other radio-based logic.
+// The message_mode argument is used to determine what subset of
+// radios are relevant to the current call (ie. intercoms or ear radios)
+/atom/proc/get_radio(var/message_mode)
 	return
 
 /atom/proc/building_cost()
@@ -603,7 +508,49 @@ its easier to just keep the beam vertical.
 	var/mob/user = usr
 	if(href_list["look_at_me"] && istype(user))
 		var/turf/T = get_turf(src)
-		if(T.CanUseTopic(user, GLOB.view_state) != STATUS_CLOSE)
+		if(T.CanUseTopic(user, global.view_topic_state) != STATUS_CLOSE)
 			user.examinate(src)
 			return TOPIC_HANDLED
 	. = ..()
+
+/atom/proc/get_heat()
+	. = temperature
+
+/atom/proc/isflamesource()
+	. = FALSE
+
+// Transform setters.
+/atom/proc/set_rotation(new_rotation)
+	icon_rotation = new_rotation
+	update_transform()
+
+/atom/proc/set_scale(new_scale_x, new_scale_y)
+	if(isnull(new_scale_y))
+		new_scale_y = new_scale_x
+	if(new_scale_x != 0)
+		icon_scale_x = new_scale_x
+	if(new_scale_y != 0)
+		icon_scale_y = new_scale_y
+	update_transform()
+
+/atom/proc/update_transform()
+	var/matrix/M = matrix()
+	M.Scale(icon_scale_x, icon_scale_y)
+	M.Turn(icon_rotation)
+	if(transform_animate_time)
+		animate(src, transform = M, transform_animate_time)
+	else
+		transform = M
+	return transform
+
+// Walks up the loc tree until it finds a loc of the given loc_type
+/atom/get_recursive_loc_of_type(var/loc_type)
+	var/atom/check_loc = loc
+	while(check_loc)
+		if(istype(check_loc, loc_type))
+			return check_loc
+		check_loc = check_loc.loc
+
+/atom/proc/get_alt_interactions(var/mob/user)
+	SHOULD_CALL_PARENT(TRUE)
+	return list()

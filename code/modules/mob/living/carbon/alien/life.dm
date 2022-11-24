@@ -12,7 +12,7 @@
 	blinded = null
 
 	//Status updates, death etc.
-	update_icons()
+	update_icon()
 
 /mob/living/carbon/alien/handle_mutations_and_radiation()
 
@@ -33,26 +33,26 @@
 
 	if(stat == DEAD)
 		blinded = 1
-		silent = 0
+		set_status(STAT_SILENCE, 0)
 	else
 		updatehealth()
 		if(health <= 0)
 			death()
 			blinded = 1
-			silent = 0
+			set_status(STAT_SILENCE, 0)
 			return 1
 
-		if(paralysis && paralysis > 0)
+		if(HAS_STATUS(src, STAT_PARA))
 			blinded = 1
 			set_stat(UNCONSCIOUS)
 			if(getHalLoss() > 0)
 				adjustHalLoss(-3)
 
-		if(sleeping)
+		if(HAS_STATUS(src, STAT_ASLEEP))
 			adjustHalLoss(-3)
 			if (mind)
 				if(mind.active && client != null)
-					sleeping = max(sleeping-1, 0)
+					ADJ_STATUS(src, STAT_ASLEEP, -1)
 			blinded = 1
 			set_stat(UNCONSCIOUS)
 		else if(resting)
@@ -66,16 +66,14 @@
 
 		// Eyes and blindness.
 		if(!check_has_eyes())
-			eye_blind =  1
-			blinded =    1
-			eye_blurry = 1
-		else if(eye_blind)
-			eye_blind =  max(eye_blind-1,0)
-			blinded =    1
-		else if(eye_blurry)
-			eye_blurry = max(eye_blurry-1, 0)
+			set_status(STAT_BLIND, 1)
+			blinded = 1
+			set_status(STAT_BLURRY, 1)
+		else if(GET_STATUS(src, STAT_BLIND))
+			ADJ_STATUS(src, STAT_BLIND, -1) 
+			blinded = 1
 
-		update_icons()
+		update_icon()
 
 	return 1
 
@@ -107,23 +105,18 @@
 		else
 			clear_fullscreen("blind")
 			set_fullscreen(disabilities & NEARSIGHTED, "impaired", /obj/screen/fullscreen/impaired, 1)
-			set_fullscreen(eye_blurry, "blurry", /obj/screen/fullscreen/blurry)
-			set_fullscreen(drugged, "high", /obj/screen/fullscreen/high)
+			set_fullscreen(GET_STATUS(src, STAT_BLURRY), "blurry", /obj/screen/fullscreen/blurry)
+			set_fullscreen(GET_STATUS(src, STAT_DRUGGY), "high", /obj/screen/fullscreen/high)
 		if(machine)
 			if(machine.check_eye(src) < 0)
 				reset_view(null)
-		else
-			if(client && !client.adminobs)
-				reset_view(null)
-
 	return 1
 
 /mob/living/carbon/alien/handle_environment(var/datum/gas_mixture/environment)
+	..()
 	// Both alien subtypes survive in vaccum and suffer in high temperatures,
 	// so I'll just define this once, for both (see radiation comment above)
-	if(!environment) return
-
-	if(environment.temperature > (T0C+66))
+	if(environment && environment.temperature > (T0C+66))
 		adjustFireLoss((environment.temperature - (T0C+66))/5) // Might be too high, check in testing.
 		if (fire) fire.icon_state = "fire2"
 		if(prob(20))

@@ -1,6 +1,7 @@
+#include "../../../../mods/content/corporate/_corporate.dme"
+
 /datum/map_template/ruin/exoplanet/oldpod
 	name = "old pod"
-	id = "oldpod"
 	description = "A now unused, crashed escape pod."
 	suffixes = list("oldpod/oldpod.dmm")
 	cost = 0.5

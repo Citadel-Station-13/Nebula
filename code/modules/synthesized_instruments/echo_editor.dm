@@ -2,7 +2,6 @@
 	name = "Echo Editor"
 	available_to_ai = 0
 	var/datum/sound_player/player
-	var/atom/source
 
 
 /datum/nano_module/echo_editor/New(datum/sound_player/player)
@@ -16,9 +15,9 @@
 	for (var/i=1 to 18)
 		var/list/echo_data = list()
 		echo_data["index"] = i
-		echo_data["name"] = GLOB.musical_config.echo_param_names[i]
+		echo_data["name"] = global.musical_config.echo_param_names[i]
 		echo_data["value"] = src.player.echo[i]
-		echo_data["real"] = GLOB.musical_config.echo_params_bounds[i][3]
+		echo_data["real"] = global.musical_config.echo_params_bounds[i][3]
 		data["echo_params"] += list(echo_data)
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
@@ -35,13 +34,13 @@
 	var/target = href_list["target"]
 	var/index = text2num(href_list["index"])
 	if (href_list["index"] && !(index in 1 to 18))
-		to_chat(usr, "Wrong index was provided: [index]")
+		to_chat(usr, "Wrong index was provided: [index].")
 		return 0
 
-	var/name = GLOB.musical_config.echo_param_names[index]
-	var/desc = GLOB.musical_config.echo_param_desc[index]
-	var/default = GLOB.musical_config.echo_default[index]
-	var/list/bounds = GLOB.musical_config.echo_params_bounds[index]
+	var/name = global.musical_config.echo_param_names[index]
+	var/desc = global.musical_config.echo_param_desc[index]
+	var/default = global.musical_config.echo_default[index]
+	var/list/bounds = global.musical_config.echo_params_bounds[index]
 	var/bound_min = bounds[1]
 	var/bound_max = bounds[2]
 	var/reals_allowed = bounds[3]
@@ -56,7 +55,7 @@
 		if ("reset")
 			src.player.echo[index] = default
 		if ("reset_all")
-			src.player.echo = GLOB.musical_config.echo_default.Copy()
+			src.player.echo = global.musical_config.echo_default.Copy()
 		if ("desc")
 			to_chat(usr, "[name]: from [bound_min] to [bound_max] (default: [default])<br>[desc]")
 

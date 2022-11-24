@@ -7,7 +7,7 @@
 	. = mind.StoreMemory(memory, options)
 
 /datum/mind/proc/StoreMemory(var/memory, var/options)
-	var/decl/memory_options/MO = decls_repository.get_decl(options || /decl/memory_options/default)
+	var/decl/memory_options/MO = GET_DECL(options || /decl/memory_options/default)
 	return MO.Create(src, memory)
 
 /datum/mind/proc/RemoveMemory(var/datum/memory/memory, var/mob/remover)
@@ -37,9 +37,9 @@
 
 /datum/mind/proc/MemoryTags()
 	. = list()
-	var/list/all_antag_types = GLOB.all_antag_types_
+	var/list/all_antag_types = decls_repository.get_decls_of_subtype(/decl/special_role)
 	for(var/antag_type in all_antag_types)
-		var/datum/antagonist/antag = all_antag_types[antag_type]
+		var/decl/special_role/antag = all_antag_types[antag_type]
 		if(antag.is_antagonist(src))
 			. += antag_type
 
@@ -70,7 +70,9 @@
 		var/datum/goal/ambition/ambition = SSgoals.ambitions[src]
 		output += "<HR><B>Ambitions:</B> [ambition.summarize()]"
 
-	show_browser(recipient, replacetext(jointext(output, "<BR>"),"\n","<BR>"),"window=memory")
+	var/datum/browser/popup = new(recipient, "window=memory")
+	popup.set_content(replacetext(jointext(output, "<BR>"),"\n","<BR>"))
+	popup.open()
 
 /***********
 * Memories *
@@ -125,7 +127,7 @@
 /decl/memory_options
 	var/memory_type = /datum/memory
 
-/decl/memory_options/proc/Validate(var/datum/mind/target)
+/decl/memory_options/proc/validate_mind(var/datum/mind/target)
 	if(!target.current)
 		return "Mind is detached from mob."
 
@@ -136,7 +138,7 @@
 	log_and_message_admins(message)
 
 /decl/memory_options/proc/Create(var/datum/mind/target, var/memory)
-	var/error = Validate(target)
+	var/error = validate_mind(target)
 	if(error)
 		return error
 
@@ -154,7 +156,7 @@
 /decl/memory_options/default/MemoryTags(var/datum/mind/target)
 	return target.MemoryTags()
 
-/decl/memory_options/default/Validate(var/datum/mind/target)
+/decl/memory_options/default/validate_mind(var/datum/mind/target)
 	if((. = ..()))
 		return
 

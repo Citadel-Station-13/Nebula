@@ -2,11 +2,15 @@
 	name = "hailer"
 	desc = "Used by obese officers to save their breath for running."
 	icon = 'icons/obj/items/device/hailer.dmi'
-	icon_state = "voice0"
-	item_state = "flashbang"	//looks exactly like a flash (and nothing like a flashbang)
+	icon_state = ICON_STATE_WORLD
 	w_class = ITEM_SIZE_TINY
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/metal/copper    = MATTER_AMOUNT_TRACE, 
+		/decl/material/solid/silicon         = MATTER_AMOUNT_TRACE, 
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_REINFORCEMENT,
+	)
 	var/use_message = "Halt! Security!"
 	var/spamcheck = 0
 	var/insults
@@ -28,7 +32,7 @@
 
 	to_chat(usr, "You configure the hailer to shout \"[use_message]\".")
 
-/obj/item/hailer/attack_self(mob/living/carbon/user)
+/obj/item/hailer/attack_self(mob/user)
 	if (spamcheck)
 		return
 

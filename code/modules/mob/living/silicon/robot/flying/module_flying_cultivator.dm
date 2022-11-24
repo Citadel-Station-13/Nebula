@@ -5,22 +5,22 @@
 		"Science" = TRUE,
 		"Service" = TRUE
 	)
-	sprites = list("Drone" = "drone-hydro")
+	module_sprites = list("Drone" = 'icons/mob/robots/flying/flying_hydro.dmi')
 
 	equipment = list(
 		/obj/item/storage/plants,
 		/obj/item/wirecutters/clippers,
-		/obj/item/material/minihoe/unbreakable,
-		/obj/item/material/hatchet/unbreakable,
+		/obj/item/minihoe/unbreakable,
+		/obj/item/hatchet/unbreakable,
 		/obj/item/chems/glass/bucket,
-		/obj/item/scalpel/laser1,
+		/obj/item/scalpel/laser,
 		/obj/item/circular_saw,
-		/obj/item/extinguisher,
+		/obj/item/chems/spray/extinguisher,
 		/obj/item/gripper/cultivator,
 		/obj/item/scanner/plant,
 		/obj/item/robot_harvester
 	)
-	emag = /obj/item/melee/energy/machete
+	emag = /obj/item/energy_blade/machete
 	skills = list(
 		SKILL_LITERACY  = SKILL_ADEPT,
 		SKILL_BOTANY    = SKILL_MAX,

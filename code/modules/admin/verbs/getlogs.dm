@@ -24,16 +24,16 @@
 	set category = null
 
 	if(!src.holder)
-		to_chat(src, "<font color='red'>Only Admins may use this command.</font>")
+		to_chat(src, SPAN_WARNING("Only Admins may use this command."))
 		return
 
-	var/client/target = input(src,"Choose somebody to grant access to the server's runtime logs (permissions expire at the end of each round):","Grant Permissions",null) as null|anything in GLOB.clients
+	var/client/target = input(src,"Choose somebody to grant access to the server's runtime logs (permissions expire at the end of each round):","Grant Permissions",null) as null|anything in global.clients
 	if(!istype(target,/client))
-		to_chat(src, "<font color='red'>Error: giveserverlog(): Client not found.</font>")
+		to_chat(src, SPAN_WARNING("Error: giveserverlog(): Client not found."))
 		return
 
 	target.verbs |= /client/proc/getserverlog
-	to_chat(target, "<font color='red'>You have been granted access to runtime logs. Please use them responsibly or risk being banned.</font>")
+	to_chat(target, SPAN_NOTICE("You have been granted access to runtime logs. Please use them responsibly or risk being banned."))
 	return
 
 //This proc allows download of past server logs saved within the data/logs/ folder.
@@ -51,7 +51,7 @@
 		return
 
 	message_admins("[key_name_admin(src)] accessed file: [path]")
-	src << run(file(path))
+	direct_output(src, run(file(path)))
 	to_chat(src, "Attempting to send file, this may take a fair few minutes if the file is very large.")
 	return
 
@@ -64,6 +64,6 @@
 	set name = "Show Server Log"
 	set desc = "Shows today's server log."
 
-	usr << run(diary)
+	direct_output(usr, run(diary))
 	SSstatistics.add_field_details("admin_verb","VTL") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 	return

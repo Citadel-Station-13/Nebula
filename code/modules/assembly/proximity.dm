@@ -3,10 +3,10 @@
 	desc = "Used for scanning and alerting when someone enters a certain proximity."
 	icon_state = "prox"
 	origin_tech = "{'magnets':1}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_WASTE = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/copper = MATTER_AMOUNT_TRACE
 	)
 	movable_flags = MOVABLE_FLAG_PROXMOVE
 	wires = WIRE_PULSE
@@ -41,24 +41,19 @@
 	update_icon()
 	return secured
 
-
 /obj/item/assembly/prox_sensor/HasProximity(atom/movable/AM)
-	if(!istype(AM))
-		log_debug("DEBUG: HasProximity called with [AM] on [src] ([usr]).")
-		return
-	if (istype(AM, /obj/effect/beam))	return
-	if (AM.move_speed < 12)	sense()
-	return
-
+	. = ..()
+	if(. && !istype(AM, /obj/effect/beam) && AM.move_speed < 12)
+		sense()
 
 /obj/item/assembly/prox_sensor/sense()
 	var/turf/mainloc = get_turf(src)
 //		if(scanning && cooldown <= 0)
-//			mainloc.visible_message("\icon[src] *boop* *boop*", "*boop* *boop*")
+//			mainloc.visible_message("[html_icon(src)] *boop* *boop*", "*boop* *boop*")
 	if((!holder && !secured)||(!scanning)||(cooldown > 0))	return 0
 	pulse(0)
 	if(!holder)
-		mainloc.visible_message("\icon[src] *beep* *beep*", "*beep* *beep*")
+		mainloc.visible_message("[html_icon(src)] *beep* *beep*", "*beep* *beep*")
 	cooldown = 2
 	spawn(10)
 		process_cooldown()
@@ -82,11 +77,8 @@
 
 
 /obj/item/assembly/prox_sensor/dropped()
-	spawn(0)
-		sense()
-		return
-	return
-
+	. = ..()
+	addtimer(CALLBACK(src, .proc/sense), 0)
 
 /obj/item/assembly/prox_sensor/toggle_scan()
 	if(!secured)	return 0
@@ -96,27 +88,22 @@
 
 
 /obj/item/assembly/prox_sensor/on_update_icon()
-	overlays.Cut()
-	attached_overlays = list()
+	. = ..()
+	LAZYCLEARLIST(attached_overlays)
 	if(timing)
-		overlays += "prox_timing"
-		attached_overlays += "prox_timing"
+		var/image/img = overlay_image(icon, "prox_timing")
+		add_overlay(img)
+		LAZYADD(attached_overlays, img)
 	if(scanning)
-		overlays += "prox_scanning"
-		attached_overlays += "prox_scanning"
+		var/image/scanimg = overlay_image(icon, "prox_scanning")
+		add_overlay(scanimg)
+		LAZYADD(attached_overlays, scanimg)
 	if(holder)
 		holder.update_icon()
-	if(holder && istype(holder.loc,/obj/item/grenade/chem_grenade))
-		var/obj/item/grenade/chem_grenade/grenade = holder.loc
-		grenade.primed(scanning)
-	return
-
 
 /obj/item/assembly/prox_sensor/Move()
 	..()
 	sense()
-	return
-
 
 /obj/item/assembly/prox_sensor/interact(mob/user)//TODO: Change this to the wires thingy
 	if(!secured)
@@ -134,7 +121,7 @@
 	return
 
 
-/obj/item/assembly/prox_sensor/Topic(href, href_list, state = GLOB.physical_state)
+/obj/item/assembly/prox_sensor/Topic(href, href_list, state = global.physical_topic_state)
 	if((. = ..()))
 		close_browser(usr, "window=prox")
 		onclose(usr, "prox")

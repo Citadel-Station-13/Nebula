@@ -1,13 +1,13 @@
 #define RANDOM_SCRUBS new/datum/atom_creator/weighted(list( \
-				list(/obj/item/clothing/under/rank/medical/scrubs, /obj/item/clothing/head/surgery), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/blue, /obj/item/clothing/head/surgery/blue), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/green, /obj/item/clothing/head/surgery/green), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/purple, /obj/item/clothing/head/surgery/purple), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/black, /obj/item/clothing/head/surgery/black), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/lilac, /obj/item/clothing/head/surgery/lilac), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/teal, /obj/item/clothing/head/surgery/teal), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/heliodor, /obj/item/clothing/head/surgery/heliodor), \
-				list(/obj/item/clothing/under/rank/medical/scrubs/navyblue, /obj/item/clothing/head/surgery/navyblue)\
+				list(/obj/item/clothing/under/medical/scrubs, /obj/item/clothing/head/surgery), \
+				list(/obj/item/clothing/under/medical/scrubs/blue, /obj/item/clothing/head/surgery/blue), \
+				list(/obj/item/clothing/under/medical/scrubs/green, /obj/item/clothing/head/surgery/green), \
+				list(/obj/item/clothing/under/medical/scrubs/purple, /obj/item/clothing/head/surgery/purple), \
+				list(/obj/item/clothing/under/medical/scrubs/black, /obj/item/clothing/head/surgery/black), \
+				list(/obj/item/clothing/under/medical/scrubs/lilac, /obj/item/clothing/head/surgery/lilac), \
+				list(/obj/item/clothing/under/medical/scrubs/teal, /obj/item/clothing/head/surgery/teal), \
+				list(/obj/item/clothing/under/medical/scrubs/heliodor, /obj/item/clothing/head/surgery/heliodor), \
+				list(/obj/item/clothing/under/medical/scrubs/navyblue, /obj/item/clothing/head/surgery/navyblue)\
 			) \
 		)
 
@@ -30,17 +30,6 @@
 		/obj/item/storage/box/gloves
 	)
 
-/obj/structure/closet/secure_closet/medical2
-	name = "anesthetics closet"
-	desc = "Used to knock people out."
-	req_access = list(access_surgery)
-
-/obj/structure/closet/secure_closet/medical2/WillContain()
-	return list(
-		/obj/item/tank/anesthetic = 3,
-		/obj/item/clothing/mask/breath/medical = 3
-	)
-
 /obj/structure/closet/secure_closet/medical3
 	name = "medical doctor's locker"
 	req_access = list(access_medical_equip)
@@ -50,16 +39,16 @@
 	return list(
 		new/datum/atom_creator/weighted(list(/obj/item/storage/backpack/medic, /obj/item/storage/backpack/satchel/med)),
 		new/datum/atom_creator/simple(/obj/item/storage/backpack/dufflebag/med, 50),
-		/obj/item/clothing/under/rank/nursesuit,
+		/obj/item/clothing/under/nursesuit,
 		/obj/item/clothing/head/nursehat,
-		/obj/item/clothing/under/rank/medical,
-		/obj/item/clothing/under/rank/nurse,
-		/obj/item/clothing/under/rank/orderly,
+		/obj/item/clothing/under/medical,
+		/obj/item/clothing/under/nurse,
+		/obj/item/clothing/under/orderly,
 		/obj/item/clothing/suit/storage/toggle/labcoat,
 		/obj/item/clothing/suit/storage/toggle/fr_jacket,
 		/obj/item/clothing/shoes/color/white,
 		/obj/item/radio/headset/headset_med,
-		/obj/item/taperoll/medical,
+		/obj/item/stack/tape_roll/barricade_tape/medical,
 		/obj/item/storage/belt/medical/emt,
 		RANDOM_SCRUBS,
 		RANDOM_SCRUBS
@@ -86,12 +75,13 @@
 	    /obj/item/tank/emergency/oxygen/engi,
 	    /obj/item/clothing/glasses/hud/health,
 	    /obj/item/scanner/health,
+	    /obj/item/scanner/breath,
 	    /obj/item/radio/off,
 	    /obj/random/medical,
 	    /obj/item/crowbar,
-	    /obj/item/extinguisher/mini,
+	    /obj/item/chems/spray/extinguisher/mini,
 	    /obj/item/storage/box/freezer,
-	    /obj/item/clothing/accessory/storage/white_vest,
+	    /obj/item/clothing/accessory/storage/vest,
 	)
 
 /obj/structure/closet/secure_closet/CMO
@@ -106,7 +96,7 @@
 		/obj/item/clothing/suit/bio_suit/cmo,
 		/obj/item/clothing/head/bio_hood/cmo,
 		/obj/item/clothing/shoes/color/white,
-		/obj/item/clothing/under/rank/chief_medical_officer,
+		/obj/item/clothing/under/chief_medical_officer,
 		/obj/item/clothing/suit/storage/toggle/labcoat/cmo,
 		/obj/item/clothing/suit/storage/toggle/labcoat/cmoalt,
 		/obj/item/clothing/gloves/latex,
@@ -139,6 +129,10 @@
 	storage_types = CLOSET_STORAGE_ITEMS
 	req_access = list(access_medical_equip)
 
+/obj/structure/closet/secure_closet/medical_wall/Initialize()
+	. = ..()
+	tool_interaction_flags &= ~TOOL_INTERACTION_ANCHOR
+
 /obj/structure/closet/secure_closet/counselor
 	name = "counselor's locker"
 	closet_appearance = /decl/closet_appearance/secure_closet/medical
@@ -146,19 +140,18 @@
 
 /obj/structure/closet/secure_closet/counselor/WillContain()
 	return list(
-		/obj/item/clothing/under/rank/psych,
-		/obj/item/clothing/under/rank/psych/turtleneck,
+		/obj/item/clothing/under/psych,
+		/obj/item/clothing/under/psych/turtleneck,
 		/obj/item/clothing/suit/storage/toggle/labcoat,
-		/obj/item/clothing/suit/storage/toggle/labcoat/foundation,
 		/obj/item/clothing/shoes/color/white,
 		/obj/item/chems/glass/bottle/sedatives,
 		/obj/item/chems/syringe,
 		/obj/item/storage/pill_bottle/antidepressants,
 		/obj/item/chems/pill/stimulants,
-		/obj/item/material/clipboard,
+		/obj/item/clipboard,
 		/obj/item/folder/cyan,
 		/obj/item/taperecorder,
-		/obj/item/tape/random = 3,
+		/obj/item/magnetic_tape/random = 3,
 		/obj/item/camera,
 		/obj/item/toy/therapy_blue,
 		/obj/item/storage/belt/general
@@ -182,11 +175,12 @@
 		/obj/item/chems/glass/bottle/antitoxin,
 		/obj/item/storage/box/masks,
 		/obj/item/storage/box/gloves,
-		/obj/item/clothing/under/rank/virologist,
+		/obj/item/clothing/under/virologist,
 		/obj/item/clothing/shoes/color/white,
 		/obj/item/clothing/suit/storage/toggle/labcoat/virologist,
 		/obj/item/clothing/mask/surgical,
 		/obj/item/scanner/health,
+		/obj/item/scanner/breath,
 		/obj/item/clothing/glasses/hud/health
 	)
 
@@ -203,6 +197,6 @@
 		/obj/item/chems/syringe,
 		/obj/item/storage/pill_bottle/antidepressants,
 		/obj/item/storage/pill_bottle/stimulants,
-		/obj/item/clothing/under/rank/psych/turtleneck,
-		/obj/item/clothing/under/rank/psych
+		/obj/item/clothing/under/psych/turtleneck,
+		/obj/item/clothing/under/psych
 	)

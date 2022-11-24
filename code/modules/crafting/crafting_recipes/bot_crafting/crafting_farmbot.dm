@@ -4,6 +4,7 @@
 	icon = 'icons/mob/bot/farmbot.dmi'
 	icon_state = "water_arm"
 	w_class = ITEM_SIZE_NORMAL
+	material = /decl/material/solid/metal/steel
 	var/obj/tank
 
 /obj/item/farmbot_arm_assembly/Initialize(var/ml, var/theTank)
@@ -29,7 +30,7 @@
 
 /decl/crafting_stage/farmbot_minihoe
 	progress_message = "You attach the minihoe to the assembly."
-	completion_trigger_type = /obj/item/material/minihoe
+	completion_trigger_type = /obj/item/minihoe
 	next_stages = list(/decl/crafting_stage/proximity/farmbot)
 	item_icon_state = "farmbot_1"
 

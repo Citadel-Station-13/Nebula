@@ -17,7 +17,7 @@
 
 /obj/machinery/artifact_analyser/on_update_icon()
 	icon_state = "xenoarch_analyser[operable()]"
-	
+
 /obj/machinery/artifact_analyser/Initialize()
 	. = ..()
 	reconnect_scanner()
@@ -29,22 +29,22 @@
 	if(!owned_scanner)
 		owned_scanner = locate(/obj/machinery/artifact_scanpad) in orange(1, src)
 	if(owned_scanner)
-		GLOB.destroyed_event.register(owned_scanner, src, /obj/machinery/artifact_analyser/proc/clear_scanner)
+		events_repository.register(/decl/observ/destroyed, owned_scanner, src, /obj/machinery/artifact_analyser/proc/clear_scanner)
 
 /obj/machinery/artifact_analyser/proc/clear_scanner()
 	if(owned_scanner)
-		GLOB.destroyed_event.unregister(owned_scanner, src)
+		events_repository.unregister(/decl/observ/destroyed, owned_scanner, src)
 		owned_scanner = null
 
 /obj/machinery/artifact_analyser/proc/set_object(var/obj/O)
 	if(O != scanned_object && O)
 		clear_object()
-		GLOB.destroyed_event.register(O, src, /obj/machinery/artifact_analyser/proc/clear_object)
+		events_repository.register(/decl/observ/destroyed, O, src, /obj/machinery/artifact_analyser/proc/clear_object)
 		scanned_object = O
 
 /obj/machinery/artifact_analyser/proc/clear_object()
 	if(scanned_object)
-		GLOB.destroyed_event.unregister(scanned_object, src)
+		events_repository.unregister(/decl/observ/destroyed, scanned_object, src)
 		scanned_object = null
 
 /obj/machinery/artifact_analyser/Destroy()
@@ -53,7 +53,7 @@
 	. = ..()
 
 /obj/machinery/artifact_analyser/DefaultTopicState()
-	return GLOB.physical_state
+	return global.physical_topic_state
 
 /obj/machinery/artifact_analyser/interface_interact(user)
 	ui_interact(user)
@@ -93,7 +93,7 @@
 		state("Error communicating with the scanner pad.")
 		stop_scan()
 		return
-	
+
 	if(!scanned_object || scanned_object.loc != owned_scanner.loc)
 		state("Unable to locate scanned object. Ensure it was not moved in the process.")
 		stop_scan()
@@ -123,24 +123,23 @@
 			if(O == owned_scanner || O.invisibility || !O.simulated)
 				continue
 			set_object(O)
-			scanning_counter = scan_duration	
+			scanning_counter = scan_duration
 			state("Scanning of \the [O] initiated.")
 			playsound(loc, "sound/effects/ping.ogg", 50, 1)
 			break
 		if(!scanned_object)
 			state("Unable to isolate a scan target.")
 		. = TOPIC_REFRESH
-	
+
 	if(href_list["halt_scan"])
 		stop_scan()
 		state("Scanning halted.")
 		. = TOPIC_REFRESH
-	
+
 	if(href_list["print"])
 		if(length(stored_scan))
 			playsound(loc, "sound/machines/dotprinter.ogg", 30, 1)
-			var/paper_content = "<h3>[src] analysis report</h3>[stored_scan["data"]]"
-			new/obj/item/paper(get_turf(src), paper_content, "artifact report ([stored_scan["name"]])")
+			new/obj/item/paper(get_turf(src), null, "<h3>[src] analysis report #[++report_num]</h3>[stored_scan["data"]]", "artifact report #[report_num] ([stored_scan["name"]])")
 		. = TOPIC_HANDLED
 
 //Overriden by subtypes to provide fluff description of object function.

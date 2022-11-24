@@ -3,7 +3,7 @@
 /obj/machinery/pipelayer
 
 	name = "automatic pipe layer"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/pipe_dispenser.dmi'
 	icon_state = "pipe_d"
 	density = 1
 	var/turf/old_turf
@@ -25,7 +25,7 @@
 	..()
 
 	if(on && a_dis)
-		dismantleFloor(old_turf)
+		dismantle_floor(old_turf)
 	layPipe(old_turf,M_Dir,old_dir)
 
 	old_turf = new_turf
@@ -41,18 +41,18 @@
 
 /obj/machinery/pipelayer/attackby(var/obj/item/W, var/mob/user)
 
-	if(isWrench(W))
+	if(IS_WRENCH(W))
 		P_type_t = input("Choose pipe type", "Pipe type") as null|anything in Pipes
 		P_type = Pipes[P_type_t]
 		user.visible_message("<span class='notice'>[user] has set \the [src] to manufacture [P_type_t].</span>", "<span class='notice'>You set \the [src] to manufacture [P_type_t].</span>")
 		return
 
-	if(isCrowbar(W))
+	if(IS_CROWBAR(W))
 		a_dis=!a_dis
 		user.visible_message("<span class='notice'>[user] has [!a_dis?"de":""]activated auto-dismantling.</span>", "<span class='notice'>You [!a_dis?"de":""]activate auto-dismantling.</span>")
 		return
 
-	if(istype(W, /obj/item/stack/material) && W.get_material_type() == MAT_STEEL)
+	if(istype(W, /obj/item/stack/material) && W.get_material_type() == /decl/material/solid/metal/steel)
 
 		var/result = load_metal(W)
 		if(isnull(result))
@@ -64,7 +64,7 @@
 
 		return
 
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		if(metal)
 			var/m = round(input(usr,"Please specify the amount of metal to remove","Remove metal",min(round(metal),50)) as num, 1)
 			m = min(m, 50)
@@ -72,8 +72,7 @@
 			m = round(m)
 			if(m)
 				use_metal(m)
-				var/obj/item/stack/material/steel/MM = new (get_turf(src))
-				MM.amount = m
+				SSmaterials.create_object(/decl/material/solid/metal/steel, get_turf(src), m)
 				user.visible_message("<span class='notice'>[user] removes [m] sheet\s of metal from the \the [src].</span>", "<span class='notice'>You remove [m] sheet\s of metal from \the [src]</span>")
 		else
 			to_chat(user, "\The [src] is empty.")
@@ -108,7 +107,7 @@
 	metal-=amount
 	return 1
 
-/obj/machinery/pipelayer/proc/dismantleFloor(var/turf/new_turf)
+/obj/machinery/pipelayer/proc/dismantle_floor(var/turf/new_turf)
 	if(istype(new_turf, /turf/simulated/floor))
 		var/turf/simulated/floor/T = new_turf
 		if(!T.is_plating())

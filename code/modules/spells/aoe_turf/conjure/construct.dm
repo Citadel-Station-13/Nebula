@@ -99,7 +99,7 @@
 	return
 
 /spell/aoe_turf/conjure/forcewall/lesser
-	name = "Shield"
+	name = "Force Shield"
 	desc = "Allows you to pull up a shield to protect yourself and allies from incoming threats"
 
 	charge_max = 300
@@ -119,4 +119,4 @@
 	icon = 'icons/effects/effects.dmi'
 	icon_state = "m_shield_cult"
 	light_color = "#b40000"
-	light_outer_range = 2
+	light_range = 2

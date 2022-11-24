@@ -6,6 +6,7 @@
 #define CHEM_TOUCH 1
 #define CHEM_INGEST 2
 #define CHEM_INJECT 3
+#define CHEM_INHALE 4
 
 #define MINIMUM_CHEMICAL_VOLUME 0.01
 
@@ -13,13 +14,10 @@
 
 #define CHEM_SYNTH_ENERGY 500 // How much energy does it take to synthesize 1 unit of chemical, in Joules.
 
-// Some on_mob_life() procs check for alien races.
-#define IS_SLIME   1
-
 #define CE_STABLE        "stable"       // Stabilizing brain, pulse and breathing
 #define CE_ANTIBIOTIC    "antibiotic"   // Spaceacilin
 #define CE_BLOODRESTORE  "bloodrestore" // Iron/nutriment
-#define CE_PAINKILLER    "painkiller"
+#define CE_PAINKILLER    "painkiller"   // Reduces the impact of shock/pain
 #define CE_ALCOHOL       "alcohol"      // Liver filtering
 #define CE_ALCOHOL_TOXIC "alcotoxic"    // Liver damage
 #define CE_SPEEDBOOST    "gofast"       // Stimulants
@@ -41,16 +39,21 @@
 #define	CE_VOICELOSS     "whispers"     // Lowers the subject's voice to a whisper
 #define CE_GLOWINGEYES   "eyeglow"      // Causes eyes to glow.
 
-//reagent flags
-#define IGNORE_MOB_SIZE 0x1
-#define AFFECTS_DEAD    0x2
+#define CE_REGEN_BRUTE   "bruteheal"    // Causes brute damage to regenerate.
+#define CE_REGEN_BURN    "burnheal"     // Causes burn damage to regenerate.
 
-#define HANDLE_REACTIONS(_reagents)  SSmaterials.active_holders[_reagents] = TRUE
+#define GET_CHEMICAL_EFFECT(X, C) (LAZYACCESS(X.chem_effects, C) || 0)
+
+//reagent flags
+#define IGNORE_MOB_SIZE BITFLAG(0)
+#define AFFECTS_DEAD    BITFLAG(1)
+
+#define HANDLE_REACTIONS(_reagents)  if(!QDELETED(_reagents)) { SSmaterials.active_holders[_reagents] = TRUE; }
 #define UNQUEUE_REACTIONS(_reagents) SSmaterials.active_holders -= _reagents
 
 #define REAGENT_LIST(R) (R.reagents?.get_reagents() || "No reagent holder")
 
-#define REAGENTS_FREE_SPACE(R) (R.maximum_volume - R.total_volume)
+#define REAGENTS_FREE_SPACE(R) (R?.maximum_volume - R?.total_volume)
 #define REAGENT_VOLUME(REAGENT_HOLDER, REAGENT_TYPE) (REAGENT_HOLDER?.reagent_volumes && REAGENT_HOLDER.reagent_volumes[REAGENT_TYPE])
 #define REAGENT_DATA(REAGENT_HOLDER, REAGENT_TYPE)   (REAGENT_HOLDER?.reagent_data    && REAGENT_HOLDER.reagent_data[REAGENT_TYPE])
 
@@ -62,3 +65,6 @@
 #define DIRTINESS_STERILE -2
 #define DIRTINESS_CLEAN   -1
 #define DIRTINESS_NEUTRAL  0
+
+#define DEFAULT_GAS_ACCELERANT /decl/material/gas/hydrogen
+#define DEFAULT_GAS_OXIDIZER   /decl/material/gas/oxygen

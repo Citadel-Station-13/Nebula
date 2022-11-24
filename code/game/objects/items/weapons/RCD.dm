@@ -9,15 +9,14 @@
 	density = 0
 	anchored = 0.0
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT|SLOT_HOLSTER
+	slot_flags = SLOT_LOWER_BODY|SLOT_HOLSTER
 	force = 10.0
 	throwforce = 10.0
 	throw_speed = 1
 	throw_range = 5
 	w_class = ITEM_SIZE_NORMAL
 	origin_tech = "{'engineering':4,'materials':2}"
-	material = MAT_STEEL
-	var/datum/effect/effect/system/spark_spread/spark_system
+	material = /decl/material/solid/metal/steel
 	var/stored_matter = 0
 	var/max_stored_matter = 120
 
@@ -34,7 +33,7 @@
 	. = ..()
 
 	if(!work_modes)
-		var/decl/hierarchy/h = decls_repository.get_decl(/decl/hierarchy/rcd_mode)
+		var/decl/hierarchy/h = GET_DECL(/decl/hierarchy/rcd_mode)
 		work_modes = h.children
 	work_mode = work_modes[1]
 
@@ -47,19 +46,14 @@
 /obj/item/rcd/examine(mob/user)
 	. = ..()
 	if(src.type == /obj/item/rcd && loc == user)
-		to_chat(user, "The current mode is '[work_mode]'")
+		to_chat(user, "The current mode is '[work_mode]'.")
 		to_chat(user, "It currently holds [stored_matter]/[max_stored_matter] matter-units.")
 
 /obj/item/rcd/Initialize()
 	. = ..()
-	src.spark_system = new /datum/effect/effect/system/spark_spread
-	spark_system.set_up(5, 0, src)
-	spark_system.attach(src)
 	update_icon()	//Initializes the ammo counter
 
 /obj/item/rcd/Destroy()
-	qdel(spark_system)
-	spark_system = null
 	return ..()
 
 /obj/item/rcd/attackby(obj/item/W, mob/user)
@@ -76,7 +70,7 @@
 		update_icon()
 		return
 
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		crafting = !crafting
 		if(!crafting)
 			to_chat(user, "<span class='notice'>You reassemble the RCD</span>")
@@ -93,14 +87,19 @@
 	work_mode = next_in_list(work_mode, work_modes)
 	to_chat(user, "<span class='notice'>Changed mode to '[work_mode]'</span>")
 	playsound(src.loc, 'sound/effects/pop.ogg', 50, 0)
-	if(prob(20)) src.spark_system.start()
+	if(prob(20))
+		spark_at(src, amount = 5)
 
 /obj/item/rcd/afterattack(atom/A, mob/user, proximity)
-	if(!proximity) return
+	if(!proximity)
+		return FALSE
 	if(disabled && !isrobot(user))
-		return 0
-	if(istype(get_area(A),/area/shuttle)||istype(get_area(A),/turf/space/transit))
-		return 0
+		return FALSE
+	if(istype(get_turf(A), /turf/space/transit))
+		return FALSE
+	var/area/area = get_area(A)
+	if(!istype(area) || (area.area_flags & AREA_FLAG_SHUTTLE))
+		return FALSE
 	work_id++
 	work_mode.do_work(src, A, user)
 
@@ -112,11 +111,11 @@
 	return 1
 
 /obj/item/rcd/on_update_icon()	//For the fancy "ammo" counter
-	overlays.Cut()
+	. = ..()
 	var/ratio = 0
 	ratio = stored_matter / max_stored_matter
 	ratio = max(round(ratio, 0.10) * 100, 10)
-	overlays += "rcd-[ratio]"
+	add_overlay("rcd-[ratio]")
 
 /obj/item/rcd/proc/lowAmmo(var/mob/user)	//Kludge to make it animate when out of ammo, but I guess you can make it blow up when it's out of ammo or something
 	to_chat(user, "<span class='warning'>The \'Low Ammo\' light on the device blinks yellow.</span>")
@@ -130,8 +129,8 @@
 	item_state = "rcdammo"
 	w_class = ITEM_SIZE_SMALL
 	origin_tech = "{'materials':2}"
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 	var/remaining = 30
 
 /obj/item/rcd_ammo/examine(mob/user, distance)
@@ -143,8 +142,8 @@
 	name = "high-capacity matter cartridge"
 	desc = "Do not ingest."
 	icon_state = "rcdlarge"
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 	remaining = 120
 	origin_tech = "{'materials':4}"
 
@@ -189,7 +188,8 @@
 
 
 /decl/hierarchy/rcd_mode
-	hierarchy_type = /decl/hierarchy/rcd_mode
+	abstract_type = /decl/hierarchy/rcd_mode
+	expected_type = /decl/hierarchy/rcd_mode
 	var/cost
 	var/delay
 	var/handles_type
@@ -225,7 +225,7 @@
 	var/result = get_work_result(target)
 	if(ispath(result,/turf))
 		var/turf/T = target
-		T.ChangeTurf(result)
+		T.ChangeTurf(result, keep_air = TRUE)
 	else if(result)
 		new result(target)
 	else
@@ -270,7 +270,7 @@
 	work_type = /turf/simulated/floor/airless
 
 /decl/hierarchy/rcd_mode/floor_and_walls/base_turf/can_handle_work(var/rcd, var/turf/target)
-	return istype(target) && (isspace(target) || istype(target, get_base_turf_by_area(target)))
+	return istype(target) && (isspaceturf(target) || istype(target, get_base_turf_by_area(target)))
 
 /decl/hierarchy/rcd_mode/floor_and_walls/floor_turf
 	cost = 3

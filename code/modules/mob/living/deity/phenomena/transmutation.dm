@@ -9,7 +9,7 @@
 /datum/phenomena/warp/activate(var/mob/living/L)
 	..()
 	L.adjustCloneLoss(20)
-	L.Weaken(2)
+	SET_STATUS_MAX(L, STAT_WEAK, 2)
 	to_chat(L, "<span class='danger'>You feel your body warp and change underneath you!</span>")
 
 /datum/phenomena/rock_form
@@ -22,5 +22,5 @@
 /datum/phenomena/rock_form/activate(var/mob/living/carbon/human/H)
 	..()
 	to_chat(H, "<span class='danger'>You feel your body harden as it rapidly is transformed into living crystal!</span>")
-	H.set_species(SPECIES_GOLEM)
-	H.Weaken(5)
+	H.change_species(SPECIES_GOLEM)
+	SET_STATUS_MAX(H, STAT_WEAK, 5)

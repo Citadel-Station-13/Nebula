@@ -7,14 +7,15 @@
 	icon_state = "steel"
 	initial_flooring = null
 	footstep_type = /decl/footsteps/plating
+	is_outside = OUTSIDE_AREA
 
 /turf/simulated/floor/fixed/attackby(var/obj/item/C, var/mob/user)
-	if(istype(C, /obj/item/stack) && !isCoil(C))
+	if(istype(C, /obj/item/stack) && !IS_COIL(C))
 		return
 	return ..()
 
 /turf/simulated/floor/fixed/on_update_icon()
-	update_flood_overlay()
+	queue_ao(FALSE)
 
 /turf/simulated/floor/fixed/is_plating()
 	return 0
@@ -29,14 +30,14 @@
 	icon_state = "jaggy"
 
 /turf/simulated/floor/fixed/alium/attackby(var/obj/item/C, var/mob/user)
-	if(isCrowbar(C))
+	if(IS_CROWBAR(C))
 		to_chat(user, "<span class='notice'>There aren't any openings big enough to pry it away...</span>")
 		return TRUE
 	return ..()
 
 /turf/simulated/floor/fixed/alium/Initialize()
 	. = ..()
-	var/decl/material/A = decls_repository.get_decl(MAT_ALIENALLOY)
+	var/decl/material/A = GET_DECL(/decl/material/solid/metal/aliumium)
 	if(!A)
 		return
 	color = A.color
@@ -49,7 +50,7 @@
 
 /turf/simulated/floor/fixed/alium/explosion_act(severity)
 	SHOULD_CALL_PARENT(FALSE)
-	var/decl/material/A = decls_repository.get_decl(MAT_ALIENALLOY)
+	var/decl/material/A = GET_DECL(/decl/material/solid/metal/aliumium)
 	if(prob(A.explosion_resistance))
 		return
 	if(severity == 1)

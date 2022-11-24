@@ -40,19 +40,12 @@
 	if(locate(win_path) in loc)
 		warning("Frame Spawner: A window structure already exists at [loc.x]-[loc.y]-[loc.z]")
 
-	if(grille_path)
-		if(locate(grille_path) in loc)
-			warning("Frame Spawner: A grille already exists at [loc.x]-[loc.y]-[loc.z]")
-		else
-			var/obj/structure/grille/G = new grille_path (loc)
-			handle_grille_spawn(G)
-
 	var/list/neighbours = list()
 	if(fulltile)
 		var/obj/structure/window/new_win = new win_path(loc)
 		handle_window_spawn(new_win)
 	else
-		for (var/dir in GLOB.cardinal)
+		for (var/dir in global.cardinal)
 			var/turf/T = get_step(src, dir)
 			var/obj/effect/wallframe_spawn/other = locate(type) in T
 			if(!other)
@@ -68,12 +61,20 @@
 					handle_window_spawn(new_win)
 			else
 				neighbours |= other
+
+	if(grille_path)
+		if(locate(grille_path) in loc)
+			warning("Frame Spawner: A grille already exists at [loc.x]-[loc.y]-[loc.z]")
+		else
+			var/obj/structure/grille/G = new grille_path (loc)
+			handle_grille_spawn(G)
+
 	activated = 1
 	for(var/obj/effect/wallframe_spawn/other in neighbours)
 		if(!other.activated) other.activate()
 
 /obj/effect/wallframe_spawn/proc/handle_frame_spawn(var/obj/structure/wall_frame/F)
-	for(var/direction in GLOB.cardinal)
+	for(var/direction in global.cardinal)
 		var/turf/T = get_step(src, direction)
 		for(var/obj/O in T)
 			if( istype(O, /obj/machinery/door))

@@ -9,6 +9,8 @@
 	name = "storage"
 	icon = 'icons/obj/items/storage/box.dmi'
 	w_class = ITEM_SIZE_NORMAL
+	abstract_type = /obj/item/storage
+
 	var/list/can_hold = new/list() //List of objects which this item can store (if set, it can't store anything else)
 	var/list/cant_hold = new/list() //List of objects which this item can't store (in effect only if can_hold isn't set)
 
@@ -16,47 +18,36 @@
 	var/max_storage_space = null //Total storage cost of items this can hold. Will be autoset based on storage_slots if left null.
 	var/storage_slots = null //The number of storage slots in this container.
 
-	var/use_to_pickup	//Set this to make it possible to use this item in an inverse way, so you can have the item in your hand and click items on the floor to pick them up.
-	var/allow_quick_empty	//Set this variable to allow the object to have the 'empty' verb, which dumps all the contents on the floor.
-	var/allow_quick_gather	//Set this variable to allow the object to have the 'toggle mode' verb, which quickly collects all items from a tile.
-	var/collection_mode = 1;  //0 = pick one at a time, 1 = pick all on tile
-	var/use_sound = "rustle"	//sound played when used. null for no sound.
+	var/use_to_pickup //Set this boolean variable to make it possible to use this item in an inverse way, so you can have the item in your hand and click items on the floor to pick them up.
+	var/allow_quick_empty //Set this boolean variable to allow the object to have the 'empty' verb, which dumps all the contents on the floor.
+	var/allow_quick_gather //Set this boolean variable to allow the object to have the 'toggle mode' verb, which quickly collects all items from a tile.
+	var/collection_mode = TRUE //FALSE = pick one at a time, TRUE = pick all on tile
+	var/use_sound = "rustle" //sound played when used. null for no sound.
 
-	//initializes the contents of the storage with some items based on an assoc list. The assoc key must be an item path,
-	//the assoc value can either be the quantity, or a list whose first value is the quantity and the rest are args.
-	var/list/startswith
 	var/datum/storage_ui/storage_ui = /datum/storage_ui/default
 	var/opened = null
 	var/open_sound = null
 
 /obj/item/storage/Destroy()
-	QDEL_NULL(storage_ui)
+	if(istype(storage_ui))
+		QDEL_NULL(storage_ui)
 	. = ..()
 
-/obj/item/storage/MouseDrop(obj/over_object)
-	if(!canremove)
-		return
+/obj/item/storage/check_mousedrop_adjacency(var/atom/over, var/mob/user)
+	. = (loc == user && istype(over, /obj/screen)) || ..()
 
-	if ((ishuman(usr) || isrobot(usr) || issmall(usr)) && !usr.incapacitated())
-		if(over_object == usr && Adjacent(usr)) // this must come before the screen objects only block
-			src.open(usr)
+/obj/item/storage/handle_mouse_drop(var/atom/over, var/mob/user)
+	if(canremove && (ishuman(user) || isrobot(user) || isanimal(user)) && !user.incapacitated(INCAPACITATION_DISRUPTED))
+		if(over == user)
+			open(user)
 			return TRUE
-
-		if (!( istype(over_object, /obj/screen) ))
-			return ..()
-
-		//makes sure that the storage is equipped, so that we can't drag it into our hand from miles away.
-		if (!usr.contains(src))
-			return
-
-		src.add_fingerprint(usr)
-		if(usr.unEquip(src))
-			switch(over_object.name)
-				if(BP_R_HAND)
-					usr.put_in_r_hand(src)
-				if(BP_L_HAND)
-					usr.put_in_l_hand(src)
-
+		if(istype(over, /obj/screen/inventory) && loc == user)
+			var/obj/screen/inventory/inv = over
+			add_fingerprint(usr)
+			if(user.unEquip(src))
+				user.equip_to_slot_if_possible(src, inv.slot_id)
+				return TRUE
+	. = ..()
 
 /obj/item/storage/proc/return_inv()
 
@@ -66,10 +57,6 @@
 
 	for(var/obj/item/storage/S in src)
 		L += S.return_inv()
-	for(var/obj/item/gift/G in src)
-		L += G.gift
-		if (istype(G.gift, /obj/item/storage))
-			L += G.gift:return_inv()
 	return L
 
 /obj/item/storage/proc/show_to(mob/user)
@@ -143,7 +130,10 @@
 			return 0
 
 	//If attempting to lable the storage item, silently fail to allow it
-	if(istype(W, /obj/item/hand_labeler) && user && user.a_intent != I_HELP)
+	if(istype(W, /obj/item/hand_labeler) && user?.a_intent != I_HELP)
+		return FALSE
+	//Prevent package wrapper from being inserted by default
+	if(istype(W, /obj/item/stack/package_wrap) && user?.a_intent != I_HELP)
 		return FALSE
 
 	// Don't allow insertion of unsafed compressed matter implants
@@ -197,7 +187,7 @@
 			for(var/mob/M in viewers(usr, null))
 				if (M == usr)
 					to_chat(usr, "<span class='notice'>You put \the [W] into [src].</span>")
-				else if (M in range(1, src)) //If someone is standing close enough, they can tell what it is... TODO replace with distance check
+				else if (get_dist(src, M) <= 1) //If someone is standing close enough, they can tell what it is...
 					M.show_message("<span class='notice'>\The [usr] puts [W] into [src].</span>", VISIBLE_MESSAGE)
 				else if (W && W.w_class >= ITEM_SIZE_NORMAL) //Otherwise they can only see large or normal items from a distance...
 					M.show_message("<span class='notice'>\The [usr] puts [W] into [src].</span>", VISIBLE_MESSAGE)
@@ -276,14 +266,12 @@
 /obj/item/storage/attack_hand(mob/user)
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
-		if(H.l_store == src && !H.get_active_hand())	//Prevents opening if it's in a pocket.
-			H.put_in_hands(src)
-			H.l_store = null
-			return
-		if(H.r_store == src && !H.get_active_hand())
-			H.put_in_hands(src)
-			H.r_store = null
-			return
+		for(var/slot in global.pocket_slots)
+			var/obj/item/pocket = H.get_equipped_item(slot)
+			if(pocket == src && !H.get_active_hand()) //Prevents opening if it's in a pocket.
+				H.unEquip(src)
+				H.put_in_hands(src)
+				return
 
 	if (src.loc == user)
 		src.open(user)
@@ -292,6 +280,11 @@
 		storage_ui.on_hand_attack(user)
 	src.add_fingerprint(user)
 	return
+
+/obj/item/storage/attack_ghost(mob/user)
+	var/mob/observer/ghost/G = user
+	if(G.client?.holder || G.antagHUD)
+		show_to(user)
 
 /obj/item/storage/proc/gather_all(var/turf/T, var/mob/user)
 	var/success = 0
@@ -318,9 +311,9 @@
 
 	collection_mode = !collection_mode
 	switch (collection_mode)
-		if(1)
+		if(TRUE)
 			to_chat(usr, "\The [src] now picks up all items in a tile at once.")
-		if(0)
+		if(FALSE)
 			to_chat(usr, "\The [src] now picks up one item at a time.")
 
 /obj/item/storage/verb/quick_empty()
@@ -336,7 +329,36 @@
 		remove_from_storage(I, T, 1)
 	finish_bulk_removal()
 
-/obj/item/storage/Initialize()
+/obj/item/storage/receive_mouse_drop(atom/dropping, mob/living/user)
+	. = ..()
+	if(!. && scoop_inside(dropping, user))
+		return TRUE
+
+/obj/item/storage/proc/scoop_inside(mob/living/scooped, mob/living/user)
+	if(!istype(scooped))
+		return FALSE
+
+	if(!scooped.holder_type || scooped.buckled || LAZYLEN(scooped.pinned) || scooped.mob_size > MOB_SIZE_SMALL || scooped != user || src.loc == scooped)
+		return FALSE
+
+	if(!do_after(user, 1 SECOND, src))
+		return FALSE
+
+	if(!Adjacent(scooped) || scooped.incapacitated())
+		return
+
+	var/obj/item/holder/H = new scooped.holder_type(get_turf(scooped))
+	if(H)
+		if(can_be_inserted(H))
+			scooped.forceMove(H)
+			H.sync(scooped)
+			handle_item_insertion(H)
+			return TRUE
+		qdel(H)
+
+	return FALSE
+
+/obj/item/storage/Initialize(ml, material_key)
 	. = ..()
 	if(allow_quick_empty)
 		verbs += /obj/item/storage/verb/quick_empty
@@ -354,18 +376,9 @@
 	storage_ui = new storage_ui(src)
 	prepare_ui()
 
-	if(startswith)
-		for(var/item_path in startswith)
-			var/list/data = startswith[item_path]
-			if(islist(data))
-				var/qty = data[1]
-				var/list/argsl = data.Copy()
-				argsl[1] = src
-				for(var/i in 1 to qty)
-					new item_path(arglist(argsl))
-			else
-				for(var/i in 1 to (isnull(data)? 1 : data))
-					new item_path(src)
+	var/list/will_contain = WillContain()
+	if(length(will_contain))
+		create_objects_in_loc(src, will_contain)
 		update_icon()
 
 /obj/item/storage/emp_act(severity)
@@ -382,6 +395,8 @@
 			return 1
 
 /obj/item/storage/proc/make_exact_fit()
+	if(length(contents) <= 0)
+		log_warning("[type] is calling make_exact_fit() while completely empty! This is likely a mistake.")
 	storage_slots = contents.len
 
 	can_hold.Cut()
@@ -431,3 +446,22 @@
 /obj/item/proc/get_storage_cost()
 	//If you want to prevent stuff above a certain w_class from being stored, use max_w_class
 	return BASE_STORAGE_COST(w_class)
+
+/obj/item/storage/get_alt_interactions(mob/user)
+	. = ..()
+	LAZYADD(., /decl/interaction_handler/storage_open)
+
+/decl/interaction_handler/storage_open
+	name = "Open Storage"
+	expected_target_type = /obj/item/storage
+	incapacitation_flags = INCAPACITATION_DISRUPTED
+
+/decl/interaction_handler/storage_open/is_possible(atom/target, mob/user, obj/item/prop)
+	. = ..() && (ishuman(user) || isrobot(user) || issmall(user))
+	if(.)
+		var/obj/item/storage/S = target
+		. = S.canremove
+
+/decl/interaction_handler/storage_open/invoked(atom/target, mob/user, obj/item/prop)
+	var/obj/item/storage/S = target
+	S.open(user)

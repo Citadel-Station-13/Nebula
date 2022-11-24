@@ -6,27 +6,20 @@
 	icon = 'icons/obj/closets/bodybag.dmi'
 	icon_state = "bodybag_folded"
 	w_class = ITEM_SIZE_SMALL
-	attack_self(mob/user)
-		var/obj/structure/closet/body_bag/R = new /obj/structure/closet/body_bag(user.loc)
-		R.add_fingerprint(user)
-		qdel(src)
-
+	material = /decl/material/solid/plastic
+	
+/obj/item/bodybag/attack_self(mob/user)
+	var/obj/structure/closet/body_bag/R = new /obj/structure/closet/body_bag(user.loc)
+	R.add_fingerprint(user)
+	qdel(src)
 
 /obj/item/storage/box/bodybags
-	name = "body bags"
-	desc = "This box contains body bags."
+	name       = "body bags"
+	desc       = "This box contains body bags."
 	icon_state = "bodybags"
 
-/obj/item/storage/box/bodybags/Initialize()
-	. = ..()
-	new /obj/item/bodybag(src)
-	new /obj/item/bodybag(src)
-	new /obj/item/bodybag(src)
-	new /obj/item/bodybag(src)
-	new /obj/item/bodybag(src)
-	new /obj/item/bodybag(src)
-	new /obj/item/bodybag(src)
-
+/obj/item/storage/box/bodybags/WillContain()
+	return list(/obj/item/bodybag = 7)
 
 /obj/structure/closet/body_bag
 	name = "body bag"
@@ -36,33 +29,17 @@
 	open_sound = 'sound/items/zip.ogg'
 	close_sound = 'sound/items/zip.ogg'
 	var/item_path = /obj/item/bodybag
-	density = 0
+	density = FALSE
 	storage_capacity = (MOB_SIZE_MEDIUM * 2) - 1
-	var/contains_body = 0
-	var/has_label = FALSE
+	var/contains_body = FALSE
 
-/obj/structure/closet/body_bag/attackby(var/obj/item/W, mob/user)
-	if (istype(W, /obj/item/pen))
-		var/t = input(user, "What would you like the label to be?", text("[]", src.name), null)  as text
-		if (user.get_active_hand() != W)
-			return
-		if (!in_range(src, user) && src.loc != user)
-			return
-		t = sanitizeSafe(t, MAX_NAME_LEN)
-		if (t)
-			src.SetName("body bag - ")
-			src.name += t
-			has_label = TRUE
-		else
-			src.SetName("body bag")
-		src.update_icon()
-		return
-	else if(isWirecutter(W))
-		src.SetName("body bag")
-		has_label = FALSE
-		to_chat(user, "You cut the tag off \the [src].")
-		src.update_icon()
-		return
+/obj/structure/closet/body_bag/Initialize()
+	. = ..()
+	set_extension(src, /datum/extension/labels/single) //Set the label extension to a single allowed label
+
+/obj/structure/closet/body_bag/SetName(new_name)
+	. = ..()
+	update_icon() //Since adding a label updates the name, this handles updating the label overlay
 
 /obj/structure/closet/body_bag/on_update_icon()
 	if(opened)
@@ -70,9 +47,15 @@
 	else
 		icon_state = "closed_unlocked"
 
-	src.overlays.Cut()
-	if(has_label)
-		src.overlays += image(src.icon, "bodybag_label")
+	..()
+	var/datum/extension/labels/lbls = get_extension(src, /datum/extension/labels)
+	if(LAZYLEN(lbls?.labels))
+		add_overlay("bodybag_label")
+
+/obj/structure/closet/body_bag/attackby(obj/item/W, mob/user)
+	if(istype(W, /obj/item/hand_labeler))
+		return //Prevent the labeler from opening the bag when trying to apply a label
+	. = ..()
 
 /obj/structure/closet/body_bag/store_mobs(var/stored_units)
 	contains_body = ..()
@@ -81,8 +64,8 @@
 /obj/structure/closet/body_bag/close()
 	if(..())
 		set_density(0)
-		return 1
-	return 0
+		return TRUE
+	return FALSE
 
 /obj/structure/closet/body_bag/proc/fold(var/user)
 	if(!(ishuman(user) || isrobot(user)))	return 0
@@ -92,10 +75,11 @@
 	. = new item_path(get_turf(src))
 	qdel(src)
 
-/obj/structure/closet/body_bag/MouseDrop(over_object, src_location, over_location)
-	..()
-	if((over_object == usr && (in_range(src, usr) || usr.contents.Find(src))))
-		fold(usr)
+/obj/structure/closet/body_bag/handle_mouse_drop(var/atom/over, var/mob/user)
+	if(over == user && (in_range(src, user) || (src in user.contents)))
+		fold(user)
+		return TRUE
+	. = ..()
 
 /obj/item/robot_rack/body_bag
 	name = "stasis bag rack"

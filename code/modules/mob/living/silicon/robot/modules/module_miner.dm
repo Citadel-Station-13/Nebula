@@ -8,13 +8,13 @@
 		"Supply" = TRUE,
 		"Science" = TRUE
 	)
-	networks = list(
-		NETWORK_MINE
+	camera_channels = list(
+		CAMERA_CHANNEL_MINE
 	)
-	sprites = list(
-		"Basic" = "Miner_old",
-		"Advanced Droid" = "droid-miner",
-		"Treadhead" = "Miner"
+	module_sprites = list(
+		"Basic"          = 'icons/mob/robots/robot_miner_old.dmi',
+		"Advanced Droid" = 'icons/mob/robots/robot_droid_miner.dmi',
+		"Treadhead"      = 'icons/mob/robots/robot_miner.dmi'
 	)
 	supported_upgrades = list(
 		/obj/item/borg/upgrade/jetpack
@@ -36,7 +36,6 @@
 		SKILL_LITERACY     = SKILL_ADEPT,
 		SKILL_PILOT        = SKILL_EXPERT,
 		SKILL_EVA          = SKILL_PROF,
-		SKILL_MECH         = HAS_PERK,
 		SKILL_CONSTRUCTION = SKILL_EXPERT
 	)
 

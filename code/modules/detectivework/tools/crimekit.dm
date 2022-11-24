@@ -5,7 +5,11 @@
 	icon = 'icons/obj/forensics.dmi'
 	icon_state = "case"
 	item_state = "case"
-	startswith = list(
+	material = /decl/material/solid/leather/synth
+	matter = list(/decl/material/solid/metal/stainlesssteel = MATTER_AMOUNT_REINFORCEMENT)
+
+/obj/item/storage/briefcase/crimekit/WillContain()
+	return list(
 		/obj/item/storage/box/fingerprints,
 		/obj/item/chems/spray/luminol,
 		/obj/item/uv_light,

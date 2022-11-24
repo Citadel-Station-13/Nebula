@@ -49,6 +49,12 @@
 /proc/cmp_text_dsc(a,b)
 	return sorttext(a, b)
 
+/proc/cmp_list_name_key_asc(var/list/a, var/list/b)
+	return sorttext(b["name"], a["name"])
+
+/proc/cmp_list_name_key_dsc(var/list/a, var/list/b)
+	return sorttext(a["name"], b["name"])
+
 /proc/cmp_qdel_item_time(datum/qdel_item/A, datum/qdel_item/B)
 	. = B.hard_delete_time - A.hard_delete_time
 	if (!.)
@@ -57,9 +63,6 @@
 		. = B.failures - A.failures
 	if (!.)
 		. = B.qdels - A.qdels
-
-/proc/cmp_ruincost_priority(datum/map_template/ruin/A, datum/map_template/ruin/B)
-	return initial(A.cost) - initial(B.cost)
 
 /proc/cmp_timer(datum/timedevent/a, datum/timedevent/b)
 	return a.timeToRun - b.timeToRun
@@ -79,8 +82,8 @@
 /proc/cmp_program(var/datum/computer_file/program/A, var/datum/computer_file/program/B)
 	return cmp_text_asc(A.filedesc, B.filedesc)
 
-/proc/cmp_emails_asc(var/datum/computer_file/data/email_account/A, var/datum/computer_file/data/email_account/B)
-	return cmp_text_asc(A.login,B.login)
+/proc/cmp_accounts_asc(var/datum/computer_file/data/account/A, var/datum/computer_file/data/account/B)
+	return cmp_text_asc(A.login, B.login)
 
 /proc/cmp_planelayer(atom/A, atom/B)
 	return (B.plane - A.plane) || (B.layer - A.layer)
@@ -90,3 +93,29 @@
 
 /proc/cmp_cocktail_des(var/decl/cocktail/A, var/decl/cocktail/B)
 	. = B.mix_priority() - A.mix_priority()
+
+/proc/cmp_mob_sortvalue_asc(mob/a, mob/b)
+	. = a.mob_sort_value - b.mob_sort_value
+
+/proc/cmp_mob_sortvalue_des(mob/a, mob/b)
+	. = b.mob_sort_value - a.mob_sort_value
+
+/proc/cmp_rcon_tag_asc(var/obj/machinery/power/smes/buildable/a, var/obj/machinery/power/smes/buildable/b)
+	return sorttext(b.RCon_tag, a.RCon_tag)
+
+/proc/cmp_category_groups(var/datum/category_group/A, var/datum/category_group/B)
+	return A.sort_order - B.sort_order
+
+/proc/cmp_job_asc(var/datum/job/A, var/datum/job/B)
+	return A.get_occupations_tab_sort_score() - B.get_occupations_tab_sort_score()
+
+/proc/cmp_job_desc(var/datum/job/A, var/datum/job/B)
+	return B.get_occupations_tab_sort_score() - A.get_occupations_tab_sort_score()
+
+/proc/cmp_lobby_option_asc(var/datum/lobby_option/A, var/datum/lobby_option/B)
+	return A.sort_priority - B.sort_priority
+
+/proc/cmp_files_sort(datum/computer_file/a, datum/computer_file/b)
+	. = istype(b, /datum/computer_file/directory) - istype(a, /datum/computer_file/directory) // Prioritize directories over other files.
+	if(!.)
+		return sorttext(b.filename, a.filename)

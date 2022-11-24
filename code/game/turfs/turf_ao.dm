@@ -10,9 +10,9 @@
 	var/ao_queued = AO_UPDATE_NONE
 
 /turf/proc/regenerate_ao()
-	for (var/thing in RANGE_TURFS(src, 1))
+	for(var/thing in RANGE_TURFS(src, 1))
 		var/turf/T = thing
-		if (T.permit_ao)
+		if(istype(T) && T.permit_ao)
 			T.queue_ao(TRUE)
 
 /turf/proc/calculate_ao_neighbors()
@@ -32,7 +32,7 @@
 	var/cstr = "[corner]"
 	var/key = "[cstr]-[i]-[px]/[py]/[pz]/[pw]"
 
-	var/image/I = image('icons/turf/flooring/shadows.dmi', cstr, dir = 1 << (i-1))
+	var/image/I = image('icons/turf/flooring/shadows.dmi', cstr, dir = BITFLAG(i-1))
 	I.alpha = WALL_AO_ALPHA
 	I.blend_mode = BLEND_OVERLAY
 	I.appearance_flags = RESET_ALPHA|RESET_COLOR|TILE_BOUND
@@ -56,13 +56,13 @@
 
 #define PROCESS_AO_CORNER(AO_LIST, NEIGHBORS, CORNER_INDEX, CDIR) \
 	corner = 0; \
-	if (NEIGHBORS & (1 << CDIR)) { \
+	if (NEIGHBORS & (BITFLAG(CDIR))) { \
 		corner |= 2; \
 	} \
-	if (NEIGHBORS & (1 << turn(CDIR, 45))) { \
+	if (NEIGHBORS & (BITFLAG(turn(CDIR, 45)))) { \
 		corner |= 1; \
 	} \
-	if (NEIGHBORS & (1 << turn(CDIR, -45))) { \
+	if (NEIGHBORS & (BITFLAG(turn(CDIR, -45)))) { \
 		corner |= 4; \
 	} \
 	if (corner != 7) {	/* 7 is the 'no shadows' state, no reason to add overlays for it. */ \
@@ -107,10 +107,3 @@
 #undef PROCESS_AO_CORNER
 #undef AO_TURF_CHECK
 #undef AO_SELF_CHECK
-
-/turf/ChangeTurf()
-	var/old_density = density
-	var/old_permit_ao = permit_ao
-	. = ..()
-	if(density != old_density || permit_ao != old_permit_ao)
-		regenerate_ao()

@@ -1,10 +1,10 @@
 //Meteor groups, used for various random events and the Meteor gamemode.
 
 // Dust, used by space dust event and during earliest stages of meteor mode.
-/var/list/meteors_dust = list(/obj/effect/meteor/dust)
+var/global/list/meteors_dust = list(/obj/effect/meteor/dust)
 
 // Standard meteors, used during early stages of the meteor gamemode.
-/var/list/meteors_normal = list(\
+var/global/list/meteors_normal = list(\
 		/obj/effect/meteor/medium=8,\
 		/obj/effect/meteor/dust=3,\
 		/obj/effect/meteor/irradiated=3,\
@@ -15,7 +15,7 @@
 		)
 
 // Threatening meteors, used during the meteor gamemode.
-/var/list/meteors_threatening = list(\
+var/global/list/meteors_threatening = list(\
 		/obj/effect/meteor/big=10,\
 		/obj/effect/meteor/medium=5,\
 		/obj/effect/meteor/golden=3,\
@@ -26,7 +26,7 @@
 		)
 
 // Catastrophic meteors, pretty dangerous without shields and used during the meteor gamemode.
-/var/list/meteors_catastrophic = list(\
+var/global/list/meteors_catastrophic = list(\
 		/obj/effect/meteor/big=75,\
 		/obj/effect/meteor/flaming=10,\
 		/obj/effect/meteor/irradiated=10,\
@@ -38,7 +38,7 @@
 		)
 
 // Armageddon meteors, very dangerous, and currently used only during the meteor gamemode.
-/var/list/meteors_armageddon = list(\
+var/global/list/meteors_armageddon = list(\
 		/obj/effect/meteor/big=25,\
 		/obj/effect/meteor/flaming=10,\
 		/obj/effect/meteor/irradiated=10,\
@@ -50,7 +50,7 @@
 		)
 
 // Cataclysm meteor selection. Very very dangerous and effective even against shields. Used in late game meteor gamemode only.
-/var/list/meteors_cataclysm = list(\
+var/global/list/meteors_cataclysm = list(\
 		/obj/effect/meteor/big=40,\
 		/obj/effect/meteor/emp=20,\
 		/obj/effect/meteor/tunguska=20,\
@@ -137,7 +137,7 @@
 	pass_flags = PASS_FLAG_TABLE
 	var/heavy = 0
 	var/z_original
-	var/meteordrop = /obj/item/ore/iron
+	var/meteordrop = /obj/item/stack/material/ore/iron
 	var/dropamt = 1
 	var/ismissile //missiles don't spin
 
@@ -152,7 +152,7 @@
 
 /obj/effect/meteor/Initialize()
 	. = ..()
-	GLOB.meteor_list += src
+	global.meteor_list += src
 
 /obj/effect/meteor/Move()
 	. = ..() //process movement...
@@ -160,13 +160,13 @@
 	if(loc == dest)
 		qdel(src)
 
-/obj/effect/meteor/touch_map_edge()
+/obj/effect/meteor/touch_map_edge(var/overmap_id = OVERMAP_ID_SPACE)
 	if(move_count > TRANSITIONEDGE)
 		qdel(src)
 
 /obj/effect/meteor/Destroy()
 	walk(src,0) //this cancels the walk_towards() proc
-	GLOB.meteor_list -= src
+	global.meteor_list -= src
 	. = ..()
 
 /obj/effect/meteor/Initialize()
@@ -219,7 +219,7 @@
 
 /obj/effect/meteor/proc/meteor_effect()
 	if(heavy)
-		for(var/mob/M in GLOB.player_list)
+		for(var/mob/M in global.player_list)
 			var/turf/T = get_turf(M)
 			if(!T || T.z != src.z)
 				continue
@@ -239,7 +239,7 @@
 	hits = 1
 	hitpwr = 3
 	dropamt = 1
-	meteordrop = /obj/item/ore/glass
+	meteordrop = /obj/item/stack/material/ore/glass
 
 //Medium-sized
 /obj/effect/meteor/medium
@@ -268,7 +268,7 @@
 	icon_state = "flaming"
 	hits = 5
 	heavy = 1
-	meteordrop = /obj/item/ore/phoron
+	meteordrop = /obj/item/stack/material/ore/phosphorite
 
 /obj/effect/meteor/flaming/meteor_effect()
 	..()
@@ -279,7 +279,7 @@
 	name = "glowing meteor"
 	icon_state = "glowing"
 	heavy = 1
-	meteordrop = /obj/item/ore/uranium
+	meteordrop = /obj/item/stack/material/ore/uranium
 
 /obj/effect/meteor/irradiated/meteor_effect()
 	..()
@@ -290,19 +290,19 @@
 	name = "golden meteor"
 	icon_state = "glowing"
 	desc = "Shiny! But also deadly."
-	meteordrop = /obj/item/ore/gold
+	meteordrop = /obj/item/stack/material/ore/gold
 
 /obj/effect/meteor/silver
 	name = "silver meteor"
 	icon_state = "glowing_blue"
 	desc = "Shiny! But also deadly."
-	meteordrop = /obj/item/ore/silver
+	meteordrop = /obj/item/stack/material/ore/silver
 
 /obj/effect/meteor/emp
 	name = "conducting meteor"
 	icon_state = "glowing_blue"
 	desc = "Hide your floppies!"
-	meteordrop = /obj/item/ore/osmium
+	meteordrop = /obj/item/stack/material/ore/osmium
 	dropamt = 2
 
 /obj/effect/meteor/emp/meteor_effect()
@@ -322,7 +322,7 @@
 	hits = 10
 	hitpwr = 1
 	heavy = 1
-	meteordrop = /obj/item/ore/diamond	// Probably means why it penetrates the hull so easily before exploding.
+	meteordrop = /obj/item/stack/material/ore/diamond	// Probably means why it penetrates the hull so easily before exploding.
 
 /obj/effect/meteor/tunguska/meteor_effect()
 	..()
@@ -332,8 +332,8 @@
 /obj/effect/meteor/supermatter
 	name = "supermatter shard"
 	desc = "Oh god, what will be next..?"
-	icon = 'icons/obj/engine.dmi'
-	icon_state = "darkmatter"
+	icon = 'icons/obj/supermatter_32.dmi'
+	icon_state = "supermatter"
 
 /obj/effect/meteor/supermatter/meteor_effect()
 	..()
@@ -357,8 +357,8 @@
 /obj/effect/meteor/medium/missile
 	name = "missile"
 	desc = "Some kind of missile."
-	icon = 'icons/obj/missile.dmi'
-	icon_state = "missile"
+	icon = 'icons/obj/items/grenades/missile.dmi'
+	icon_state = ICON_STATE_WORLD
 	meteordrop = null
 	ismissile = TRUE
 	dropamt = 0
@@ -366,8 +366,8 @@
 /obj/effect/meteor/big/missile
 	name = "high-yield missile"
 	desc = "Some kind of missile."
-	icon = 'icons/obj/missile.dmi'
-	icon_state = "missile"
+	icon = 'icons/obj/items/grenades/missile.dmi'
+	icon_state = ICON_STATE_WORLD
 	meteordrop = null
 	ismissile = TRUE
 	dropamt = 0
@@ -375,8 +375,8 @@
 /obj/effect/meteor/flaming/missile
 	name = "incendiary missile"
 	desc = "Some kind of missile."
-	icon = 'icons/obj/missile.dmi'
-	icon_state = "missile"
+	icon = 'icons/obj/items/grenades/missile.dmi'
+	icon_state = ICON_STATE_WORLD
 	meteordrop = null
 	ismissile = TRUE
 	dropamt = 0

@@ -43,7 +43,7 @@ Class Variables:
 		 BROKEN:1 -- Machine is broken
 		 NOPOWER:2 -- No power is being supplied to machine.
 		 MAINT:8 -- machine is currently under going maintenance.
-		 EMPED:16 -- temporary broken by EMP pulse
+		 EMPED:16 -- temporary broken by EMP
 
 Class Procs:
    New()					 'game/machinery/machine.dm'
@@ -78,11 +78,14 @@ Class Procs:
 
 /obj/machinery
 	name = "machinery"
-	icon = 'icons/obj/stationobjs.dmi'
 	w_class = ITEM_SIZE_STRUCTURE
 	layer = STRUCTURE_LAYER // Layer under items
 	throw_speed = 1
 	throw_range = 5
+	matter = list(
+		/decl/material/solid/metal/steel = MATTER_AMOUNT_PRIMARY
+	)
+	abstract_type = /obj/machinery
 
 	var/stat = 0
 	var/waterproof = TRUE
@@ -104,7 +107,7 @@ Class Procs:
 	var/list/maximum_component_parts = list(/obj/item/stock_parts = 10)         //null - no max. list(type part = number max).
 	var/uid
 	var/panel_open = 0
-	var/global/gl_uid = 1
+	var/static/gl_uid = 1
 	var/interact_offline = 0 // Can the machine be interacted with while de-powered.
 	var/clicksound			// sound played on succesful interface use by a carbon lifeform
 	var/clickvol = 40		// sound played on succesful interface use
@@ -113,6 +116,7 @@ Class Procs:
 	var/base_type           // For mapped buildable types, set this to be the base type actually buildable.
 	var/id_tag              // This generic variable is to be used by mappers to give related machines a string key. In principle used by radio stock parts.
 	var/frame_type = /obj/machinery/constructable_frame/machine_frame/deconstruct // what is created when the machine is dismantled.
+	var/required_interaction_dexterity = DEXTERITY_KEYBOARDS
 
 	var/list/processing_parts // Component parts queued for processing by the machine. Expected type: /obj/item/stock_parts
 	var/processing_flags         // What is being processed
@@ -152,6 +156,10 @@ Class Procs:
 
 /obj/machinery/Process()
 	return PROCESS_KILL // Only process if you need to.
+
+/obj/machinery/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(id_tag, map_hash)
 
 /obj/machinery/proc/set_broken(new_state, cause = MACHINE_BROKEN_GENERIC)
 	if(stat_immune & BROKEN)
@@ -224,7 +232,7 @@ Class Procs:
 	if((stat & BROKEN) && (reason_broken & MACHINE_BROKEN_GENERIC))
 		return STATUS_CLOSE
 
-	return GLOB.physical_state.can_use_topic(nano_host(), user)
+	return global.physical_topic_state.can_use_topic(nano_host(), user)
 
 /obj/machinery/CouldUseTopic(var/mob/user)
 	..()
@@ -239,7 +247,11 @@ Class Procs:
 		if(info)
 			to_chat(usr, jointext(info, "<br>"))
 			return TOPIC_HANDLED
-
+	if(href_list["power_text"]) // As above. Reports OOC info on how to use installed power sources.
+		var/list/info = get_power_sources_info()
+		if(info)
+			to_chat(usr, jointext(info, "<br>"))
+			return TOPIC_HANDLED
 	. = ..()
 	if(. == TOPIC_REFRESH)
 		updateUsrDialog() // Update legacy UIs to the extent possible.
@@ -247,9 +259,17 @@ Class Procs:
 /obj/machinery/proc/get_tool_manipulation_info()
 	return construct_state?.mechanics_info()
 
+/obj/machinery/proc/get_power_sources_info()
+	. = list()
+	var/list/power_sources = get_all_components_of_type(/obj/item/stock_parts/power, FALSE)
+	if(!length(power_sources))
+		. += "The machine has no power sources installed."
+	for(var/obj/item/stock_parts/power/source in power_sources)
+		. += source.get_source_info()
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-/obj/machinery/attack_ai(mob/user)
+/obj/machinery/attack_ai(mob/living/silicon/ai/user)
 	if(CanUseTopic(user, DefaultTopicState()) > STATUS_CLOSE)
 		return interface_interact(user)
 
@@ -270,17 +290,8 @@ Class Procs:
 		return
 	if(!CanPhysicallyInteract(user))
 		return FALSE // The interactions below all assume physical access to the machine. If this is not the case, we let the machine take further action.
-	if(!user.check_dexterity(DEXTERITY_KEYBOARDS))
-		to_chat(user, "<span class='warning'>You don't have the dexterity to do this!</span>")
+	if(!user.check_dexterity(required_interaction_dexterity))
 		return TRUE
-	if(ishuman(user))
-		var/mob/living/carbon/human/H = user
-		if(H.getBrainLoss() >= 55)
-			visible_message("<span class='warning'>[H] stares cluelessly at \the [src].</span>")
-			return 1
-		else if(prob(H.getBrainLoss()))
-			to_chat(user, "<span class='warning'>You momentarily forget how to use \the [src].</span>")
-			return 1
 	if((. = component_attack_hand(user)))
 		return
 	if(wires && (. = wires.Interact(user)))
@@ -312,24 +323,28 @@ Class Procs:
 	set_broken(!!missing, MACHINE_BROKEN_NO_PARTS)
 
 /obj/machinery/proc/state(var/msg)
-	for(var/mob/O in hearers(src, null))
-		O.show_message("\icon[src] <span class = 'notice'>[msg]</span>", 2)
+	audible_message(SPAN_NOTICE("[html_icon(src)] [msg]"), null, 2)
 
-/obj/machinery/proc/ping(text=null)
+/obj/machinery/proc/ping(var/text)
 	if (!text)
 		text = "\The [src] pings."
 
 	state(text, "blue")
-	playsound(src.loc, 'sound/machines/ping.ogg', 50, 0)
+	playsound(src.loc, 'sound/machines/ping.ogg', 50, FALSE)
+
+/obj/machinery/proc/buzz(var/text)
+	if (!text)
+		text = "\The [src] buzzes."
+
+	state(SPAN_WARNING(text), "red")
+	playsound(src.loc, 'sound/machines/buzz-sigh.ogg', 50, FALSE)
 
 /obj/machinery/proc/shock(mob/user, prb)
 	if(inoperable())
 		return 0
 	if(!prob(prb))
 		return 0
-	var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-	s.set_up(5, 1, src)
-	s.start()
+	spark_at(src, amount=5, cardinal_only = TRUE)
 	if(electrocute_mob(user, get_area(src), src, 0.7))
 		var/area/temp_area = get_area(src)
 		if(temp_area)
@@ -338,7 +353,7 @@ Class Procs:
 
 			if(terminal && terminal.powernet)
 				terminal.powernet.trigger_warning()
-		if(user.stunned)
+		if(HAS_STATUS(user, STAT_STUN))
 			return 1
 	return 0
 
@@ -355,22 +370,24 @@ Class Procs:
 
 	var/list/expelled_components = list()
 	for(var/I in component_parts)
-		expelled_components += uninstall_component(I, refresh_parts = FALSE)
+		var/component = uninstall_component(I, refresh_parts = FALSE)
+		if(component)
+			expelled_components += component
 	while(LAZYLEN(uncreated_component_parts))
 		var/path = uncreated_component_parts[1]
-		expelled_components += uninstall_component(path, refresh_parts = FALSE)
-	var/datum/extension/parts_stash/stash = get_extension(frame, /datum/extension/parts_stash)
-	if(stash)
-		stash.stash(expelled_components)
+		var/component = uninstall_component(path, refresh_parts = FALSE)
+		if(component)
+			expelled_components += component
+	if(frame)
+		var/datum/extension/parts_stash/stash = get_extension(frame, /datum/extension/parts_stash)
+		if(stash)
+			stash.stash(expelled_components)
 
 	for(var/obj/O in src)
 		O.dropInto(loc)
 
 	qdel(src)
 	return frame
-
-/obj/machinery/InsertedContents()
-	return (contents - component_parts)
 
 /datum/proc/apply_visual(mob/M)
 	return
@@ -407,8 +424,13 @@ Class Procs:
 		to_chat(user, "It is missing a screen, making it hard to interact with.")
 	else if(stat & NOINPUT)
 		to_chat(user, "It is missing any input device.")
-	else if((stat & NOPOWER) && !interact_offline)
-		to_chat(user, "It is not receiving power.")
+
+	if((stat & NOPOWER))
+		if(interact_offline)
+			to_chat(user, "It is not receiving <a href ='?src=\ref[src];power_text=1'>power</a>.")
+		else
+			to_chat(user, "It is not receiving <a href ='?src=\ref[src];power_text=1'>power</a>, making it hard to interact with.")
+
 	if(construct_state && construct_state.mechanics_info())
 		to_chat(user, "It can be <a href='?src=\ref[src];mechanics_text=1'>manipulated</a> using tools.")
 	var/list/missing = missing_parts()
@@ -426,13 +448,16 @@ Class Procs:
 		explosion_act(3)
 
 /obj/machinery/Move()
+	var/atom/lastloc = loc
 	. = ..()
 	if(. && !CanFluidPass())
+		if(lastloc)
+			lastloc.fluid_update()
 		fluid_update()
 
-/obj/machinery/get_cell()
+/obj/machinery/get_cell(var/functional_only = TRUE)
 	var/obj/item/stock_parts/power/battery/battery = get_component_of_type(/obj/item/stock_parts/power/battery)
-	if(battery)
+	if(battery && (!functional_only || battery.is_functional()))
 		return battery.get_cell()
 
 /obj/machinery/building_cost()
@@ -454,5 +479,16 @@ Class Procs:
 
 /obj/machinery/get_req_access()
 	. = ..() || list()
-	for(var/obj/item/stock_parts/network_lock/lock in get_all_components_of_type(/obj/item/stock_parts/network_lock))
+	for(var/obj/item/stock_parts/network_receiver/network_lock/lock in get_all_components_of_type(/obj/item/stock_parts/network_receiver/network_lock))
 		.+= lock.get_req_access()
+
+/obj/machinery/get_contained_external_atoms()
+	. = ..()
+	LAZYREMOVE(., component_parts)
+
+/obj/machinery/proc/get_auto_access()
+	var/area/A = get_area(src)
+	return A?.req_access?.Copy()
+
+/obj/machinery/get_matter_amount_modifier()
+	. = ..() * HOLLOW_OBJECT_MATTER_MULTIPLIER // machine matter is largely just the frame, and the components contribute most of the matter/value.

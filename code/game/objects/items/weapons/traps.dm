@@ -10,7 +10,7 @@
 	throwforce = 0
 	w_class = ITEM_SIZE_NORMAL
 	origin_tech = "{'materials':1}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	can_buckle = 0 //disallow manual un/buckling
 	var/deployed = 0
 
@@ -69,7 +69,7 @@
 	else
 		..()
 
-/obj/item/beartrap/proc/attack_mob(mob/living/L)
+/obj/item/beartrap/proc/attack_mob(mob/L)
 
 	var/target_zone
 	if(L.lying)
@@ -103,9 +103,5 @@
 	..()
 
 /obj/item/beartrap/on_update_icon()
-	..()
-
-	if(!deployed)
-		icon_state = "beartrap0"
-	else
-		icon_state = "beartrap1"
+	. = ..()
+	icon_state = "beartrap[deployed == TRUE]"

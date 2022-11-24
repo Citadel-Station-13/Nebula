@@ -24,7 +24,7 @@
 
 /atom/movable/is_flooded(var/lying_mob, var/absolute)
 	var/turf/T = get_turf(src)
-	return T?.is_flooded(lying_mob)
+	return T?.is_flooded(lying_mob, absolute)
 
 /atom/proc/submerged(depth)
 	if(isnull(depth))
@@ -34,7 +34,7 @@
 		depth = T.get_fluid_depth()
 	if(istype(loc, /mob))
 		return depth >= FLUID_SHALLOW
-	if(istype(loc, /turf))
+	if(isturf(loc))
 		return depth >= 3
 	return depth >= FLUID_OVER_MOB_HEAD
 
@@ -43,11 +43,7 @@
 		depth = get_fluid_depth()
 	return depth >= FLUID_OVER_MOB_HEAD
 
-/atom/proc/fluid_update()
+/atom/proc/fluid_update(var/ignore_neighbors)
 	var/turf/T = get_turf(src)
 	if(istype(T))
-		T.fluid_update()
-
-/atom/movable/update_nearby_tiles(var/need_rebuild)
-	UNLINT(. = ..(need_rebuild))
-	fluid_update()
+		T.fluid_update(ignore_neighbors)

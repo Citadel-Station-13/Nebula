@@ -1,17 +1,16 @@
 /obj/item/gun/projectile/flare
 	name = "flaregun"
 	desc = "A single shot polymer flare gun, the XI-54 \"Sirius\" is a reliable way to launch flares away from yourself."
-	on_mob_icon = 'icons/obj/guns/flaregun.dmi'
 	icon = 'icons/obj/guns/flaregun.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	fire_sound = 'sound/weapons/empty.ogg'
 	fire_sound_text = "a satisfying 'thump'"
-	slot_flags = SLOT_BELT | SLOT_HOLSTER
+	slot_flags = SLOT_LOWER_BODY | SLOT_HOLSTER
 	w_class = ITEM_SIZE_SMALL
 	obj_flags = 0
-	slot_flags = SLOT_BELT | SLOT_HOLSTER
-	material = MAT_PLASTIC
-	matter = list(MAT_STEEL = MATTER_AMOUNT_REINFORCEMENT)
+	slot_flags = SLOT_LOWER_BODY | SLOT_HOLSTER
+	material = /decl/material/solid/plastic
+	matter = list(/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT)
 
 	caliber = CALIBER_SHOTGUN
 	handle_casings = CYCLE_CASINGS
@@ -29,9 +28,10 @@
 
 /obj/item/gun/projectile/flare/special_check()
 	if(loaded.len && !istype(loaded[1], /obj/item/ammo_casing/shotgun/flash))
-		var/damage = chambered.BB.get_structure_damage()
-		if(istype(chambered.BB, /obj/item/projectile/bullet/pellet))
-			var/obj/item/projectile/bullet/pellet/PP = chambered.BB
+		var/obj/item/ammo_casing/chambered_round = loaded[1]
+		var/damage = chambered_round.BB.get_structure_damage()
+		if(istype(chambered_round.BB, /obj/item/projectile/bullet/pellet))
+			var/obj/item/projectile/bullet/pellet/PP = chambered_round.BB
 			damage = PP.damage*PP.pellets
 		if(damage > 5)
 			var/mob/living/carbon/C = loc

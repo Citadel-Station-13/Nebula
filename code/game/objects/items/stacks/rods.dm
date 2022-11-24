@@ -15,9 +15,11 @@
 	attack_verb = list("hit", "bludgeoned", "whacked")
 	lock_picking_level = 3
 	matter_multiplier = 0.3
-	material_flags = USE_MATERIAL_COLOR
-	stacktype = /obj/item/stack/material/rods
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
+	is_spawnable_type = TRUE
+
+	pickup_sound = 'sound/foley/tooldrop3.ogg'
+	drop_sound = 'sound/foley/tooldrop2.ogg'
 
 /obj/item/stack/material/rods/get_autopsy_descriptors()
 	. = ..()
@@ -36,17 +38,16 @@
 	matter = null
 	uses_charge = 1
 	charge_costs = list(500)
+	health = ITEM_HEALTH_NO_DAMAGE
 
 /obj/item/stack/material/rods/Initialize()
 	. = ..()
 	update_icon()
 	throwforce = round(0.25*material.get_edge_damage())
 	force = round(0.5*material.get_blunt_damage())
+	set_extension(src, /datum/extension/tool, list(TOOL_DRILL = TOOL_QUALITY_WORST))
 
-/obj/item/stack/material/on_update_icon()
-	if(material_flags & USE_MATERIAL_COLOR)
-		color = material.color
-		alpha = 100 + max(1, amount/25)*(material.opacity * 255)
+/obj/item/stack/material/rods/update_state_from_amount()
 	if(max_icon_state && amount > 0.5*max_amount)
 		icon_state = max_icon_state
 	else if(plural_icon_state && amount >= 2)
@@ -55,39 +56,42 @@
 		icon_state = base_state
 
 /obj/item/stack/material/rods/attackby(obj/item/W, mob/user)
-	if(isWelder(W))
+	if(IS_WELDER(W))
 		var/obj/item/weldingtool/WT = W
 
 		if(!can_use(2))
 			to_chat(user, "<span class='warning'>You need at least two rods to do this.</span>")
 			return
 
-		if(WT.remove_fuel(0,user))
-			var/obj/item/stack/material/steel/new_item = new(usr.loc)
-			new_item.add_to_stacks(usr)
-			for (var/mob/M in viewers(src))
-				M.show_message("<span class='notice'>[src] is shaped into metal by [user.name] with the weldingtool.</span>", 3, "<span class='notice'>You hear welding.</span>", 2)
-			var/obj/item/stack/material/rods/R = src
-			src = null
-			var/replace = (user.get_inactive_hand()==R)
-			R.use(2)
-			if (!R && replace)
-				user.put_in_hands(new_item)
+		if(WT.weld(0,user))
+			visible_message(SPAN_NOTICE("\The [src] is fused together by \the [user] with \the [WT]."), 3, SPAN_NOTICE("You hear welding."), 2)
+			for(var/obj/item/stack/material/new_item in SSmaterials.create_object((material?.type || /decl/material/solid/metal/steel), usr.loc, 1))
+				new_item.add_to_stacks(usr)
+				if(user.is_holding_offhand(src))
+					user.put_in_hands(new_item)
+			use(2)
 		return
 
-	if (istype(W, /obj/item/tape_roll))
+	if (istype(W, /obj/item/stack/tape_roll/duct_tape))
+		var/obj/item/stack/tape_roll/duct_tape/T = W
+		if(!T.can_use(4))
+			to_chat(user, SPAN_WARNING("You need 4 [T.plural_name] to make a splint!"))
+			return
+		T.use(4)
+
 		var/obj/item/stack/medical/splint/ghetto/new_splint = new(user.loc)
 		new_splint.dropInto(loc)
 		new_splint.add_fingerprint(user)
-
-		user.visible_message("<span class='notice'>\The [user] constructs \a [new_splint] out of a [singular_name].</span>", \
-				"<span class='notice'>You use make \a [new_splint] out of a [singular_name].</span>")
+		playsound(user, 'sound/effects/tape.ogg', 50, TRUE)
+		user.visible_message(SPAN_NOTICE("\The [user] constructs \a [new_splint] out of a [singular_name]."), \
+				SPAN_NOTICE("You use make \a [new_splint] out of a [singular_name]."))
 		src.use(1)
+
 		return
 
 	..()
 
 /obj/item/stack/material/rods/attack_self(mob/user)
 	add_fingerprint(user)
-	if(istype(user.loc, /turf))
+	if(isturf(user.loc))
 		place_grille(user, user.loc, src)

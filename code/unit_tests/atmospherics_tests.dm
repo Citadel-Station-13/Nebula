@@ -41,7 +41,7 @@
 
 /datum/unit_test/atmos_machinery/proc/check_moles_conserved(var/case_name, var/list/before_gas_mixes, var/list/after_gas_mixes)
 	var/failed = FALSE
-	for(var/gasid in subtypesof(/decl/material/gas))
+	for(var/gasid in decls_repository.get_decl_paths_of_subtype(/decl/material/gas))
 		var/before = 0
 		for(var/gasmix in before_gas_mixes)
 			var/datum/gas_mixture/G = before_gas_mixes[gasmix]
@@ -65,21 +65,21 @@
 		uphill = list(
 			source = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 5,
-					MAT_NITROGEN       = 10,
-					MAT_CO2 = 5,
-					MAT_PHORON         = 10,
-					MAT_N2O = 5,
+					/decl/material/gas/oxygen         = 5,
+					/decl/material/gas/nitrogen       = 10,
+					/decl/material/gas/carbon_dioxide = 5,
+					/decl/material/gas/chlorine       = 10,
+					/decl/material/gas/nitrous_oxide  = 5
 				),
 				temperature = T20C - 5,
 			),
 			sink = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 10,
-					MAT_NITROGEN       = 20,
-					MAT_CO2 = 10,
-					MAT_PHORON         = 20,
-					MAT_N2O = 10,
+					/decl/material/gas/oxygen         = 10,
+					/decl/material/gas/nitrogen       = 20,
+					/decl/material/gas/carbon_dioxide = 10,
+					/decl/material/gas/chlorine       = 20,
+					/decl/material/gas/nitrous_oxide  = 10
 				),
 				temperature = T20C + 5,
 			)
@@ -87,21 +87,21 @@
 		downhill = list(
 			source = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 10,
-					MAT_NITROGEN       = 20,
-					MAT_CO2 = 10,
-					MAT_PHORON         = 20,
-					MAT_N2O = 10,
+					/decl/material/gas/oxygen         = 10,
+					/decl/material/gas/nitrogen       = 20,
+					/decl/material/gas/carbon_dioxide = 10,
+					/decl/material/gas/chlorine       = 20,
+					/decl/material/gas/nitrous_oxide  = 10
 				),
 				temperature = T20C + 5,
 			),
 			sink = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 5,
-					MAT_NITROGEN       = 10,
-					MAT_CO2 = 5,
-					MAT_PHORON         = 10,
-					MAT_N2O = 5,
+					/decl/material/gas/oxygen         = 5,
+					/decl/material/gas/nitrogen       = 10,
+					/decl/material/gas/carbon_dioxide = 5,
+					/decl/material/gas/chlorine       = 10,
+					/decl/material/gas/nitrous_oxide  = 5
 				),
 				temperature = T20C - 5,
 			),
@@ -109,21 +109,21 @@
 		flat = list(
 			source = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 10,
-					MAT_NITROGEN       = 20,
-					MAT_CO2 = 10,
-					MAT_PHORON         = 20,
-					MAT_N2O = 10,
+					/decl/material/gas/oxygen         = 10,
+					/decl/material/gas/nitrogen       = 20,
+					/decl/material/gas/carbon_dioxide = 10,
+					/decl/material/gas/chlorine       = 20,
+					/decl/material/gas/nitrous_oxide  = 10
 				),
 				temperature = T20C,
 			),
 			sink = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 10,
-					MAT_NITROGEN       = 20,
-					MAT_CO2 = 10,
-					MAT_PHORON         = 20,
-					MAT_N2O = 10,
+					/decl/material/gas/oxygen         = 10,
+					/decl/material/gas/nitrogen       = 20,
+					/decl/material/gas/carbon_dioxide = 10,
+					/decl/material/gas/chlorine       = 20,
+					/decl/material/gas/nitrous_oxide  = 10
 				),
 				temperature = T20C,
 			),
@@ -131,11 +131,11 @@
 		vacuum_sink = list(
 			source = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 10,
-					MAT_NITROGEN       = 20,
-					MAT_CO2 = 10,
-					MAT_PHORON         = 20,
-					MAT_N2O = 10,
+					/decl/material/gas/oxygen         = 10,
+					/decl/material/gas/nitrogen       = 20,
+					/decl/material/gas/carbon_dioxide = 10,
+					/decl/material/gas/chlorine       = 20,
+					/decl/material/gas/nitrous_oxide  = 10
 				),
 				temperature = T20C,
 			),
@@ -151,11 +151,11 @@
 			),
 			sink = list(
 				initial_gas = list(
-					MAT_OXYGEN         = 10,
-					MAT_NITROGEN       = 20,
-					MAT_CO2 = 10,
-					MAT_PHORON         = 20,
-					MAT_N2O = 10,
+					/decl/material/gas/oxygen         = 10,
+					/decl/material/gas/nitrogen       = 20,
+					/decl/material/gas/carbon_dioxide = 10,
+					/decl/material/gas/chlorine       = 20,
+					/decl/material/gas/nitrous_oxide  = 10
 				),
 				temperature = T20C,
 			),
@@ -197,7 +197,7 @@
 	name = "ATMOS MACHINERY: scrub_gas() Conserves Moles"
 
 /datum/unit_test/atmos_machinery/conserve_moles/scrub_gas/start_test()
-	var/list/filtering = subtypesof(/decl/material/gas)
+	var/list/filtering = decls_repository.get_decl_paths_of_subtype(/decl/material/gas)
 	for(var/case_name in test_cases)
 		var/gas_mix_data = test_cases[case_name]
 		var/list/before_gas_mixes = create_gas_mixes(gas_mix_data)
@@ -213,14 +213,12 @@
 	name = "ATMOS MACHINERY: filter_gas() Conserves Moles"
 
 /datum/unit_test/atmos_machinery/conserve_moles/filter_gas/start_test()
-	var/list/filtering = subtypesof(/decl/material/gas)
+	var/list/filtering = decls_repository.get_decl_paths_of_subtype(/decl/material/gas)
 	for(var/case_name in test_cases)
 		var/gas_mix_data = test_cases[case_name]
 		var/list/before_gas_mixes = create_gas_mixes(gas_mix_data)
 		var/list/after_gas_mixes = create_gas_mixes(gas_mix_data)
-
 		filter_gas(null, filtering, after_gas_mixes["source"], after_gas_mixes["sink"], after_gas_mixes["source"], null, INFINITY)
-
 		check_moles_conserved(case_name, before_gas_mixes, after_gas_mixes)
 
 	return 1
@@ -235,7 +233,7 @@
 		var/list/after_gas_mixes = create_gas_mixes(gas_mix_data)
 
 		var/list/filtering = list()
-		for(var/gasid in subtypesof(/decl/material/gas))
+		for(var/gasid in decls_repository.get_decl_paths_of_subtype(/decl/material/gas))
 			filtering[gasid] = after_gas_mixes["sink"] //just filter everything to sink
 
 		filter_gas_multi(null, filtering, after_gas_mixes["source"], after_gas_mixes["sink"], null, INFINITY)
@@ -254,7 +252,7 @@
 		var/list/after_gas_mixes = create_gas_mixes(gas_mix_data)
 
 		var/list/mix_sources = list()
-		var/list/all_gasses = subtypesof(/decl/material/gas)
+		var/list/all_gasses = decls_repository.get_decl_paths_of_subtype(/decl/material/gas)
 		var/gas_count = length(all_gasses)
 		for(var/gasid in all_gasses)
 			var/datum/gas_mixture/mix_source = after_gas_mixes["sink"]
@@ -331,4 +329,92 @@
 		fail("Some pipes had conflicting connections.")
 	else
 		pass("All pipes were mapped properly.")
+	return 1
+
+/datum/unit_test/atmos_machinery_node_reciprocity
+	name = "ATMOS MACHINERY: all atmos machines shall be nodes of their nodes."
+
+/datum/unit_test/atmos_machinery_node_reciprocity/start_test()
+	var/fail = FALSE
+	for(var/obj/machinery/atmospherics/machine in SSmachines.machinery)
+		for(var/obj/machinery/atmospherics/node as anything in machine.nodes_to_networks)
+			if(node == machine)
+				log_bad("[log_info_line(machine)] was its own node.")
+				fail = TRUE
+			if(!(machine in node.nodes_to_networks))
+				log_bad("[log_info_line(machine)] has [log_info_line(node)] in its nodes list, but not vice versa.")
+				fail = TRUE
+
+	if(fail)
+		fail("Some machines failed to have reciprocal node connections.")
+	else
+		pass("All machines had reciprocal node connections.")
+	return 1
+
+/datum/unit_test/atmos_machinery_construction_inheritance
+	name = "ATMOS MACHINERY: all atmos machines shall deconstruct and reconstruct themselves."
+
+/datum/unit_test/atmos_machinery_construction_inheritance/proc/check_machine(var/obj/machinery/atmospherics/machine, var/obj/item/pipe/pipe)
+	. = FALSE
+	if(!machine.construct_state)
+		return
+
+	var/pipe_class = machine.pipe_class
+	var/rotate_class = machine.rotate_class
+	var/connect_types = machine.connect_types
+	var/dir = machine.dir
+
+	if(pipe_class != pipe.pipe_class)
+		log_bad("Machine of type [machine.type] had pipe with class [pipe.pipe_class]; was expecting [pipe_class].")
+		. = TRUE
+	if(rotate_class != pipe.rotate_class)
+		log_bad("Machine of type [machine.type] had pipe with rotate class [pipe.rotate_class]; was expecting [rotate_class].")
+		. = TRUE
+	if(connect_types != pipe.connect_types)
+		log_bad("Machine of type [machine.type] had pipe with connect type [pipe.connect_types]; was expecting [connect_types].")
+		. = TRUE
+	if(dir != pipe.dir)
+		log_bad("Machine of type [machine.type] had pipe with dir [pipe.dir]; was expecting [dir].")
+		. = TRUE
+
+/datum/unit_test/atmos_machinery_construction_inheritance/start_test()
+	var/fail = FALSE
+
+	// make a place to test
+	INCREMENT_WORLD_Z_SIZE
+	for(var/turf/T in block(locate(1, 1, world.maxz), locate(3, 3, world.maxz)))
+		T.ChangeTurf(/turf/simulated/floor)
+	var/turf/T = locate(2, 2, world.maxz)
+
+	// first, every spawnable machine ("mapped" behavior)
+	for(var/type in subtypesof(/obj/machinery/atmospherics))
+		var/obj/machinery/atmospherics/machine = new type(T)
+		var/obj/item/pipe/pipe = machine.dismantle()
+		if(!istype(pipe))
+			qdel(pipe)
+			continue
+
+		fail |= check_machine(machine, pipe)
+		qdel(pipe)
+
+	if(!fail)
+		// then, pipes from machine datums are used to spawn machines ("player-built" behavior)
+		for(var/type in subtypesof(/datum/fabricator_recipe/pipe))
+			var/datum/fabricator_recipe/pipe/recipe = new type()
+			var/list/stuff = recipe.build(T, new/datum/fabricator_build_order(recipe) )
+			var/obj/item/pipe/pipe = locate() in stuff
+			if(pipe)
+				stuff -= pipe
+				var/obj/machinery/atmospherics/machine = pipe.construct_pipe(T)
+				if(!istype(machine))
+					qdel(machine)
+				else
+					fail |= check_machine(machine, pipe) // compare to a newly built machine
+					qdel(machine)
+			QDEL_NULL_LIST(stuff) // clean up just in case
+
+	if(fail)
+		fail("Some atmos machines failed to rebuild themselves from pipes.")
+	else
+		pass("All atmos machines rebuilt themselves from pipes.")
 	return 1

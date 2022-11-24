@@ -5,21 +5,23 @@
 	icon_state = "fireaxe"
 	anchored = 1
 	density = 0
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'EAST':{'x':-32}, 'WEST':{'x':32}}"
 
 	var/damage_threshold = 15
 	var/open
 	var/unlocked
 	var/shattered
-	var/obj/item/material/twohanded/fireaxe/fireaxe
+	var/obj/item/twohanded/fireaxe/fireaxe
 
 /obj/structure/fireaxecabinet/on_update_icon()
-	overlays.Cut()
+	..()
 	if(fireaxe)
-		overlays += image(icon, "fireaxe_item")
+		add_overlay("fireaxe_item")
 	if(shattered)
-		overlays += image(icon, "fireaxe_window_broken")
+		add_overlay("fireaxe_window_broken")
 	else if(!open)
-		overlays += image(icon, "fireaxe_window")
+		add_overlay("fireaxe_window")
 
 /obj/structure/fireaxecabinet/Initialize()
 	. = ..()
@@ -35,25 +37,20 @@
 		return
 	toggle_open(user)
 
-/obj/structure/fireaxecabinet/MouseDrop(over_object, src_location, over_location)
-	if(over_object == usr)
-		var/mob/user = over_object
-		if(!istype(user))
-			return
-
+/obj/structure/fireaxecabinet/handle_mouse_drop(atom/over, mob/user)
+	if(over == user)
 		if(!open)
-			to_chat(user, "<span class='warning'>\The [src] is closed.</span>")
-			return
-
+			to_chat(user, SPAN_WARNING("\The [src] is closed."))
+			return TRUE
 		if(!fireaxe)
-			to_chat(user, "<span class='warning'>\The [src] is empty.</span>")
-			return
-
+			to_chat(user, SPAN_WARNING("\The [src] is empty."))
+			return TRUE
 		user.put_in_hands(fireaxe)
 		fireaxe = null
 		update_icon()
+		return TRUE
+	. = ..()
 
-	return
 /obj/structure/fireaxecabinet/Destroy()
 	QDEL_NULL(fireaxe)
 	. = ..()
@@ -66,11 +63,11 @@
 
 /obj/structure/fireaxecabinet/attackby(var/obj/item/O, var/mob/user)
 
-	if(isMultitool(O))
+	if(IS_MULTITOOL(O))
 		toggle_lock(user)
 		return
 
-	if(istype(O, /obj/item/material/twohanded/fireaxe))
+	if(istype(O, /obj/item/twohanded/fireaxe))
 		if(open)
 			if(fireaxe)
 				to_chat(user, "<span class='warning'>There is already \a [fireaxe] inside \the [src].</span>")

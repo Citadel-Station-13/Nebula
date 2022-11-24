@@ -5,7 +5,7 @@
 	desc = "A simple grasping tool specialized in construction and engineering work."
 	icon = 'icons/obj/items/borg_module/borg_gripper.dmi'
 	icon_state = "gripper"
-
+	health = ITEM_HEALTH_NO_DAMAGE
 	item_flags = ITEM_FLAG_NO_BLUDGEON
 
 	//Has a list of items that it can hold.
@@ -15,14 +15,14 @@
 		/obj/item/tracker_electronics,
 		/obj/item/stock_parts,
 		/obj/item/frame,
-		/obj/item/camera_assembly,
+		/obj/item/frame/camera/kit,
 		/obj/item/tank,
 		/obj/item/stock_parts/circuitboard,
 		/obj/item/stock_parts/smes_coil,
 		/obj/item/stock_parts/computer,
 		/obj/item/fuel_assembly,
-		/obj/item/stack/material/deuterium,
-		/obj/item/stack/material/tritium,
+		/obj/item/stack/material/aerogel/mapped/deuterium,
+		/obj/item/stack/material/aerogel/mapped/tritium,
 		/obj/item/stack/tile
 		)
 
@@ -46,14 +46,14 @@
 	desc = "A simple grasping tool for clerical work."
 
 	can_hold = list(
-		/obj/item/material/clipboard,
+		/obj/item/clipboard,
 		/obj/item/paper,
 		/obj/item/paper_bundle,
 		/obj/item/photo,
 		/obj/item/card/id,
 		/obj/item/book,
 		/obj/item/newspaper,
-		/obj/item/smallDelivery,
+		/obj/item/parcel,
 		/obj/item/forensics/sample
 		)
 
@@ -65,9 +65,8 @@
 		/obj/item/chems/glass,
 		/obj/item/chems/pill,
 		/obj/item/chems/ivbag,
-		/obj/item/stack/material/phoron,
-		/obj/item/storage/pill_bottle,
-		)
+		/obj/item/storage/pill_bottle
+	)
 
 /obj/item/gripper/research //A general usage gripper, used for toxins/robotics/xenobio/etc
 	name = "scientific gripper"
@@ -85,9 +84,8 @@
 		/obj/item/organ/internal/posibrain,
 		/obj/item/stack/cable_coil,
 		/obj/item/stock_parts/circuitboard,
-		/obj/item/slime_extract,
 		/obj/item/chems/glass,
-		/obj/item/chems/food/snacks/monkeycube,
+		/obj/item/chems/food/monkeycube,
 		/obj/item/stock_parts/computer,
 		/obj/item/transfer_valve,
 		/obj/item/assembly/signaler,
@@ -105,7 +103,6 @@
 		/obj/item/chems/glass,
 		/obj/item/seeds,
 		/obj/item/grown,
-		/obj/item/slime_extract,
 		/obj/item/disk/botany
 	)
 
@@ -116,6 +113,8 @@
 	can_hold = list(
 		/obj/item/chems/glass,
 		/obj/item/chems/food,
+		/obj/item/chems/drinks,
+		/obj/item/chems/condiment,
 		/obj/item/seeds,
 		/obj/item/grown,
 		/obj/item/glass_extra
@@ -144,7 +143,7 @@
 
 	can_hold = list(
 		/obj/item/stack/material
-		)
+	)
 
 /obj/item/gripper/examine(mob/user)
 	. = ..()
@@ -214,7 +213,7 @@
 
 		//We can grab the item, finally.
 		if(grab)
-			if(I == user.s_active)
+			if(I == user.active_storage)
 				var/obj/item/storage/storage = I
 				storage.close(user) //Closes the ui.
 			if(istype(I.loc, /obj/item/storage))
@@ -272,11 +271,11 @@
 
 //TODO: Matter decompiler.
 /obj/item/matter_decompiler
-
 	name = "matter decompiler"
 	desc = "Eating trash, bits of glass, or other debris will replenish your stores."
 	icon = 'icons/obj/items/borg_module/decompiler.dmi'
 	icon_state = "decompiler"
+	health = ITEM_HEALTH_NO_DAMAGE
 
 	//Metal, glass, wood, plastic.
 	var/datum/matter_synth/metal = null
@@ -380,13 +379,13 @@
 		else if(istype(W,/obj/item/ammo_casing))
 			if(metal)
 				metal.add_charge(1000)
-		else if(istype(W,/obj/item/material/shard/shrapnel))
+		else if(istype(W,/obj/item/shard/shrapnel))
 			if(metal)
 				metal.add_charge(1000)
-		else if(istype(W,/obj/item/material/shard))
+		else if(istype(W,/obj/item/shard))
 			if(glass)
 				glass.add_charge(1000)
-		else if(istype(W,/obj/item/chems/food/snacks/grown))
+		else if(istype(W,/obj/item/chems/food/grown))
 			if(wood)
 				wood.add_charge(4000)
 		else if(istype(W,/obj/item/pipe))

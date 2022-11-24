@@ -7,7 +7,7 @@
 if (Datum.is_processing) {\
 	if(Datum.is_processing != "SSmachines.[#List]")\
 	{\
-		crash_with("Failed to start processing. [log_info_line(Datum)] is already being processed by [Datum.is_processing] but queue attempt occured on SSmachines.[#List]."); \
+		PRINT_STACK_TRACE("Failed to start processing. [log_info_line(Datum)] is already being processed by [Datum.is_processing] but queue attempt occured on SSmachines.[#List]."); \
 	}\
 } else {\
 	Datum.is_processing = "SSmachines.[#List]";\
@@ -19,7 +19,7 @@ if(Datum.is_processing) {\
 	if(SSmachines.List.Remove(Datum)) {\
 		Datum.is_processing = null;\
 	} else {\
-		crash_with("Failed to stop processing. [log_info_line(Datum)] is being processed by [is_processing] and not found in SSmachines.[#List]"); \
+		PRINT_STACK_TRACE("Failed to stop processing. [log_info_line(Datum)] is being processed by [is_processing] and not found in SSmachines.[#List]"); \
 	}\
 }
 
@@ -62,9 +62,9 @@ SUBSYSTEM_DEF(machines)
 
 #define INTERNAL_PROCESS_STEP(this_step, check_resumed, proc_to_call, cost_var, next_step)\
 if(current_step == this_step || (check_resumed && !resumed)) {\
-	timer = TICK_USAGE_REAL;\
+	timer = TICK_USAGE;\
 	proc_to_call(resumed);\
-	cost_var = MC_AVERAGE(cost_var, TICK_DELTA_TO_MS(TICK_USAGE_REAL - timer));\
+	cost_var = MC_AVERAGE(cost_var, TICK_DELTA_TO_MS(TICK_USAGE - timer));\
 	if(state != SS_RUNNING){\
 		return;\
 	}\
@@ -73,7 +73,7 @@ if(current_step == this_step || (check_resumed && !resumed)) {\
 }
 
 /datum/controller/subsystem/machines/fire(resumed = 0)
-	var/timer = TICK_USAGE_REAL
+	var/timer = TICK_USAGE
 
 	INTERNAL_PROCESS_STEP(SSMACHINES_PIPENETS,TRUE,process_pipenets,cost_pipenets,SSMACHINES_MACHINERY)
 	INTERNAL_PROCESS_STEP(SSMACHINES_MACHINERY,FALSE,process_machinery,cost_machinery,SSMACHINES_POWERNETS)
@@ -88,7 +88,7 @@ if(current_step == this_step || (check_resumed && !resumed)) {\
 	for(var/datum/powernet/PN in powernets)
 		qdel(PN)
 	powernets.Cut()
-	setup_powernets_for_cables(cable_list)
+	setup_powernets_for_cables(global.cable_list)
 
 /datum/controller/subsystem/machines/proc/setup_powernets_for_cables(list/cables)
 	for(var/obj/structure/cable/PC in cables)
@@ -156,15 +156,15 @@ if(current_step == this_step || (check_resumed && !resumed)) {\
 			if(M in processing)
 				processing.Remove(M)
 				M.is_processing = null
-				crash_with("[log_info_line(M)] was found illegally queued on SSmachines.")
+				PRINT_STACK_TRACE("[log_info_line(M)] was found illegally queued on SSmachines.")
 				continue
 			else if(resumed)
 				current_run.Cut() // Abandon current run; assuming that we were improperly resumed with the wrong process queue.
-				crash_with("[log_info_line(M)] was in the wrong subqueue on SSmachines on a resumed fire.")
+				PRINT_STACK_TRACE("[log_info_line(M)] was in the wrong subqueue on SSmachines on a resumed fire.")
 				process_machinery(0)
 				return
 			else // ??? possibly dequeued by another machine or something ???
-				crash_with("[log_info_line(M)] was in the wrong subqueue on SSmachines on an unresumed fire.")
+				PRINT_STACK_TRACE("[log_info_line(M)] was in the wrong subqueue on SSmachines on an unresumed fire.")
 				continue
 
 		if(!QDELETED(M) && (M.ProcessAll(wait) == PROCESS_KILL))

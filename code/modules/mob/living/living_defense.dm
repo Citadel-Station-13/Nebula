@@ -53,8 +53,7 @@
 		return TRUE
 	. = TRUE
 	var/list/newargs = args - args[1]
-	for(var/a in auras)
-		var/obj/aura/aura = a
+	for(var/obj/aura/aura as anything in auras)
 		var/result = 0
 		switch(type)
 			if(AURA_TYPE_WEAPON)
@@ -76,8 +75,8 @@
 	flash_pain()
 
 	if (stun_amount)
-		Stun(stun_amount)
-		Weaken(stun_amount)
+		SET_STATUS_MAX(src, STAT_STUN, stun_amount)
+		SET_STATUS_MAX(src, STAT_WEAK, stun_amount)
 		apply_effect(stun_amount, STUTTER)
 		apply_effect(stun_amount, EYE_BLUR)
 
@@ -116,28 +115,21 @@
 
 //returns 0 if the effects failed to apply for some reason, 1 otherwise.
 /mob/living/standard_weapon_hit_effects(obj/item/I, mob/living/user, var/effective_force, var/hit_zone)
-	if(!effective_force)
-		return 0
-
-	//Hulk modifier
-	if(MUTATION_HULK in user.mutations)
-		effective_force *= 2
-
-	//Apply weapon damage
-	var/damage_flags = I.damage_flags()
-
-	return apply_damage(effective_force, I.damtype, hit_zone, damage_flags, used_weapon=I)
+	if(effective_force)
+		return apply_damage(effective_force, I.damtype, hit_zone, I.damage_flags(), used_weapon=I, armor_pen=I.armor_penetration)
 
 //this proc handles being hit by a thrown atom
 /mob/living/hitby(var/atom/movable/AM, var/datum/thrownthing/TT)
+
+	..()
 
 	if(isliving(AM))
 		var/mob/living/M = AM
 		playsound(loc, 'sound/weapons/pierce.ogg', 25, 1, -1)
 		if(skill_fail_prob(SKILL_COMBAT, 75))
-			Weaken(rand(3,5))
+			SET_STATUS_MAX(src, STAT_WEAK, rand(3,5))
 		if(M.skill_fail_prob(SKILL_HAULING, 100))
-			M.Weaken(rand(4,8))
+			SET_STATUS_MAX(M, STAT_WEAK, rand(4,8))
 		M.visible_message(SPAN_DANGER("\The [M] collides with \the [src]!"))
 
 	if(!aura_check(AURA_TYPE_THROWN, AM, TT.speed))
@@ -194,11 +186,13 @@
 		forceMove(T)
 		visible_message(SPAN_DANGER("[src] is pinned to the wall by [O]!"),SPAN_DANGER("You are pinned to the wall by [O]!"))
 		src.anchored = 1
-		src.pinned += O
+		LAZYADD(pinned, O)
+		if(!LAZYISIN(embedded,O))
+			embed(O)
 
 /mob/living/proc/embed(var/obj/O, var/def_zone=null, var/datum/wound/supplied_wound)
 	O.forceMove(src)
-	src.embedded += O
+	LAZYADD(embedded, O)
 	src.verbs += /mob/proc/yank_out_object
 
 //This is called when the mob is thrown into a dense turf
@@ -239,7 +233,7 @@
 /mob/living/proc/IgniteMob()
 	if(fire_stacks > 0 && !on_fire)
 		on_fire = 1
-		set_light(0.6, 0.1, 4, l_color = COLOR_ORANGE)
+		set_light(4, l_color = COLOR_ORANGE)
 		update_fire()
 
 /mob/living/proc/ExtinguishMob()
@@ -253,7 +247,7 @@
 	return
 
 /mob/living/proc/adjust_fire_stacks(add_fire_stacks) //Adjusting the amount of fire_stacks we have on person
-	fire_stacks = Clamp(fire_stacks + add_fire_stacks, FIRE_MIN_STACKS, FIRE_MAX_STACKS)
+	fire_stacks = clamp(fire_stacks + add_fire_stacks, FIRE_MIN_STACKS, FIRE_MAX_STACKS)
 
 /mob/living/proc/handle_fire()
 	if(fire_stacks < 0)
@@ -299,73 +293,6 @@
 
 /mob/living/proc/reagent_permeability()
 	return 1
-
-/mob/living/proc/handle_actions()
-	//Pretty bad, i'd use picked/dropped instead but the parent calls in these are nonexistent
-	for(var/datum/action/A in actions)
-		if(A.CheckRemoval(src))
-			A.Remove(src)
-	for(var/obj/item/I in src)
-		if(I.action_button_name)
-			if(!I.action)
-				I.action = new I.default_action_type
-			I.action.name = I.action_button_name
-			I.action.SetTarget(I)
-			I.action.Grant(src)
-	return
-
-/mob/living/update_action_buttons()
-	if(!hud_used) return
-	if(!client) return
-
-	if(hud_used.hud_shown != 1)	//Hud toggled to minimal
-		return
-
-	client.screen -= hud_used.hide_actions_toggle
-	for(var/datum/action/A in actions)
-		if(A.button)
-			client.screen -= A.button
-
-	if(hud_used.action_buttons_hidden)
-		if(!hud_used.hide_actions_toggle)
-			hud_used.hide_actions_toggle = new(hud_used)
-			hud_used.hide_actions_toggle.UpdateIcon()
-
-		if(!hud_used.hide_actions_toggle.moved)
-			hud_used.hide_actions_toggle.screen_loc = hud_used.ButtonNumberToScreenCoords(1)
-			//hud_used.SetButtonCoords(hud_used.hide_actions_toggle,1)
-
-		client.screen += hud_used.hide_actions_toggle
-		return
-
-	var/button_number = 0
-	for(var/datum/action/A in actions)
-		button_number++
-		if(A.button == null)
-			var/obj/screen/movable/action_button/N = new(hud_used)
-			N.owner = A
-			A.button = N
-
-		var/obj/screen/movable/action_button/B = A.button
-
-		B.UpdateIcon()
-
-		B.SetName(A.UpdateName())
-
-		client.screen += B
-
-		if(!B.moved)
-			B.screen_loc = hud_used.ButtonNumberToScreenCoords(button_number)
-			//hud_used.SetButtonCoords(B,button_number)
-
-	if(button_number > 0)
-		if(!hud_used.hide_actions_toggle)
-			hud_used.hide_actions_toggle = new(hud_used)
-			hud_used.hide_actions_toggle.InitialiseIcon(src)
-		if(!hud_used.hide_actions_toggle.moved)
-			hud_used.hide_actions_toggle.screen_loc = hud_used.ButtonNumberToScreenCoords(button_number+1)
-			//hud_used.SetButtonCoords(hud_used.hide_actions_toggle,button_number+1)
-		client.screen += hud_used.hide_actions_toggle
 
 /mob/living/lava_act(datum/gas_mixture/air, temperature, pressure)
 	fire_act(air, temperature)

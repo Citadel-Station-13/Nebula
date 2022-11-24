@@ -11,7 +11,15 @@
 
 /obj/machinery/computer/design_console/Initialize()
 	. = ..()
-	set_extension(src, /datum/extension/network_device, initial_network_id, initial_network_key, NETWORK_CONNECTION_WIRED)
+	set_extension(src, /datum/extension/network_device, initial_network_id, initial_network_key, RECEIVER_STRONG_WIRELESS)
+
+/obj/machinery/computer/design_console/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(initial_network_id, map_hash)
+
+/obj/machinery/computer/design_console/handle_post_network_connection()
+	..()
+	sync_network()
 
 /obj/machinery/computer/design_console/attackby(obj/item/I, mob/user)
 	if(istype(I, /obj/item/disk/design_disk))
@@ -36,11 +44,6 @@
 		return TRUE
 	return FALSE
 
-/obj/machinery/computer/design_console/AltClick(mob/user)
-	if(disk)
-		eject_disk()
-	. = ..()
-
 /obj/machinery/computer/design_console/interface_interact(mob/user)
 	ui_interact(user)
 	return TRUE
@@ -64,7 +67,7 @@
 		var/list/show_tech_levels = list()
 		for(var/tech in viewing_database.tech_levels)
 			var/decl/research_field/field = SSfabrication.get_research_field_by_id(tech)
-			show_tech_levels += list(list("field" = field.name, "level" = "[viewing_database.tech_levels[tech]].0 GQ"))
+			show_tech_levels += list(list("field" = field.name, "desc" = field.desc, "level" = "[viewing_database.tech_levels[tech]].0 GQ"))
 		data["tech_levels"] = show_tech_levels
 
 	else if(showing_designs)
@@ -82,11 +85,11 @@
 		var/list/show_tech_levels = list()
 		for(var/tech in local_cache)
 			var/decl/research_field/field = SSfabrication.get_research_field_by_id(tech)
-			show_tech_levels += list(list("field" = field.name, "level" = "[local_cache[tech]].0 GQ"))
+			show_tech_levels += list(list("field" = field.name, "level" = "[local_cache[tech]].0 GQ", "desc" = field.desc))
 		data["tech_levels"] = show_tech_levels
 
 		var/list/found_databases = list()
-		for(var/obj/machinery/design_database/db in network?.get_devices_by_type(/obj/machinery/design_database, user))
+		for(var/obj/machinery/design_database/db in network?.get_devices_by_type(/obj/machinery/design_database, user.GetAccess()))
 			var/list/database = list("name" = db.name, "ref" = "\ref[db]")
 			if(db.stat & (BROKEN|NOPOWER))
 				database["status"] = "Offline"
@@ -97,7 +100,7 @@
 		data["connected_databases"] = found_databases
 
 		var/list/found_analyzers = list()
-		for(var/obj/machinery/destructive_analyzer/az in network?.get_devices_by_type(/obj/machinery/destructive_analyzer, user))
+		for(var/obj/machinery/destructive_analyzer/az in network?.get_devices_by_type(/obj/machinery/destructive_analyzer, user.GetAccess()))
 			var/list/analyzer = list("name" = az.name, "ref" = "\ref[az]")
 			if(az.stat & (BROKEN|NOPOWER))
 				analyzer["status"] = "Offline"
@@ -174,12 +177,18 @@
 	if(!(analyzer in network?.get_devices_by_type(/obj/machinery/destructive_analyzer)))
 		return
 	var/list/adding_to_cache = analyzer.process_loaded()
-	LAZYINITLIST(local_cache)
-	for(var/tech in adding_to_cache)
-		local_cache[tech] = max(local_cache[tech], adding_to_cache[tech])
-	UNSETEMPTY(local_cache)
-	if(length(local_cache))
-		sync_network()
+	if(length(adding_to_cache))
+		LAZYINITLIST(local_cache)
+		for(var/tech in adding_to_cache)
+			var/current_level = local_cache[tech]     || 0
+			var/new_level =     adding_to_cache[tech] || 0
+			if(new_level == current_level)
+				local_cache[tech] = current_level+1
+			else
+				local_cache[tech] = max(current_level, new_level)
+		UNSETEMPTY(local_cache)
+		if(length(local_cache))
+			sync_network()
 
 /obj/machinery/computer/design_console/proc/get_network_tech_levels()
 	. = local_cache || list()
@@ -210,3 +219,20 @@
 	var/list/techs = get_network_tech_levels()
 	for(var/obj/machinery/fabricator/fab in network.get_devices_by_type(/obj/machinery/fabricator))
 		fab.refresh_design_cache(techs)
+
+/obj/machinery/computer/design_console/get_alt_interactions(var/mob/user)
+	. = ..()
+	LAZYADD(., /decl/interaction_handler/remove_disk/console)
+
+/decl/interaction_handler/remove_disk/console
+	expected_target_type = /obj/machinery/computer/design_console
+
+/decl/interaction_handler/remove_disk/console/is_possible(atom/target, mob/user, obj/item/prop)
+	. = ..()
+	if(.)
+		var/obj/machinery/computer/design_console/D = target
+		. = !!D.disk
+
+/decl/interaction_handler/remove_disk/console/invoked(atom/target, mob/user, obj/item/prop)
+	var/obj/machinery/computer/design_console/D = target
+	D.eject_disk(user)

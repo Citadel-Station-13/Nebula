@@ -1,8 +1,11 @@
 /mob/living/carbon/Initialize()
 	//setup reagent holders
-	bloodstr = new/datum/reagents/metabolism(120, src, CHEM_INJECT)
-	touching = new/datum/reagents/metabolism(1000, src, CHEM_TOUCH)
-	reagents = bloodstr
+	if(!bloodstr)
+		bloodstr = new/datum/reagents/metabolism(120, src, CHEM_INJECT)
+	if(!reagents)
+		reagents = bloodstr
+	if(!touching)
+		touching = new/datum/reagents/metabolism(1000, src, CHEM_TOUCH)
 
 	if (!default_language && species_language)
 		default_language = species_language
@@ -10,8 +13,9 @@
 
 /mob/living/carbon/Destroy()
 	QDEL_NULL(touching)
-	bloodstr = null // We don't qdel(bloodstr) because it's the same as qdel(reagents)
-	QDEL_NULL_LIST(internal_organs)
+	QDEL_NULL(bloodstr)
+	reagents = null //We assume reagents is a reference to bloodstr here
+	delete_organs()
 	QDEL_NULL_LIST(hallucinations)
 	if(loc)
 		for(var/mob/M in contents)
@@ -22,11 +26,6 @@
 	return ..()
 
 /mob/living/carbon/rejuvenate()
-	bloodstr.clear_reagents()
-	touching.clear_reagents()
-	var/datum/reagents/R = get_ingested_reagents()
-	if(istype(R))
-		R.clear_reagents()
 	set_nutrition(400)
 	set_hydration(400)
 	..()
@@ -42,10 +41,6 @@
 		return
 
 	if(stat != DEAD)
-
-		if((MUTATION_FAT in src.mutations) && (move_intent.flags & MOVE_INTENT_EXERTIVE) && src.bodytemperature <= 360)
-			bodytemperature += 2
-
 		var/nut_removed = DEFAULT_HUNGER_FACTOR/10
 		var/hyd_removed = DEFAULT_THIRST_FACTOR/10
 		if (move_intent.flags & MOVE_INTENT_EXERTIVE)
@@ -68,7 +63,7 @@
 				var/d = rand(round(I.force / 4), I.force)
 				if(istype(src, /mob/living/carbon/human))
 					var/mob/living/carbon/human/H = src
-					var/obj/item/organ/external/organ = H.get_organ(BP_CHEST)
+					var/obj/item/organ/external/organ = GET_EXTERNAL_ORGAN(H, BP_CHEST)
 					if (istype(organ))
 						organ.take_external_damage(d, 0)
 					H.updatehealth()
@@ -80,19 +75,11 @@
 				if(prob(src.getBruteLoss() - 50))
 					gib()
 
-/mob/living/carbon/gib()
+/mob/living/carbon/gib(anim="gibbed-m",do_gibs)
 	for(var/mob/M in contents)
 		M.dropInto(loc)
 		visible_message(SPAN_DANGER("\The [M] bursts out of \the [src]!"))
 	..()
-
-/mob/living/carbon/attack_hand(var/mob/living/carbon/human/M)
-	if(istype(M))
-		var/obj/item/organ/external/temp = M.organs_by_name[M.hand ? BP_L_HAND : BP_R_HAND]
-		if(!temp || !temp.is_usable())
-			to_chat(M, SPAN_WARNING("You can't use your [temp.name]."))
-			return TRUE
-	. = ..()
 
 /mob/living/carbon/electrocute_act(var/shock_damage, var/obj/source, var/siemens_coeff = 1.0, var/def_zone = null)
 	if(status_flags & GODMODE)	return 0	//godmode
@@ -120,21 +107,19 @@
 
 	switch(shock_damage)
 		if(11 to 15)
-			Stun(1)
+			SET_STATUS_MAX(src, STAT_STUN, 1)
 		if(16 to 20)
-			Stun(2)
+			SET_STATUS_MAX(src, STAT_STUN, 2)
 		if(21 to 25)
-			Weaken(2)
+			SET_STATUS_MAX(src, STAT_WEAK, 2)
 		if(26 to 30)
-			Weaken(5)
+			SET_STATUS_MAX(src, STAT_WEAK, 5)
 		if(31 to INFINITY)
-			Weaken(10) //This should work for now, more is really silly and makes you lay there forever
+			SET_STATUS_MAX(src, STAT_WEAK, 10) //This should work for now, more is really silly and makes you lay there forever
 
-	make_jittery(min(shock_damage*5, 200))
+	set_status(STAT_JITTER, min(shock_damage*5, 200))
 
-	var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-	s.set_up(5, 1, loc)
-	s.start()
+	spark_at(loc, amount=5, cardinal_only = TRUE)
 
 	return shock_damage
 
@@ -148,33 +133,7 @@
 	return(shock_damage)
 
 /mob/proc/swap_hand()
-	return
-
-/mob/living/carbon/swap_hand()
-	hand = !hand
-	if(hud_used.l_hand_hud_object && hud_used.r_hand_hud_object)
-		if(hand)	//This being 1 means the left hand is in use
-			hud_used.l_hand_hud_object.icon_state = "l_hand_active"
-			hud_used.r_hand_hud_object.icon_state = "r_hand_inactive"
-		else
-			hud_used.l_hand_hud_object.icon_state = "l_hand_inactive"
-			hud_used.r_hand_hud_object.icon_state = "r_hand_active"
-	var/obj/item/I = get_active_hand()
-	if(istype(I))
-		I.on_active_hand()
-
-/mob/living/carbon/proc/activate_hand(var/selhand) //0 or "r" or "right" for right hand; 1 or "l" or "left" for left hand.
-
-	if(istext(selhand))
-		selhand = lowertext(selhand)
-
-		if(selhand == "right" || selhand == "r")
-			selhand = 0
-		if(selhand == "left" || selhand == "l")
-			selhand = 1
-
-	if(selhand != src.hand)
-		swap_hand()
+	SHOULD_CALL_PARENT(TRUE)
 
 /mob/living/carbon/proc/help_shake_act(mob/living/carbon/M)
 	if(!is_asystole())
@@ -207,40 +166,29 @@
 				t_him = "him"
 			else if (src.gender == FEMALE)
 				t_him = "her"
-			if (istype(src,/mob/living/carbon/human) && src:w_uniform)
-				var/mob/living/carbon/human/H = src
-				H.w_uniform.add_fingerprint(M)
 
-			var/show_ssd
-			var/mob/living/carbon/human/H = src
-			if(istype(H)) show_ssd = H.species.show_ssd
+			var/obj/item/uniform = get_equipped_item(slot_w_uniform_str)
+			if(uniform)
+				uniform.add_fingerprint(M)
+
+			var/show_ssd = get_species_name()
 			if(show_ssd && ssd_check())
 				M.visible_message("<span class='notice'>[M] shakes [src] trying to wake [t_him] up!</span>", \
 				"<span class='notice'>You shake [src], but they do not respond... Maybe they have S.S.D?</span>")
-			else if(lying || src.sleeping || player_triggered_sleeping)
-				src.player_triggered_sleeping = 0
-				src.sleeping = max(0,src.sleeping - 5)
-				if(src.sleeping == 0)
-					src.resting = 0
+			else if(lying ||HAS_STATUS(src, STAT_ASLEEP) || player_triggered_sleeping)
+				player_triggered_sleeping = 0
+				ADJ_STATUS(src, STAT_ASLEEP, -5)
+				if(!HAS_STATUS(src, STAT_ASLEEP))
+					resting = FALSE
 				M.visible_message("<span class='notice'>[M] shakes [src] trying to wake [t_him] up!</span>", \
 									"<span class='notice'>You shake [src] trying to wake [t_him] up!</span>")
 			else
-				var/mob/living/carbon/human/hugger = M
-				if(istype(hugger))
-					hugger.species.hug(hugger,src)
-				else
-					M.visible_message("<span class='notice'>[M] hugs [src] to make [t_him] feel better!</span>", \
-								"<span class='notice'>You hug [src] to make [t_him] feel better!</span>")
-				if(M.fire_stacks >= (src.fire_stacks + 3))
-					src.fire_stacks += 1
-					M.fire_stacks -= 1
-				if(M.on_fire)
-					src.IgniteMob()
+				M.attempt_hug(src)
 
 			if(stat != DEAD)
-				AdjustParalysis(-3)
-				AdjustStunned(-3)
-				AdjustWeakened(-3)
+				ADJ_STATUS(src, STAT_PARA, -3)
+				ADJ_STATUS(src, STAT_STUN, -3)
+				ADJ_STATUS(src, STAT_WEAK, -3)
 
 			playsound(src.loc, 'sound/weapons/thudswoosh.ogg', 50, 1, -1)
 
@@ -248,30 +196,22 @@
 	if(eyecheck() < intensity || override_blindness_check)
 		return ..()
 
-// ++++ROCKDTBEN++++ MOB PROCS -- Ask me before touching.
-// Stop! ... Hammertime! ~Carn
-
-/mob/living/carbon/proc/getDNA()
-	return dna
-
-/mob/living/carbon/proc/setDNA(var/datum/dna/newDNA)
-	dna = newDNA
-
-// ++++ROCKDTBEN++++ MOB PROCS //END
-
 //Throwing stuff
 /mob/proc/throw_item(atom/target)
 	return
 
-/mob/living/carbon/throw_item(atom/target)
+/mob/living/carbon/throw_item(atom/target, obj/item/item)
 	src.throw_mode_off()
 	if(src.stat || !target)
 		return
-	if(target.type == /obj/screen) return
+	if(target.type == /obj/screen)
+		return
 
-	var/atom/movable/item = src.get_active_hand()
+	if(!item)
+		item = get_active_hand()
 
-	if(!item) return
+	if(!istype(item) || !(item in get_held_items()))
+		return
 
 	var/throw_range = item.throw_range
 	var/itemsize
@@ -295,16 +235,16 @@
 		var/obj/item/I = item
 		itemsize = I.w_class
 
-	if(!unEquip(item))
+	if(!unEquip(item, play_dropsound = FALSE))
 		return
 	if(!item || !isturf(item.loc))
 		return
 
-	var/message = "\The [src] has thrown \the [item]."
+	var/message = "\The [src] has thrown \the [item]!"
 	var/skill_mod = 0.2
 	if(!skill_check(SKILL_HAULING, min(round(itemsize - ITEM_SIZE_HUGE) + 2, SKILL_MAX)))
 		if(prob(30))
-			Weaken(2)
+			SET_STATUS_MAX(src, STAT_WEAK, 2)
 			message = "\The [src] barely manages to throw \the [item], and is knocked off-balance!"
 	else
 		skill_mod += 0.2
@@ -325,35 +265,32 @@
 
 	item.throw_at(target, throw_range, item.throw_speed * skill_mod, src)
 
+	playsound(src, 'sound/effects/throw.ogg', 50, 1)
+	animate_throw(src)
+
 /mob/living/carbon/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume)
 	..()
 	var/temp_inc = max(min(BODYTEMP_HEATING_MAX*(1-get_heat_protection()), exposed_temperature - bodytemperature), 0)
 	bodytemperature += temp_inc
 
 /mob/living/carbon/can_use_hands()
-	if(handcuffed)
+	if(get_equipped_item(slot_handcuffed_str))
 		return 0
 	if(buckled && ! istype(buckled, /obj/structure/bed/chair)) // buckling does not restrict hands
 		return 0
 	return 1
 
 /mob/living/carbon/restrained()
-	if (handcuffed)
-		return 1
-	return
+	return get_equipped_item(slot_handcuffed_str)
 
 /mob/living/carbon/u_equip(obj/item/W)
-	if(!W)	return 0
-
-	else if (W == handcuffed)
-		handcuffed = null
+	. = ..()
+	if(!. && W == get_equipped_item(slot_handcuffed_str))
+		_handcuffed = null
 		update_inv_handcuffed()
 		if(buckled && buckled.buckle_require_restraints)
 			buckled.unbuckle_mob()
-	else
-	 ..()
-
-	return
+		return TRUE
 
 /mob/living/carbon/verb/mob_sleep()
 	set name = "Sleep"
@@ -368,52 +305,28 @@
 	..()
 
 /mob/living/carbon/slip(slipped_on, stun_duration = 8)
-	if(!has_gravity())
-		return FALSE
-	if(buckled)
-		return FALSE
-	to_chat(src, SPAN_WARNING("You slipped on [slipped_on]!"))
-	playsound(loc, 'sound/misc/slip.ogg', 50, 1, -3)
-	Weaken(Floor(stun_duration/2))
-	return TRUE
-
-/mob/living/carbon/add_chemical_effect(var/effect, var/magnitude = 1)
-	if(effect in chem_effects)
-		chem_effects[effect] += magnitude
-	else
-		chem_effects[effect] = magnitude
-
-/mob/living/carbon/add_up_to_chemical_effect(var/effect, var/magnitude = 1)
-	if(effect in chem_effects)
-		chem_effects[effect] = max(magnitude, chem_effects[effect])
-	else
-		chem_effects[effect] = magnitude
-
-/mob/living/carbon/get_default_language()
-	. = ..()
-	if(. && !can_speak(.))
-		. = null
-
-/mob/living/carbon/proc/get_any_good_language(set_default=FALSE)
-	var/decl/language/result = get_default_language()
-	if (!result)
-		for (var/decl/language/L in languages)
-			if (can_speak(L))
-				result = L
-				if (set_default)
-					set_default_language(result)
-				break
-	return result
+	if(has_gravity() && !buckled && !lying)
+		to_chat(src, SPAN_DANGER("You slipped on [slipped_on]!"))
+		playsound(loc, 'sound/misc/slip.ogg', 50, 1, -3)
+		SET_STATUS_MAX(src, STAT_WEAK, stun_duration)
+		. = TRUE
 
 /mob/living/carbon/show_inv(mob/user)
 	user.set_machine(src)
+	var/obj/item/mask = get_equipped_item(slot_wear_mask_str)
 	var/dat = {"
 	<B><HR><FONT size=3>[name]</FONT></B>
 	<BR><HR>
-	<BR><B>Head(Mask):</B> <A href='?src=\ref[src];item=mask'>[(wear_mask ? wear_mask : "Nothing")]</A>
-	<BR><B>Left Hand:</B> <A href='?src=\ref[src];item=l_hand'>[(l_hand ? l_hand  : "Nothing")]</A>
-	<BR><B>Right Hand:</B> <A href='?src=\ref[src];item=r_hand'>[(r_hand ? r_hand : "Nothing")]</A>
-	<BR><B>Back:</B> <A href='?src=\ref[src];item=back'>[(back ? back : "Nothing")]</A> [((istype(wear_mask, /obj/item/clothing/mask) && istype(back, /obj/item/tank) && !( internal )) ? text(" <A href='?src=\ref[];item=internal'>Set Internal</A>", src) : "")]
+	<BR><B>Head(Mask):</B> <A href='?src=\ref[src];item=mask'>[(mask ? mask : "Nothing")]</A>"}
+
+	for(var/bp in held_item_slots)
+		var/obj/item/organ/external/E = GET_EXTERNAL_ORGAN(src, bp)
+		if(E)
+			var/datum/inventory_slot/inv_slot = held_item_slots[bp]
+			dat += "<BR><b>[capitalize(E.name)]:</b> <A href='?src=\ref[src];item=[bp]'>[inv_slot.holding?.name || "nothing"]</A>"
+
+	var/obj/item/back = get_equipped_item(slot_back_str)
+	dat += {"<BR><B>Back:</B> <A href='?src=\ref[src];item=back'>[(back || "Nothing")]</A> [((istype(mask, /obj/item/clothing/mask) && istype(back, /obj/item/tank) && !( internal )) ? text(" <A href='?src=\ref[];item=internal'>Set Internal</A>", src) : "")]
 	<BR>[(internal ? text("<A href='?src=\ref[src];item=internal'>Remove Internal</A>") : "")]
 	<BR><A href='?src=\ref[src];item=pockets'>Empty Pockets</A>
 	<BR><A href='?src=\ref[user];refresh=1'>Refresh</A>
@@ -429,16 +342,10 @@
 /mob/living/carbon/proc/can_devour(atom/movable/victim)
 	return FALSE
 
-/mob/living/carbon/proc/should_have_organ(var/organ_check)
-	return 0
-
-/mob/living/carbon/proc/can_feel_pain(var/check_organ)
+/mob/living/carbon/can_feel_pain(var/check_organ)
 	if(isSynthetic())
-		return 0
+		return FALSE
 	return !(species && species.species_flags & SPECIES_FLAG_NO_PAIN)
-
-/mob/living/carbon/proc/get_adjusted_metabolism(metabolism)
-	return metabolism
 
 /mob/living/carbon/proc/need_breathe()
 	return
@@ -472,20 +379,14 @@
 		stasis_value += stasis_sources[source]
 	stasis_sources.Cut()
 
-/mob/living/carbon/has_chem_effect(chem, threshold)
-	return (chem_effects[chem] >= threshold)
-
-/mob/living/carbon/get_sex()
-	return species.get_sex(src)
-
 /mob/living/carbon/proc/set_nutrition(var/amt)
-	nutrition = Clamp(amt, 0, initial(nutrition))
+	nutrition = clamp(amt, 0, initial(nutrition))
 
 /mob/living/carbon/adjust_nutrition(var/amt)
 	set_nutrition(nutrition + amt)
 
 /mob/living/carbon/proc/set_hydration(var/amt)
-	hydration = Clamp(amt, 0, initial(hydration))
+	hydration = clamp(amt, 0, initial(hydration))
 
 /mob/living/carbon/adjust_hydration(var/amt)
 	set_hydration(hydration + amt)
@@ -514,3 +415,105 @@
 		fluids.trans_to_holder(touching, saturation)
 	if(fluids.total_volume)
 		..()
+
+/mob/living/carbon/get_species()
+	return species
+
+/mob/living/carbon/get_species_name()
+	return species.name
+
+/mob/living/carbon/get_contact_reagents()
+	return touching
+
+/mob/living/carbon/get_injected_reagents()
+	return bloodstr
+
+/mob/living/carbon/get_admin_job_string()
+	return "Carbon-based"
+
+/mob/living/carbon/proc/get_possible_internals_sources()
+	. = list("back" = list(get_equipped_item(slot_back_str), "on"))
+
+/mob/living/carbon/proc/breathing_hole_covered()
+	var/obj/item/mask = get_equipped_item(slot_wear_mask_str)
+	. = (mask && (mask?.item_flags & ITEM_FLAG_AIRTIGHT))
+
+/mob/living/carbon/ui_toggle_internals()
+
+	if(incapacitated())
+		return
+
+	if(internal)
+		set_internals(null)
+		return
+
+	if(!breathing_hole_covered())
+		to_chat(src, SPAN_WARNING("You are not wearing a suitable mask or helmet."))
+		return
+
+	set_internals_to_best_available_tank()
+
+	if(!internal)
+		to_chat(src, SPAN_WARNING("You don't have a tank that is usable as internals."))
+
+
+/mob/living/carbon/proc/set_internals_to_best_available_tank(var/breathes_gas = /decl/material/gas/oxygen, var/list/poison_gas = list(/decl/material/gas/chlorine))
+
+	if(!ispath(breathes_gas))
+		return
+
+	var/list/possible_sources = get_possible_internals_sources()
+	for(var/slot in held_item_slots)
+		var/obj/item/tank/checking = get_equipped_item(slot)
+		if(istype(checking))
+			possible_sources[slot] = list(checking, "in")
+
+	var/selected_slot
+	var/selected_from
+	var/obj/item/tank/selected_obj
+	var/decl/material/breathing_gas = GET_DECL(breathes_gas)
+	for(var/slot_name in possible_sources)
+		var/list/checking_data = possible_sources[slot_name]
+		if(length(checking_data) < 2)
+			continue
+		var/obj/item/tank/checking = checking_data[1]
+		if(!istype(checking) || !checking.air_contents?.gas)
+			continue
+
+		var/valid_tank = (checking.manipulated_by && checking.manipulated_by != real_name && findtext(checking.desc, breathing_gas.name))
+		if(!valid_tank)
+			if(!checking.air_contents.gas[breathes_gas])
+				continue
+			var/is_poison = FALSE
+			for(var/poison in poison_gas)
+				if(checking.air_contents.gas[poison])
+					is_poison = TRUE
+					break
+			if(!is_poison)
+				valid_tank = TRUE
+
+		if(valid_tank && (!selected_obj || selected_obj.air_contents.gas[breathes_gas] <  checking.air_contents.gas[breathes_gas]))
+			selected_obj =  checking
+			selected_slot = slot_name
+			selected_from = checking_data[2]
+
+	if(selected_obj)
+		if(selected_slot && selected_from)
+			set_internals(selected_obj, "\the [selected_obj] [selected_from] your [selected_slot]")
+		else
+			set_internals(selected_obj, "\the [selected_obj]")
+
+/mob/living/carbon/handle_flashed(var/obj/item/flash/flash, var/flash_strength)
+
+	var/safety = eyecheck()
+	if(safety >= FLASH_PROTECTION_MODERATE || flash_strength <= 0) // May be modified by human proc.
+		return FALSE
+
+	flash_eyes(FLASH_PROTECTION_MODERATE - safety)
+	SET_STATUS_MAX(src, STAT_STUN, (flash_strength / 2))
+	SET_STATUS_MAX(src, STAT_BLURRY, flash_strength)
+	SET_STATUS_MAX(src, STAT_CONFUSE, (flash_strength + 2))
+	if(flash_strength > 3)
+		drop_held_items()
+	if(flash_strength > 5)
+		SET_STATUS_MAX(src, STAT_WEAK, 2)

@@ -8,6 +8,8 @@
 	idle_power_usage = 2
 	active_power_usage = 6
 	power_channel = ENVIRON
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-20}, 'SOUTH':{'y':28}, 'EAST':{'x':-24}, 'WEST':{'x':24}}"
 
 	var/active = 0 //This gets set to 1 on all devices except the one where the initial request was made.
 	var/event = ""
@@ -22,7 +24,7 @@
 	//1 = select event
 	//2 = authenticate
 
-/obj/machinery/keycard_auth/attack_ai(mob/user)
+/obj/machinery/keycard_auth/attack_ai(mob/living/silicon/ai/user)
 	to_chat(user, "<span class='warning'>A firewall prevents you from interfacing with this device!</span>")
 	return
 
@@ -68,7 +70,7 @@
 	if(screen == 1)
 		dat += "Select an event to trigger:<ul>"
 
-		var/decl/security_state/security_state = decls_repository.get_decl(GLOB.using_map.security_state)
+		var/decl/security_state/security_state = GET_DECL(global.using_map.security_state)
 		if(security_state.current_security_level == security_state.severe_security_level)
 			dat += "<li>Cannot modify the alert level at this time: [security_state.severe_security_level.name] engaged.</li>"
 		else
@@ -124,7 +126,7 @@
 
 /obj/machinery/keycard_auth/proc/broadcast_request()
 	icon_state = "auth_on"
-	for(var/obj/machinery/keycard_auth/KA in world)
+	for(var/obj/machinery/keycard_auth/KA in SSmachines.machinery)
 		if(KA == src)
 			continue
 		KA.reset()
@@ -160,19 +162,19 @@
 /obj/machinery/keycard_auth/proc/trigger_event()
 	switch(event)
 		if("Red alert")
-			var/decl/security_state/security_state = decls_repository.get_decl(GLOB.using_map.security_state)
+			var/decl/security_state/security_state = GET_DECL(global.using_map.security_state)
 			security_state.stored_security_level = security_state.current_security_level
 			security_state.set_security_level(security_state.high_security_level)
 			SSstatistics.add_field("alert_keycard_auth_red",1)
 		if("Revert alert")
-			var/decl/security_state/security_state = decls_repository.get_decl(GLOB.using_map.security_state)
+			var/decl/security_state/security_state = GET_DECL(global.using_map.security_state)
 			security_state.set_security_level(security_state.stored_security_level)
 			SSstatistics.add_field("alert_keycard_revert_red",1)
 		if("Grant Emergency Maintenance Access")
-			GLOB.using_map.make_maint_all_access()
+			global.using_map.make_maint_all_access()
 			SSstatistics.add_field("alert_keycard_auth_maintGrant",1)
 		if("Revoke Emergency Maintenance Access")
-			GLOB.using_map.revoke_maint_all_access()
+			global.using_map.revoke_maint_all_access()
 			SSstatistics.add_field("alert_keycard_auth_maintRevoke",1)
 		if("Emergency Response Team")
 			if(is_ert_blocked())
@@ -182,7 +184,7 @@
 			trigger_armed_response_team(1)
 			SSstatistics.add_field("alert_keycard_auth_ert",1)
 		if("Grant Nuclear Authorization Code")
-			var/obj/machinery/nuclearbomb/nuke = locate(/obj/machinery/nuclearbomb/station) in world
+			var/obj/machinery/nuclearbomb/nuke = locate(/obj/machinery/nuclearbomb/station) in SSmachines.machinery
 			if(nuke)
 				visible_message(SPAN_WARNING("\The [src] blinks and displays a message: The nuclear authorization code is [nuke.r_code]"), range=2)
 			else
@@ -192,5 +194,10 @@
 /obj/machinery/keycard_auth/proc/is_ert_blocked()
 	if(config.ert_admin_call_only) return 1
 	return SSticker.mode && SSticker.mode.ert_disabled
+
+/obj/machinery/keycard_auth/update_directional_offset(force = FALSE)
+	if(!force && (!length(directional_offset) || !is_wall_mounted())) //Check if the thing is actually mapped onto a table or something
+		return
+	. = ..()
 
 var/global/maint_all_access = 0

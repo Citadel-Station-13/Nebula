@@ -57,7 +57,7 @@
 	if(!selection)
 		return
 
-	selection.show(usr)
+	selection.interact(usr)
 	to_chat(usr, selection.desc)
 /obj/item/camera/siliconcam/proc/deletepicture(obj/item/camera/siliconcam/cam)
 	var/selection = selectpicture(cam)
@@ -138,7 +138,7 @@
 
 	deletepicture(src)
 
-obj/item/camera/siliconcam/proc/getsource()
+/obj/item/camera/siliconcam/proc/getsource()
 	if(istype(src.loc, /mob/living/silicon/ai))
 		return src
 

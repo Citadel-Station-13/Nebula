@@ -6,7 +6,7 @@
 	density = 1
 	opacity = 1
 	anchored = 1
-	material = MAT_SANDSTONE
+	material = /decl/material/solid/stone/sandstone
 	material_alteration = MAT_FLAG_ALTERATION_COLOR | MAT_FLAG_ALTERATION_NAME
 	var/excavation_level = 0
 	var/datum/artifact_find/artifact_find
@@ -21,7 +21,7 @@
 
 /obj/structure/boulder/Destroy()
 	QDEL_NULL(artifact_find)
-	..()
+	return ..()
 
 /obj/structure/boulder/attackby(var/obj/item/I, var/mob/user)
 	if(istype(I, /obj/item/depth_scanner))
@@ -75,7 +75,7 @@
 	. = ..()
 	if(istype(AM,/mob/living/carbon/human))
 		var/mob/living/carbon/human/H = AM
-		var/obj/item/pickaxe/P = H.get_inactive_hand()
+		var/obj/item/pickaxe/P = (locate() in H.get_inactive_held_items())
 		if(istype(P))
 			src.attackby(P, H)
 

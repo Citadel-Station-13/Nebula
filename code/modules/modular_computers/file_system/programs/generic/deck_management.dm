@@ -7,6 +7,7 @@
 	filename = "deckmngr"
 	filedesc = "Deck Management"
 	nanomodule_path = /datum/nano_module/deck_management
+	read_access = list(list(access_mining, access_cargo, access_bridge))
 	program_icon_state = "request"
 	program_key_state = "rd_key"
 	program_menu_icon = "clock"
@@ -14,6 +15,7 @@
 	size = 18
 	available_on_network = 1
 	requires_network = 1
+	requires_network_feature = NET_FEATURE_DECK
 	category = PROG_SUPPLY
 
 /datum/nano_module/deck_management
@@ -25,8 +27,6 @@
 	var/datum/computer_file/report/selected_report   //A report being viewed/edited.
 	var/list/report_prototypes = list()              //Stores report prototypes to use for UI purposes.
 	var/datum/shuttle/prototype_shuttle              //The shuttle for which the prototypes were built (to avoid excessive prototype rebuilding)
-	//The default access needed to properly use. Should be set in map files.
-	var/default_access = list(access_cargo, access_bridge)  //The format is (needs one of list(these access constants or lists of access constants))
 
 /datum/nano_module/deck_management/New()
 	..()
@@ -40,12 +40,11 @@
 		my_log.unregister(src)
 	. = ..()
 
-/datum/nano_module/deck_management/ui_interact(mob/user, ui_key = "main", datum/nanoui/ui = null, force_open = 1, state = GLOB.default_state)
+/datum/nano_module/deck_management/ui_interact(mob/user, ui_key = "main", datum/nanoui/ui = null, force_open = 1, state = global.default_topic_state)
 	var/list/data = host.initial_data()
 	var/logs = SSshuttle.shuttle_logs
 
 	data["prog_state"] = prog_state
-	data["default_access"] = get_default_access(user)
 
 	switch(prog_state)
 		if(DECK_HOME)
@@ -105,7 +104,7 @@
 					L["name"] = report.display_name()
 					L["index"] = i
 					L["exists"] = locate(report) in selected_mission.other_reports
-					L["access_edit"] = report.verify_access_edit(get_access(user))
+					L["access_edit"] = report.get_file_perms(get_access(user), user) & OS_WRITE_ACCESS
 					other_reports += list(L)
 				data["other_reports"] = other_reports
 
@@ -115,7 +114,7 @@
 			if(!istype(selected_report))
 				prog_state = DECK_MISSION_DETAILS
 				return
-			data["report_data"] = selected_report.generate_nano_data(get_access(user))
+			data["report_data"] = selected_report.generate_nano_data(get_access(user), user)
 			data["shuttle_name"] = selected_shuttle.name
 			data["mission_data"] = generate_mission_data(selected_mission)
 			data["view_only"] = can_view_only
@@ -171,11 +170,6 @@
 			mission_data["queued"] = 1
 	return mission_data
 
-/datum/nano_module/deck_management/proc/get_default_access(mob/user)
-	for(var/access_pattern in default_access)
-		if(check_access(user, access_pattern))
-			return 1
-
 /datum/nano_module/deck_management/proc/get_shuttle_access(mob/user, datum/shuttle/shuttle)
 	return shuttle.logging_access ? (check_access(user, shuttle.logging_access) || check_access(user, access_bridge)) : 0
 
@@ -192,11 +186,21 @@
 		prototype_shuttle = selected_shuttle
 		report_prototypes = list()
 		for(var/report_type in subtypesof(/datum/computer_file/report/recipient/shuttle))
-			var/datum/computer_file/report/recipient/shuttle/new_report = new report_type
-			if(new_report.access_shuttle)
-				new_report.set_access(null, selected_shuttle.logging_access, override = 0)
-			report_prototypes += new_report
+			report_prototypes += create_report(report_type, selected_shuttle)
 	return 1
+
+/datum/nano_module/deck_management/proc/create_report(report_type, datum/shuttle/given_shuttle)
+	var/datum/computer_file/report/recipient/shuttle/new_report = new report_type
+	if(new_report.access_shuttle && given_shuttle.logging_access)
+		var/old_access = new_report.write_access?.Copy()
+		var/new_access = list()
+		for(var/group in old_access) // We add logging_access as an OR option to every AND requirement
+			var/new_group = list()
+			new_group += group // this listifies it if it was not already a list
+			new_group |= given_shuttle.logging_access
+			new_access += list(new_group)
+		new_report.set_access(null, new_access, TRUE)
+	return new_report
 
 /datum/nano_module/deck_management/proc/set_mission(mission_ID)
 	var/datum/shuttle_log/my_log = SSshuttle.shuttle_logs[selected_shuttle]
@@ -211,8 +215,6 @@
 	if(..())
 		return 1
 
-	if(!get_default_access(user))
-		return 1 //No program access if you don't have the right access.
 	if(text2num(href_list["warning"])) //Gives the user a chance to avoid losing unsaved reports.
 		if(alert(user, "Are you sure you want to do this? Data may be lost.",, "Yes.", "No.") == "No.")
 			return 1 //If yes, proceed to the actual action instead.
@@ -265,8 +267,7 @@
 				if(selected_mission.flight_plan)
 					selected_report = selected_mission.flight_plan.clone()//We always make a new one to buffer changes until submitted.
 				else
-					selected_report = new /datum/computer_file/report/flight_plan
-					selected_report.set_access(null, selected_shuttle.logging_access, override = 0)
+					selected_report = create_report(/datum/computer_file/report/flight_plan, selected_shuttle)
 			else
 				if(selected_mission.stage in list(SHUTTLE_MISSION_PLANNED, SHUTTLE_MISSION_QUEUED))
 					return 1 //Hold your horses until the mission is started on these reports.
@@ -296,14 +297,14 @@
 			return 1
 		var/field_ID = text2num(href_list["ID"])
 		var/datum/report_field/field = selected_report.field_from_ID(field_ID)
-		if(!field || !field.verify_access_edit(get_access(user)))
+		if(!field || !(field.get_perms(get_access(user), user) & OS_WRITE_ACCESS))
 			return 1
 		field.ask_value(user) //Handles the remaining IO.
 		return 1
 	if(href_list["submit"])
 		if(!ensure_valid_mission() || !selected_report)
 			return 1
-		if(!selected_report.verify_access_edit(get_access(user)))
+		if(!(selected_report.get_file_perms(get_access(user), user) & OS_WRITE_ACCESS))
 			return 1
 		var/datum/shuttle_log/my_log = SSshuttle.shuttle_logs[selected_shuttle]
 		if(my_log.submit_report(selected_mission, selected_report, user))
@@ -339,7 +340,8 @@
 			return 1
 		var/datum/shuttle_log/my_log = SSshuttle.shuttle_logs[selected_shuttle]
 		if(world.time - my_log.last_spam >= 1 MINUTE) //Slow down with that spam button
-			GLOB.global_announcer.autosay("The [selected_shuttle.name] is planning to depart on a mission promptly at [time]. The following crew members are to make their way to \the [place] immediately: [crew].", "Hangar Announcement System")
+			var/obj/item/radio/announcer = get_global_announcer()
+			announcer.autosay("The [selected_shuttle.name] is planning to depart on a mission promptly at [time]. The following crew members are to make their way to \the [place] immediately: [crew].", "Hangar Announcement System")
 			my_log.last_spam = world.time
 		else
 			to_chat(user, "<span class='warning'>It's too soon after the previous announcement!</span>")
@@ -354,7 +356,7 @@
 		var/datum/report_field/people/manifest = selected_mission.flight_plan.manifest
 		if(!manifest.get_value())
 			return 1
-		manifest.send_email(user)
+		manifest.send_email(user, get_access(user))
 		return 1
 
 #undef DECK_HOME

@@ -6,6 +6,7 @@ var/global/list/plant_seed_sprites = list()
 	icon = 'icons/obj/seeds.dmi'
 	icon_state = "seedy"
 	w_class = ITEM_SIZE_SMALL
+	abstract_type = /obj/item/seeds
 
 	var/seed_type
 	var/datum/seed/seed
@@ -15,10 +16,19 @@ var/global/list/plant_seed_sprites = list()
 	update_seed()
 	. = ..()
 
+/obj/item/seeds/get_single_monetary_worth()
+	. = seed ? seed.get_monetary_value() : ..()
+
+// Used for extracts/seed sampling purposes.
+/obj/item/seeds/modified
+	is_spawnable_type = FALSE
+
 //Grabs the appropriate seed datum from the global list.
 /obj/item/seeds/proc/update_seed()
 	if(!seed && seed_type && !isnull(SSplants.seeds) && SSplants.seeds[seed_type])
 		seed = SSplants.seeds[seed_type]
+		if(seed.scannable_result)
+			set_extension(src, /datum/extension/scannable, seed.scannable_result)
 	update_appearance()
 
 //Updates strings and icon appropriately based on seed datum.
@@ -52,10 +62,10 @@ var/global/list/plant_seed_sprites = list()
 
 	if(is_seeds)
 		src.SetName("packet of [seed.seed_name] [seed.seed_noun]")
-		src.desc = "It has a picture of [seed.display_name] on the front."
+		src.desc = "It has a picture of \a [seed.display_name] on the front."
 	else
 		src.SetName("sample of [seed.seed_name] [seed.seed_noun]")
-		src.desc = "It's labelled as coming from [seed.display_name]."
+		src.desc = "It's labelled as coming from \a [seed.display_name]."
 
 /obj/item/seeds/examine(mob/user)
 	. = ..()
@@ -65,6 +75,7 @@ var/global/list/plant_seed_sprites = list()
 /obj/item/seeds/cutting
 	name = "cuttings"
 	desc = "Some plant cuttings."
+	is_spawnable_type = FALSE
 
 /obj/item/seeds/cutting/update_appearance()
 	..()
@@ -129,8 +140,8 @@ var/global/list/plant_seed_sprites = list()
 /obj/item/seeds/bluetomatoseed
 	seed_type = "bluetomato"
 
-/obj/item/seeds/bluespacetomatoseed
-	seed_type = "bluespacetomato"
+/obj/item/seeds/quantumatoseed
+	seed_type = "quantumato"
 
 /obj/item/seeds/cornseed
 	seed_type = "corn"
@@ -171,8 +182,8 @@ var/global/list/plant_seed_sprites = list()
 /obj/item/seeds/chantermycelium
 	seed_type = "mushrooms"
 
-/obj/item/seeds/corkwood
-	seed_type = "corkwood"
+/obj/item/seeds/towercap
+	seed_type = "towercap"
 
 /obj/item/seeds/glowbell
 	seed_type = "glowbell"
@@ -284,3 +295,15 @@ var/global/list/plant_seed_sprites = list()
 
 /obj/item/seeds/bruisegrassseed
 	seed_type = "bruisegrass"
+
+/obj/item/seeds/clam
+	seed_type = "clam"
+
+/obj/item/seeds/barnacle
+	seed_type = "barnacle"
+
+/obj/item/seeds/mollusc
+	seed_type = "mollusc"
+
+/obj/item/seeds/cotton
+	seed_type = "cotton"

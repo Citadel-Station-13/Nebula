@@ -24,16 +24,16 @@ var/global/defer_powernet_rebuild = 0      // True if net rebuild will be called
 #define TOTAL   5 // For total power used only.
 
 // Bitflags for machine stat variable.
-#define BROKEN   0x1
-#define NOPOWER  0x2
-#define MAINT    0x8  // Under maintenance.
-#define EMPED    0x10 // Temporary broken by EMP pulse.
-#define NOSCREEN 0x20 // No UI shown via direct interaction
-#define NOINPUT  0x40 // No input taken from direct interaction
+#define BROKEN   BITFLAG(0)
+#define NOPOWER  BITFLAG(1)
+#define MAINT    BITFLAG(2) // Under maintenance.
+#define EMPED    BITFLAG(3) // Temporary broken by EMP.
+#define NOSCREEN BITFLAG(4) // No UI shown via direct interaction
+#define NOINPUT  BITFLAG(5) // No input taken from direct interaction
 
-#define MACHINE_BROKEN_GENERIC   0x1 // Standard legacy brokenness, used on a case-by-case basis
-#define MACHINE_BROKEN_NO_PARTS  0x2 // Missing required parts
-#define MACHINE_BROKEN_CONSTRUCT 0x4 // Construction state is causing the brokenness
+#define MACHINE_BROKEN_GENERIC   BITFLAG(0) // Standard legacy brokenness, used on a case-by-case basis
+#define MACHINE_BROKEN_NO_PARTS  BITFLAG(1) // Missing required parts
+#define MACHINE_BROKEN_CONSTRUCT BITFLAG(2) // Construction state is causing the brokenness
 
 // Used by firelocks
 #define FIREDOOR_OPEN 1
@@ -41,28 +41,30 @@ var/global/defer_powernet_rebuild = 0      // True if net rebuild will be called
 
 #define AI_CAMERA_LUMINOSITY 6
 
-// Camera networks
-#define NETWORK_CRESCENT "Crescent"
-#define NETWORK_ENGINEERING "Engineering"
-#define NETWORK_ERT "ZeEmergencyResponseTeam"
-#define NETWORK_EXODUS "Exodus"
-#define NETWORK_MEDICAL "Medical"
-#define NETWORK_MERCENARY "MercurialNet"
-#define NETWORK_MINE "Mining"
-#define NETWORK_RESEARCH "Research"
-#define NETWORK_ROBOTS "Robots"
-#define NETWORK_SECURITY "Security"
-#define NETWORK_THUNDER "Thunderdome"
+// Camera channels
+// Station channels
+#define CAMERA_CHANNEL_PUBLIC "Public"
+#define CAMERA_CAMERA_CHANNEL_ENGINEERING "Engineering"
+#define CAMERA_CHANNEL_MEDICAL "Medical"
+#define CAMERA_CHANNEL_RESEARCH "Research"
+#define CAMERA_CHANNEL_SECURITY "Security"
 
+#define CAMERA_CHANNEL_ROBOTS "Robots"
+#define CAMERA_CHANNEL_MINE "Mining"
+#define CAMERA_CHANNEL_SECRET "Secret"
+
+// Non-station channels
+#define CAMERA_CHANNEL_CRESCENT "Crescent"
+#define CAMERA_CHANNEL_ERT "ZeEmergencyResponseTeam"
+#define CAMERA_CHANNEL_MERCENARY "MercurialNet"
+#define CAMERA_CHANNEL_TELEVISION "Television"
+
+// Alarm networks
 #define NETWORK_ALARM_ATMOS "Atmosphere Alarms"
 #define NETWORK_ALARM_CAMERA "Camera Alarms"
 #define NETWORK_ALARM_FIRE "Fire Alarms"
 #define NETWORK_ALARM_MOTION "Motion Alarms"
 #define NETWORK_ALARM_POWER "Power Alarms"
-
-// Those networks can only be accessed by pre-existing terminals. AIs and new terminals can't use them.
-var/list/restricted_camera_networks = list(NETWORK_ERT, NETWORK_MERCENARY, NETWORK_CRESCENT, "Secret")
-
 
 //singularity defines
 #define STAGE_ONE 	1
@@ -115,6 +117,11 @@ var/list/restricted_camera_networks = list(NETWORK_ERT, NETWORK_MERCENARY, NETWO
 #define SUPERMATTER_DANGER 4		// Integrity < 50%
 #define SUPERMATTER_EMERGENCY 5		// Integrity < 25%
 #define SUPERMATTER_DELAMINATING 6	// Pretty obvious.
+
+#define SUPERMATTER_DATA_EER         "Relative EER"
+#define SUPERMATTER_DATA_TEMPERATURE "Temperature"
+#define SUPERMATTER_DATA_PRESSURE    "Pressure"
+#define SUPERMATTER_DATA_EPR         "Chamber EPR"
 
 // Scrubber modes
 #define SCRUBBER_SIPHON   "siphon"

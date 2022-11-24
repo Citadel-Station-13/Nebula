@@ -6,12 +6,11 @@
 	icon = 'icons/obj/closets/cryobag.dmi'
 	icon_state = "bodybag_folded"
 	origin_tech = "{'biotech':4}"
-	material = MAT_PLASTIC
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_SILVER = MATTER_AMOUNT_TRACE,
-		MAT_GOLD = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE
 	)
 	var/stasis_power
 
@@ -29,7 +28,7 @@
 	a hostile enviroment."
 	icon = 'icons/obj/closets/cryobag.dmi'
 	item_path = /obj/item/bodybag/cryobag
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	storage_types = CLOSET_STORAGE_MOBS
 	var/datum/gas_mixture/airtank
 
@@ -40,8 +39,8 @@
 	. = ..()
 	airtank = new()
 	airtank.temperature = T0C
-	airtank.adjust_gas(MAT_OXYGEN, MOLES_O2STANDARD, 0)
-	airtank.adjust_gas(MAT_NITROGEN, MOLES_N2STANDARD)
+	airtank.adjust_gas(/decl/material/gas/oxygen, MOLES_O2STANDARD, 0)
+	airtank.adjust_gas(/decl/material/gas/nitrogen, MOLES_N2STANDARD)
 	update_icon()
 
 /obj/structure/closet/body_bag/cryobag/Destroy()
@@ -61,7 +60,6 @@
 
 /obj/structure/closet/body_bag/cryobag/on_update_icon()
 	..()
-	overlays.Cut()
 	var/image/I = image(icon, "indicator[opened]")
 	I.appearance_flags = RESET_COLOR
 	var/maxstasis = initial(stasis_power)
@@ -71,7 +69,7 @@
 		I.color = COLOR_YELLOW
 	else
 		I.color = COLOR_RED
-	overlays += I
+	add_overlay(I)
 
 /obj/structure/closet/body_bag/cryobag/proc/get_saturation()
 	return -155 * (1 - stasis_power/initial(stasis_power))
@@ -116,6 +114,12 @@
 	desc = "Pretty useless now.."
 	icon_state = "bodybag_used"
 	icon = 'icons/obj/closets/cryobag.dmi'
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE
+	)
 
 /obj/structure/closet/body_bag/cryobag/blank
 	stasis_power = 60

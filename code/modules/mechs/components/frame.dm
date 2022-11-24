@@ -1,15 +1,3 @@
-/obj/item/frame_holder
-	material = MAT_STEEL
-	matter = list(
-		MAT_PLASTIC = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_OSMIUM = MATTER_AMOUNT_TRACE
-	)
-
-/obj/item/frame_holder/Initialize(mapload, var/newloc)
-	..()
-	new /obj/structure/heavy_vehicle_frame(newloc)
-	return  INITIALIZE_HINT_QDEL
-
 /obj/structure/heavy_vehicle_frame
 	name = "exosuit frame"
 	desc = "The frame for an exosuit, apparently."
@@ -17,7 +5,9 @@
 	icon_state = "backbone"
 	density = 1
 	pixel_x = -8
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
+	atom_flags = ATOM_FLAG_CAN_BE_PAINTED
+	dir = SOUTH
 
 	// Holders for the final product.
 	var/obj/item/mech_component/manipulators/arms
@@ -27,12 +17,11 @@
 	var/is_wired = 0
 	var/is_reinforced = 0
 	var/set_name
-	dir = SOUTH
 
-/obj/structure/heavy_vehicle_frame/proc/set_colour(var/new_colour)
+/obj/structure/heavy_vehicle_frame/set_color(new_colour)
 	var/painted_component = FALSE
 	for(var/obj/item/mech_component/comp in list(body, arms, legs, head))
-		if(comp.set_colour(new_colour))
+		if(comp.set_color(new_colour))
 			painted_component = TRUE
 	if(painted_component)
 		queue_icon_update()
@@ -66,15 +55,16 @@
 		to_chat(user, SPAN_WARNING("It does not have any internal reinforcement."))
 
 /obj/structure/heavy_vehicle_frame/on_update_icon()
-	var/list/new_overlays = get_mech_images(list(legs, head, body, arms), layer)
+	..()
+	for(var/overlay in get_mech_images(list(legs, head, body, arms), layer))
+		add_overlay(overlay)
 	if(body)
 		density = TRUE
 		overlays += get_mech_image(null, "[body.icon_state]_cockpit", body.icon, body.color)
 		if(body.pilot_coverage < 100 || body.transparent_cabin)
-			new_overlays += get_mech_image(null, "[body.icon_state]_open_overlay", body.icon, body.color)
+			add_overlay(get_mech_image(null, "[body.icon_state]_open_overlay", body.icon, body.color))
 	else
 		density = FALSE
-	overlays = new_overlays
 	if(density != opacity)
 		set_opacity(density)
 
@@ -84,12 +74,12 @@
 /obj/structure/heavy_vehicle_frame/attackby(var/obj/item/thing, var/mob/user)
 
 	// Removing components.
-	if(isCrowbar(thing))
+	if(IS_CROWBAR(thing))
 		if(is_reinforced == FRAME_REINFORCED)
 			if(!do_after(user, 5 * user.skill_delay_mult(SKILL_DEVICES)) || !material)
 				return
 			user.visible_message(SPAN_NOTICE("\The [user] crowbars the reinforcement off \the [src]."))
-			material.place_sheet(src.loc, 10)
+			material.create_object(src.loc, 10)
 			material = null
 			is_reinforced = 0
 			return
@@ -114,7 +104,7 @@
 		return
 
 	// Final construction step.
-	else if(isScrewdriver(thing))
+	else if(IS_SCREWDRIVER(thing))
 
 		// Check for basic components.
 		if(!(arms && legs && head && body))
@@ -160,7 +150,7 @@
 		return
 
 	// Installing wiring.
-	else if(isCoil(thing))
+	else if(IS_COIL(thing))
 
 		if(is_wired)
 			to_chat(user, SPAN_WARNING("\The [src] has already been wired."))
@@ -184,7 +174,7 @@
 		playsound(user.loc, 'sound/items/Deconstruct.ogg', 50, 1)
 		is_wired = FRAME_WIRED
 	// Securing wiring.
-	else if(isWirecutter(thing))
+	else if(IS_WIRECUTTER(thing))
 		if(!is_wired)
 			to_chat(user, "There is no wiring in \the [src] to neaten.")
 			return
@@ -221,7 +211,7 @@
 		else
 			return ..()
 	// Securing metal.
-	else if(isWrench(thing))
+	else if(IS_WRENCH(thing))
 		if(!is_reinforced)
 			to_chat(user, SPAN_WARNING("There is no metal to secure inside \the [src]."))
 			return
@@ -239,7 +229,7 @@
 		playsound(user.loc, 'sound/items/Ratchet.ogg', 100, 1)
 		is_reinforced = (is_reinforced == FRAME_REINFORCED_SECURE) ? FRAME_REINFORCED : FRAME_REINFORCED_SECURE
 	// Welding metal.
-	else if(isWelder(thing))
+	else if(IS_WELDER(thing))
 		var/obj/item/weldingtool/WT = thing
 		if(!is_reinforced)
 			to_chat(user, SPAN_WARNING("There is no metal to secure inside \the [src]."))
@@ -250,7 +240,7 @@
 		if(!WT.isOn())
 			to_chat(user, SPAN_WARNING("Turn \the [WT] on, first."))
 			return
-		if(WT.remove_fuel(1, user))
+		if(WT.weld(1, user))
 
 			var/last_reinforced_state = is_reinforced
 			visible_message("\The [user] begins welding the metal reinforcement inside \the [src].")
@@ -268,7 +258,7 @@
 		if(arms)
 			to_chat(user, SPAN_WARNING("\The [src] already has manipulators installed."))
 			return
-		if(install_component(thing, user)) 
+		if(install_component(thing, user))
 			if(arms)
 				thing.dropInto(loc)
 				return
@@ -277,7 +267,7 @@
 		if(legs)
 			to_chat(user, SPAN_WARNING("\The [src] already has a propulsion system installed."))
 			return
-		if(install_component(thing, user)) 
+		if(install_component(thing, user))
 			if(legs)
 				thing.dropInto(loc)
 				return
@@ -286,7 +276,7 @@
 		if(head)
 			to_chat(user, SPAN_WARNING("\The [src] already has a sensor array installed."))
 			return
-		if(install_component(thing, user)) 
+		if(install_component(thing, user))
 			if(head)
 				thing.dropInto(loc)
 				return

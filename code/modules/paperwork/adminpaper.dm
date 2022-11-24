@@ -8,7 +8,7 @@
 	var/isCrayon = 0
 	var/origin = null
 	var/mob/sender = null
-	var/obj/machinery/photocopier/faxmachine/destination
+	var/weakref/destination_ref
 
 	var/header = null
 	var/headerOn = TRUE
@@ -16,13 +16,13 @@
 	var/footer = null
 	var/footerOn = FALSE
 
-	var/logo_list = list() // Todo: Ivenmoth logo.
+	var/logo_list = list()
 	var/logo = ""
+	var/signature //Signature entered by the admin
 
-/obj/item/paper/admin/Initialize()
+/obj/item/paper/admin/Initialize(mapload, material_key, _text, _title, list/md)
 	. = ..()
 	generateInteractions()
-
 
 /obj/item/paper/admin/proc/generateInteractions()
 	//clear first
@@ -57,12 +57,11 @@
 
 	text = "<hr><font size= \"1\">"
 	text += "This transmission is intended only for the addressee and may contain confidential information. Any unauthorized disclosure is strictly prohibited. <br><br>"
-	text += "If this transmission is recieved in error, please notify both the sender and the office of [GLOB.using_map.boss_name] Internal Affairs immediately so that corrective action may be taken."
+	text += "If this transmission is recieved in error, please notify both the sender and the office of [global.using_map.boss_name] Internal Affairs immediately so that corrective action may be taken."
 	text += "Failure to comply is a breach of regulation and may be prosecuted to the fullest extent of the law, where applicable."
 	text += "</font>"
 
 	footer = text
-
 
 /obj/item/paper/admin/proc/adminbrowse()
 	updateinfolinks()
@@ -70,10 +69,8 @@
 	generateFooter()
 	updateDisplay()
 
-obj/item/paper/admin/proc/updateDisplay()
-	show_browser(usr, "<HTML><HEAD><TITLE>[name]</TITLE></HEAD><BODY>[headerOn ? header : ""][info_links][stamps][footerOn ? footer : ""][interactions]</BODY></HTML>", "window=[name];can_close=0")
-
-
+/obj/item/paper/admin/proc/updateDisplay()
+	show_browser(usr, "<HTML><HEAD><TITLE>[name]</TITLE></HEAD><BODY>[headerOn ? header : ""][info_links][stamp_text][footerOn ? footer : ""][interactions]</BODY></HTML>", "window=[name];can_close=0")
 
 /obj/item/paper/admin/Topic(href, href_list)
 	if(href_list["write"])
@@ -113,6 +110,10 @@ obj/item/paper/admin/proc/updateDisplay()
 		return
 
 	if(href_list["confirm"])
+		var/obj/machinery/faxmachine/F = destination_ref.resolve()
+		if(!istype(F))
+			to_chat(usr, "The destination machines doesn't exist anymore..")
+			return
 		switch(alert("Are you sure you want to send the fax as is?",, "Yes", "No"))
 			if("Yes")
 				if(headerOn)
@@ -121,7 +122,7 @@ obj/item/paper/admin/proc/updateDisplay()
 					info += footer
 				updateinfolinks()
 				close_browser(usr, "window=[name]")
-				admindatum.faxCallback(src, destination)
+				admindatum.faxCallback(src, F)
 		return
 
 	if(href_list["penmode"])
@@ -156,5 +157,8 @@ obj/item/paper/admin/proc/updateDisplay()
 		updateDisplay()
 		return
 
-/obj/item/paper/admin/get_signature()
-	return input(usr, "Enter the name you wish to sign the paper with (will prompt for multiple entries, in order of entry)", "Signature") as text|null
+/obj/item/paper/admin/get_signature(obj/item/pen/P, mob/user)
+	return signature
+
+/obj/item/paper/admin/proc/set_signature(var/sig)
+	signature = sig

@@ -10,18 +10,16 @@
 	used for power or data transmission."
 	icon = 'icons/obj/assemblies/electronic_tools.dmi'
 	icon_state = "wirer-wire"
-	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	w_class = ITEM_SIZE_SMALL
+	matter = list(
+		/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
+	)
 	var/datum/integrated_io/selected_io = null
 	var/mode = WIRE
-	material = MAT_ALUMINIUM
-	matter = list(
-		MAT_STEEL = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
-	)
 
 /obj/item/integrated_electronics/wirer/on_update_icon()
+	. = ..()
 	icon_state = "wirer-[mode]"
 
 /obj/item/integrated_electronics/wirer/proc/wire(var/datum/integrated_io/io, mob/user)
@@ -86,7 +84,7 @@
 	if(selected_io)
 		unselect_io(selected_io)
 	selected_io = io
-	GLOB.destroyed_event.register(selected_io, src, .proc/unselect_io)
+	events_repository.register(/decl/observ/destroyed, selected_io, src, .proc/unselect_io)
 	switch(mode)
 		if(UNWIRE)
 			mode = UNWIRING
@@ -96,7 +94,7 @@
 /obj/item/integrated_electronics/wirer/proc/unselect_io(datum/integrated_io/io)
 	if(selected_io != io)
 		return
-	GLOB.destroyed_event.unregister(selected_io, src)
+	events_repository.unregister(/decl/observ/destroyed, selected_io, src)
 	selected_io = null
 	switch(mode)
 		if(UNWIRING)

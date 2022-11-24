@@ -4,11 +4,15 @@ SUBSYSTEM_DEF(misc)
 	flags = SS_NO_FIRE
 
 /datum/controller/subsystem/misc/Initialize()
-	if(config.generate_map)
-		GLOB.using_map.perform_map_generation()
 
-	// Create robolimbs for chargen.
-	populate_robolimb_list()
+#ifdef UNIT_TEST
+	config.generate_map = TRUE
+#endif
+
+	if(config.generate_map)
+		global.using_map.perform_map_generation()
+	global.using_map.build_exterior_atmosphere()
+
 	setupgenetics()
 
 	transfer_controller = new

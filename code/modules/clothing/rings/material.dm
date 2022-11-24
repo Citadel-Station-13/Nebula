@@ -1,9 +1,5 @@
 /////////////////////////////////////////
 //Material Rings
-/obj/item/clothing/ring/material
-	icon = 'icons/obj/clothing/obj_hands_ring.dmi'
-	icon_state = "material"
-
 /obj/item/clothing/ring/material/set_material(var/new_material)
 	. = ..()
 	if(istype(material))
@@ -24,7 +20,7 @@
 /obj/item/clothing/ring/material/OnTopic(var/mob/user, var/list/href_list)
 	if(href_list["examine"])
 		if(istype(user))
-			var/mob/living/carbon/human/H = get_holder_of_type(src, /mob/living/carbon/human)
+			var/mob/living/carbon/human/H = get_recursive_loc_of_type(/mob/living/carbon/human)
 			if(H.Adjacent(user))
 				user.examinate(src)
 				return TOPIC_HANDLED
@@ -34,18 +30,18 @@
 	. += " <a href='?src=\ref[src];examine=1'>\[View\]</a>"
 
 /obj/item/clothing/ring/material/wood
-	material = MAT_WALNUT
+	material = /decl/material/solid/wood/walnut
 /obj/item/clothing/ring/material/plastic
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 /obj/item/clothing/ring/material/steel
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 /obj/item/clothing/ring/material/silver
-	material = MAT_SILVER
+	material = /decl/material/solid/metal/silver
 /obj/item/clothing/ring/material/gold
-	material = MAT_GOLD
+	material = /decl/material/solid/metal/gold
 /obj/item/clothing/ring/material/platinum
-	material = MAT_PLATINUM
+	material = /decl/material/solid/metal/platinum
 /obj/item/clothing/ring/material/bronze
-	material = MAT_BRONZE
+	material = /decl/material/solid/metal/bronze
 /obj/item/clothing/ring/material/glass
-	material = MAT_GLASS
+	material = /decl/material/solid/glass

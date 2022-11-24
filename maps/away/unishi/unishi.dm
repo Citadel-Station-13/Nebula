@@ -1,7 +1,8 @@
 #include "unishi_areas.dm"
 #include "unishi_jobs.dm"
+#include "../../../mods/content/xenobiology/_xenobiology.dme"
 
-/obj/effect/submap_landmark/joinable_submap/unishi
+/obj/abstract/submap_landmark/joinable_submap/unishi
 	name = "SRV Verne"
 	archetype = /decl/submap_archetype/derelict/unishi
 
@@ -27,7 +28,6 @@
 
 /datum/map_template/ruin/away_site/unishi
 	name = "University Ship"
-	id = "awaysite_unishi"
 	description = "CTI research ship.."
 	suffixes = list("unishi/unishi-1.dmm", "unishi/unishi-2.dmm", "unishi/unishi-3.dmm")
 	cost = 2
@@ -49,14 +49,14 @@
 
 /obj/machinery/power/supermatter/randomsample
 	name = "experimental supermatter sample"
-	icon_state = "darkmatter_shard"
-	base_icon_state = "darkmatter_shard"
+	icon = 'icons/obj/supermatter_32.dmi'
+	icon_state = "supermatter_shard"
 
 /obj/machinery/power/supermatter/randomsample/Initialize()
 	. = ..()
 	nitrogen_retardation_factor = rand(0.01, 1)	  //Higher == N2 slows reaction more
 	thermal_release_modifier = rand(100, 1000000) //Higher == more heat released during reaction
-	phoron_release_modifier = rand(0, 100000)     //Higher == less phoron released by reaction
+	product_release_modifier = rand(0, 100000)    //Higher == less product gas released by reaction
 	oxygen_release_modifier = rand(0, 100000)     //Higher == less oxygen released at high temperature/power
 	radiation_release_modifier = rand(0, 100)     //Higher == more radiation released with more power.
 	reaction_power_modifier =  rand(0, 100)       //Higher == more overall power
@@ -69,31 +69,30 @@
 
 /obj/machinery/power/supermatter/inert
 	name = "experimental supermatter sample"
-	icon_state = "darkmatter_shard"
-	base_icon_state = "darkmatter_shard"
+	icon = 'icons/obj/supermatter_32.dmi'
+	icon_state = "supermatter_shard"
 	thermal_release_modifier = 0 //Basically inert
-	phoron_release_modifier = 100000000000
+	product_release_modifier = 100000000000
 	oxygen_release_modifier = 100000000000
 	radiation_release_modifier = 1
 
-/obj/machinery/power/emitter/anchored/on
+/obj/machinery/emitter/anchored/on
 	active = 1
 	powered = 1
 
-/obj/structure/closet/crate/secure/large/phoron/experimentalsm
+/obj/structure/closet/crate/secure/large/supermatter/experimentalsm
 	name = "experimental SM crate"
 	desc = "Are you sure you want to open this?"
 
-/obj/structure/closet/crate/secure/large/phoron/experimentalsm/WillContain()
+/obj/structure/closet/crate/secure/large/supermatter/experimentalsm/WillContain()
 	return list(/obj/machinery/power/supermatter/randomsample)
-
-obj/item/paper/prof1
-	name = "Error log"
+/obj/item/paper/prof1
+	name = "error log"
 	info = "<large> COMPUTER ID: 15231 <br> Attempting recovery of document directory. <br> Three files recovered <br> Printing file (1/2) <br> </large> ... about your concerns. I told you that the shielding is strong enough to avoid ANY leaks of radiation or hazardous materials. The entire lab is 100% isolated from the ship in terms of even the air supply. Leave me and my students the fuck alone. Your job is to maintain the fucking reactor an !#@!dqma211.<br> <large> File (2/3) Tested SM </large> This thing has a lot of potential. It doesn't produce any measurable levels of gas, or even significant thermal signature. The potential is nearly limitless. We've had to fine tune our activation procedures as even a short beam of the emitter seems to activate this thing. CTI Engineering dept still won't fucking answer where they got this thing, but it's simply amazing. I've sent an ema #@^%da12k"
 
-obj/item/paper/prof2
-	name = "Error log"
-	info = "<large> COMPUTER ID: 15131 <br> Attempting recovery of document directory. <br> Three files recovered <br> Printing file (1/2) <br> </large> Email to iodc@net <br> To whom it may concern, <br> I recieved your email today in regards to the research I am conducting. You have no legal right to question our research or attempt to block it. Per article 323, scientific research is protected information, that you have absolutely zero claim to. The compound is secret in composition, but I can fully promise you that it contains zero traces of phoron, and thus you have no claim whatsoever to it or the technologies to it. Your threats are laughable at best, and have been forwarded to CTI legal. Do not contact me aga!#!41asjw. <br> <large> Printing file (2/2) <br> </large> Email from fuckyou@12cmal <br> We have ways of making you comply. "
+/obj/item/paper/prof2
+	name = "error log"
+	info = "<large> COMPUTER ID: 15131 <br> Attempting recovery of document directory. <br> Three files recovered <br> Printing file (1/2) <br> </large> Email to iodc@net <br> To whom it may concern, <br> I recieved your email today in regards to the research I am conducting. You have no legal right to question our research or attempt to block it. Per article 323, scientific research is protected information, that you have absolutely zero claim to. The compound is secret in composition, but I can fully promise you that it contains absolutely no proprietary molecules, and thus you have no claim whatsoever to it or the technologies to it. Your threats are laughable at best, and have been forwarded to CTI legal. Do not contact me aga!#!41asjw. <br> <large> Printing file (2/2) <br> </large> Email from fuckyou@12cmal <br> We have ways of making you comply. "
 
 /obj/machinery/computer/log_printer
 	name = "Computer"
@@ -123,28 +122,3 @@ obj/item/paper/prof2
 	desc = "Logo of the famed Ceti Technical Institute. Just looking at it makes you feel ashamed of your alma mater."
 	icon = 'unishi.dmi'
 	icon_state = "CTILogo"
-
-/decl/material/solid/phoron/safe
-	name = "tericadone"
-	lore_text = "A phoron substitute currently in labratory testing"
-	taste_mult = 1.5
-	color = "#ffc4ff"
-
-/obj/item/chems/glass/bottle/tericadone
-	name = "tericadone bottle"
-	desc = "A small bottle."
-	icon_state = "bottle-3"
-
-/obj/item/chems/glass/bottle/tericadone/Initialize()
-	. = ..()
-	reagents.add_reagent(/decl/material/solid/phoron/safe , 60)
-	update_icon()
-
-/decl/material/solid/phoron/safe/touch_mob(var/mob/living/M, var/amount, var/datum/reagents/holder)
-	return
-
-/decl/material/solid/phoron/safe/affect_blood(var/mob/living/carbon/M, var/alien, var/removed, var/datum/reagents/holder)
-	return
-
-/decl/material/solid/phoron/safe/affect_touch(var/mob/living/carbon/M, var/alien, var/removed, var/datum/reagents/holder)
-	return

@@ -1,16 +1,6 @@
-// Produced during deuterium synthesis. Super poisonous, SUPER flammable (doesn't need oxygen to burn).
-/decl/material/liquid/oxyphoron
-	name = "oxyphoron"
-	lore_text = "An exceptionally flammable molecule formed from deuterium synthesis."
-	toxicity = 15
-	fuel_value = 2.5
-	vapor_products = list(
-		MAT_OXYGEN = 0.5, 
-		MAT_PHORON = 0.5
-	)
-
 /decl/material/liquid/surfactant // Foam precursor
 	name = "surfacant"
+	uid = "liquid_surfacant"
 	lore_text = "A isocyanate liquid that forms a foam when mixed with water."
 	taste_description = "metal"
 	color = "#9e6b38"
@@ -18,6 +8,7 @@
 
 /decl/material/liquid/foaming_agent // Metal foaming agent. This is lithium hydride. Add other recipes (e.g. LiH + H2O -> LiOH + H2) eventually.
 	name = "foaming agent"
+	uid = "liquid_foaming_agent"
 	lore_text = "A agent that yields metallic foam when mixed with light metal and a strong acid."
 	taste_description = "metal"
 	color = "#664b63"
@@ -25,8 +16,9 @@
 
 /decl/material/liquid/lube
 	name = "lubricant"
+	uid = "liquid_lubricant"
 	lore_text = "Lubricant is a substance introduced between two moving surfaces to reduce the friction and wear between them. giggity."
 	taste_description = "slime"
-	color = "#009ca8"
+	color = SYNTH_BLOOD_COLOR
 	value = 0.1
 	slipperiness = 80

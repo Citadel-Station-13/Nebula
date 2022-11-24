@@ -1,7 +1,4 @@
-GLOBAL_DATUM_INIT(default_state, /datum/topic_state/default, new)
-
-/datum/topic_state/default/href_list(var/mob/user)
-	return list()
+var/global/datum/topic_state/default/default_topic_state = new
 
 /datum/topic_state/default/can_use_topic(var/src_object, var/mob/user)
 	return user.default_can_use_topic(src_object)
@@ -28,7 +25,7 @@ GLOBAL_DATUM_INIT(default_state, /datum/topic_state/default, new)
 		return
 
 	// robots can interact with things they can see within their view range
-	if((src_object in view(src)) && get_dist(src_object, src) <= get_effective_view(client))
+	if((src_object in view(client?.view || world.view, src)) && get_dist(src_object, src) <= get_effective_view(client))
 		return STATUS_INTERACTIVE	// interactive (green visibility)
 	return STATUS_DISABLED			// no updates, completely disabled (red visibility)
 
@@ -40,11 +37,12 @@ GLOBAL_DATUM_INIT(default_state, /datum/topic_state/default, new)
 	// Prevents the AI from using Topic on admin levels (by for example viewing through the court/thunderdome cameras)
 	// unless it's on the same level as the object it's interacting with.
 	var/turf/T = get_turf(src_object)
-	if(!T || !(z == T.z || (T.z in GLOB.using_map.player_levels)))
+	var/turf/A = get_turf(src)
+	if(!A || !T || !AreConnectedZLevels(A.z, T.z))
 		return STATUS_CLOSE
 
 	// If an object is in view then we can interact with it
-	if(src_object in view(get_effective_view(client), src))
+	if(src_object in view(client.view, src))
 		return STATUS_INTERACTIVE
 
 	// If we're installed in a chassi, rather than transfered to an inteliCard or other container, then check if we have camera view

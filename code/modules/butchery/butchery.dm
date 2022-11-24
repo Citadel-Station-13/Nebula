@@ -4,11 +4,11 @@
 #define CARCASS_JOINTED  "jointed"
 
 /mob/living
-	var/meat_type =         /obj/item/chems/food/snacks/meat
+	var/meat_type =         /obj/item/chems/food/meat
 	var/meat_amount =       3
-	var/skin_material =     MAT_SKIN_GENERIC
+	var/skin_material =     /decl/material/solid/skin
 	var/skin_amount =       3
-	var/bone_material =     MAT_BONE_GENERIC
+	var/bone_material =     /decl/material/solid/bone
 	var/bone_amount =       3
 	var/skull_type
 	var/butchery_rotation = 90
@@ -18,44 +18,43 @@
 
 // Harvest an animal's delicious byproducts
 /mob/living/proc/harvest_meat()
-	. = list()
-	var/effective_meat_type = isSynthetic() ? /obj/item/stack/material/steel : meat_type
+	var/effective_meat_type = isSynthetic() ? /obj/item/stack/material/rods : meat_type
 	if(!effective_meat_type || !meat_amount)
 		return
 	blood_splatter(get_turf(src), src, large = TRUE)
 	var/meat_count = 0
 	for(var/i=0;i<meat_amount;i++)
-		var/obj/item/chems/food/snacks/meat/slab = new effective_meat_type(get_turf(src))
-		. += slab
+		var/obj/item/chems/food/meat/slab = new effective_meat_type(get_turf(src))
+		LAZYADD(., slab)
 		if(istype(slab))
 			meat_count++
 	if(reagents && meat_count > 0)
 		var/reagent_split = round(reagents.total_volume/meat_count,1)
-		for(var/obj/item/chems/food/snacks/meat/slab in .)
+		for(var/obj/item/chems/food/meat/slab in .)
 			reagents.trans_to_obj(slab, reagent_split)
 
 /mob/living/carbon/human/harvest_meat()
 	. = ..()
-	for(var/obj/item/organ/internal/I in internal_organs)
-		I.removed()
-		. += I
+	for(var/obj/item/organ/internal/I in get_internal_organs())
+		remove_organ(I)
+		LAZYADD(., I)
 
 /mob/living/proc/harvest_skin()
-	. = list()
 	if(skin_material && skin_amount)
-		var/decl/material/M = decls_repository.get_decl(skin_material)
-		. += new M.stack_type(get_turf(src), skin_amount, skin_material)
+		var/product = SSmaterials.create_object(skin_material, get_turf(src), skin_amount)
+		if(product)
+			LAZYADD(., product)
 		blood_splatter(get_turf(src), src, large = TRUE)
 
 /mob/living/proc/harvest_bones()
-	. = list()
 	var/turf/T = get_turf(src)
 	if(bone_material && bone_amount)
-		var/decl/material/M = decls_repository.get_decl(bone_material)
-		. += new M.stack_type(T, bone_amount, bone_material)
+		var/product = SSmaterials.create_object(bone_material, get_turf(src), bone_amount)
+		if(product)
+			LAZYADD(., product)
 		blood_splatter(T, src, large = TRUE)
 	if(skull_type)
-		. += new skull_type(T)
+		LAZYADD(., new skull_type(T))
 
 // Structure for conducting butchery on.
 /obj/structure/kitchenspike
@@ -65,12 +64,14 @@
 	density =  TRUE
 	icon = 'icons/obj/structures/butchery.dmi'
 	icon_state = "spike"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	material_alteration = MAT_FLAG_ALTERATION_COLOR | MAT_FLAG_ALTERATION_NAME
 	matter = list(
 		DEFAULT_FURNITURE_MATERIAL = MATTER_AMOUNT_PRIMARY
 	)
 	tool_interaction_flags = (TOOL_INTERACTION_ANCHOR | TOOL_INTERACTION_DECONSTRUCT)
+	parts_amount = 2
+	parts_type = /obj/item/stack/material/strut
 
 	var/mob/living/occupant
 	var/occupant_state =   CARCASS_EMPTY
@@ -103,11 +104,14 @@
 		to_chat(user, SPAN_WARNING("\The [occupant] is so badly mangled that removing them from \the [src] would be pointless."))
 		return
 
-/obj/structure/kitchenspike/MouseDrop_T(var/mob/target, var/mob/user)
-	try_spike(target, user)
+/obj/structure/kitchenspike/receive_mouse_drop(var/atom/dropping, var/mob/user)
+	. = ..()
+	if(!. && ismob(dropping))
+		try_spike(dropping, user)
+		return TRUE
 
 /obj/structure/kitchenspike/proc/try_spike(var/mob/living/target, var/mob/living/user)
-	if(!istype(target) || !Adjacent(user) || user.incapacitated())
+	if(!istype(target) || !Adjacent(user) || user.incapacitated() || target.anchored)
 		return
 
 	if(!anchored)
@@ -145,7 +149,7 @@
 	return istype(victim) && ((victim.meat_type && victim.meat_amount) || (victim.skin_material && victim.skin_amount) || (victim.bone_material && victim.bone_amount))
 
 /obj/structure/kitchenspike/on_update_icon()
-	overlays.Cut()
+	..()
 	if(occupant)
 		occupant.set_dir(SOUTH)
 		var/image/I = image(null)
@@ -153,7 +157,7 @@
 		var/matrix/M = matrix()
 		M.Turn(occupant.butchery_rotation)
 		I.transform = M
-		overlays += I
+		add_overlay(I)
 
 /obj/structure/kitchenspike/mob_breakout(mob/living/escapee)
 	. = ..()

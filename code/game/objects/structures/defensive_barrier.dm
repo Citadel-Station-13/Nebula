@@ -8,7 +8,7 @@
 	anchored =   TRUE
 	atom_flags = ATOM_FLAG_CLIMBABLE | ATOM_FLAG_CHECKS_BORDER
 	can_buckle = TRUE
-	material =   MAT_STEEL
+	material =   /decl/material/solid/metal/steel
 	material_alteration = MAT_FLAG_ALTERATION_DESC | MAT_FLAG_ALTERATION_NAME
 	maxhealth = 200
 	var/secured
@@ -16,7 +16,7 @@
 /obj/structure/defensive_barrier/Initialize()
 	. = ..()
 	update_icon()
-	GLOB.dir_set_event.register(src, src, .proc/update_layers)
+	events_repository.register(/decl/observ/dir_set, src, src, .proc/update_layers)
 
 /obj/structure/defensive_barrier/show_examined_damage(mob/user, perc)
 	if(maxhealth == -1)
@@ -30,13 +30,13 @@
 	else
 		to_chat(user, SPAN_DANGER("It is on the verge of breaking apart!"))
 
-/obj/structure/defensive_barrier/physically_destroyed()
+/obj/structure/defensive_barrier/physically_destroyed(var/skip_qdel)
 	visible_message(SPAN_DANGER("\The [src] was destroyed!"))
 	playsound(src, 'sound/effects/clang.ogg', 100, 1)
 	. = ..()
 
 /obj/structure/defensive_barrier/Destroy()
-	GLOB.dir_set_event.unregister(src, src, .proc/update_layers)
+	events_repository.unregister(/decl/observ/dir_set, src, src, .proc/update_layers)
 	. = ..()
 
 /obj/structure/defensive_barrier/proc/update_layers()
@@ -66,7 +66,7 @@
 		var/obj/item/projectile/proj = mover
 		if(Adjacent(proj?.firer))
 			return TRUE
-		if(mover.dir != GLOB.reverse_dir[dir])
+		if(mover.dir != global.reverse_dir[dir])
 			return TRUE
 		if(get_dist(proj.starting, loc) <= 1)//allows to fire from 1 tile away of barrier
 			return TRUE
@@ -111,9 +111,10 @@
 /obj/structure/defensive_barrier/CtrlClick(mob/living/user)
 	try_pack_up(user)
 
-/obj/structure/defensive_barrier/attack_hand(mob/living/carbon/human/user)
+/obj/structure/defensive_barrier/attack_hand(mob/user)
 
-	if(ishuman(user) && user.species.can_shred(user) && user.a_intent == I_HURT)
+	var/decl/species/species = user.get_species()
+	if(ishuman(user) && species?.can_shred(user) && user.a_intent == I_HURT)
 		take_damage(20)
 		user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 		return TRUE
@@ -137,7 +138,7 @@
 
 /obj/structure/defensive_barrier/attackby(obj/item/W, mob/user)
 
-	if(isScrewdriver(W) && density)
+	if(IS_SCREWDRIVER(W) && density)
 		user.visible_message(SPAN_NOTICE("\The [user] begins to [secured ? "secure" : "unsecure"] \the [src]..."))
 		playsound(src, 'sound/items/Screwdriver.ogg', 100, 1)
 		if(!do_after(user, 30, src))
@@ -178,7 +179,7 @@
 	icon = 'icons/obj/structures/barrier.dmi'
 	icon_state = "barrier_hand"
 	w_class = ITEM_SIZE_LARGE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	var/stored_health = 200
 	var/stored_max_health = 200
 
@@ -211,26 +212,13 @@
 	qdel(src)
 
 /obj/item/defensive_barrier/attackby(obj/item/W, mob/user)
-
-	if(stored_health < stored_max_health && isWelder(W))
-		var/obj/item/weldingtool/WT = W
-		if(!WT.isOn())
-			to_chat(user, SPAN_WARNING("Turn \the [W] on first."))
-			return TRUE
-
-		if(!WT.remove_fuel(0,user))
-			to_chat(user, SPAN_WARNING("You need more welding fuel to complete this task."))
-			return TRUE
-
-		to_chat(user, SPAN_WARNING("You start repairing the damage to \the [src]."))
-		playsound(src, 'sound/items/Welder.ogg', 100, 1)
-
-		if(!do_after(user, max(5, round((stored_max_health-stored_health) / 5)), src) || !WT?.isOn() || QDELETED(src))
-			return TRUE
-
-		to_chat(user, SPAN_NOTICE("You finish repairing the damage to \the [src]."))
-		playsound(src, 'sound/items/Welder2.ogg', 100, 1)
-		stored_health = stored_max_health
+	if(stored_health < stored_max_health && IS_WELDER(W))
+		if(W.do_tool_interaction(TOOL_WELDER, user, src,        \
+		  max(5, round((stored_max_health-stored_health) / 5)), \
+		  "repairing the damage to", "repairing the damage to", \
+		  "You fail to patch the damage to \the [src].",        \
+		  fuel_expenditure = 1
+		))
+			stored_health = stored_max_health
 		return TRUE
-
 	. = ..()

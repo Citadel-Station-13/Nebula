@@ -5,11 +5,11 @@
 /mob/proc/update_emotes(var/skip_sort)
 	usable_emotes.Cut()
 	for(var/emote in default_emotes)
-		var/decl/emote/emote_datum = decls_repository.get_decl(emote)
+		var/decl/emote/emote_datum = GET_DECL(emote)
 		if(emote_datum.check_user(src))
 			usable_emotes[emote_datum.key] = emote_datum
 	if(!skip_sort)
-		usable_emotes = sortAssoc(usable_emotes)
+		usable_emotes = sortTim(usable_emotes, /proc/cmp_text_asc)
 
 /mob/Initialize()
 	. = ..()
@@ -31,6 +31,8 @@
 		/decl/emote/visible/jump,
 		/decl/emote/visible/shiver,
 		/decl/emote/visible/collapse,
+		/decl/emote/visible/spin,
+		/decl/emote/visible/sidestep,
 		/decl/emote/audible/hiss,
 		/decl/emote/audible,
 		/decl/emote/audible/deathgasp_alien,
@@ -87,7 +89,6 @@
 		/decl/emote/audible/moan,
 		/decl/emote/audible/grunt,
 		/decl/emote/audible/slap,
-		/decl/emote/human,
 		/decl/emote/human/deathgasp,
 		/decl/emote/audible/giggle,
 		/decl/emote/audible/scream,
@@ -100,6 +101,7 @@
 		/decl/emote/visible/drool,
 		/decl/emote/visible/eyebrow,
 		/decl/emote/visible/twitch,
+		/decl/emote/visible/dance,
 		/decl/emote/visible/twitch_v,
 		/decl/emote/visible/faint,
 		/decl/emote/visible/frown,
@@ -138,7 +140,10 @@
 		/decl/emote/visible/rshoulder,
 		/decl/emote/visible/squint,
 		/decl/emote/visible/tfist,
-		/decl/emote/visible/tilt
+		/decl/emote/visible/tilt,
+		/decl/emote/visible/spin,
+		/decl/emote/visible/sidestep,
+		/decl/emote/visible/vomit
 	)
 
 /mob/living/silicon/robot
@@ -150,12 +155,15 @@
 		/decl/emote/visible/aflap,
 		/decl/emote/visible/twitch,
 		/decl/emote/visible/twitch_v,
+		/decl/emote/visible/dance,
 		/decl/emote/visible/nod,
 		/decl/emote/visible/shake,
 		/decl/emote/visible/glare,
 		/decl/emote/visible/look,
 		/decl/emote/visible/stare,
 		/decl/emote/visible/deathgasp_robot,
+		/decl/emote/visible/spin,
+		/decl/emote/visible/sidestep,
 		/decl/emote/audible/synth,
 		/decl/emote/audible/synth/ping,
 		/decl/emote/audible/synth/buzz,
@@ -163,22 +171,4 @@
 		/decl/emote/audible/synth/deny,
 		/decl/emote/audible/synth/security,
 		/decl/emote/audible/synth/security/halt
-		)
-
-/mob/living/carbon/slime
-	default_emotes = list(
-		/decl/emote/audible/moan,
-		/decl/emote/visible/twitch,
-		/decl/emote/visible/sway,
-		/decl/emote/visible/shiver,
-		/decl/emote/visible/bounce,
-		/decl/emote/visible/jiggle,
-		/decl/emote/visible/lightup,
-		/decl/emote/visible/vibrate,
-		/decl/emote/slime,
-		/decl/emote/slime/pout,
-		/decl/emote/slime/sad,
-		/decl/emote/slime/angry,
-		/decl/emote/slime/frown,
-		/decl/emote/slime/smile
 		)

@@ -5,17 +5,19 @@
 	icon_state = "extinguisher_closed"
 	anchored = 1
 	density = 0
-	var/obj/item/extinguisher/has_extinguisher
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-29}, 'SOUTH':{'y':29}, 'EAST':{'x':-29}, 'WEST':{'x':29}}"
+	var/obj/item/chems/spray/extinguisher/has_extinguisher
 	var/opened = 0
 
 /obj/structure/extinguisher_cabinet/Initialize()
 	. = ..()
-	has_extinguisher = new/obj/item/extinguisher(src)
+	has_extinguisher = new/obj/item/chems/spray/extinguisher(src)
 
 /obj/structure/extinguisher_cabinet/attackby(obj/item/O, mob/user)
 	if(isrobot(user))
 		return
-	if(istype(O, /obj/item/extinguisher))
+	if(istype(O, /obj/item/chems/spray/extinguisher))
 		if(!has_extinguisher && opened && user.unEquip(O, src))
 			has_extinguisher = O
 			to_chat(user, "<span class='notice'>You place [O] in [src].</span>")
@@ -32,9 +34,7 @@
 		return
 	if (ishuman(user))
 		var/mob/living/carbon/human/H = user
-		var/obj/item/organ/external/temp = H.organs_by_name[BP_R_HAND]
-		if (user.hand)
-			temp = H.organs_by_name[BP_L_HAND]
+		var/obj/item/organ/external/temp = GET_EXTERNAL_ORGAN(H, H.get_active_held_item_slot())
 		if(temp && !temp.is_usable())
 			to_chat(user, "<span class='notice'>You try to move your [temp.name], but cannot!</span>")
 			return
@@ -49,21 +49,17 @@
 	update_icon()
 
 /obj/structure/extinguisher_cabinet/on_update_icon()
+	..()
 	if(!opened)
 		icon_state = "extinguisher_closed"
 		return
 	if(has_extinguisher)
-		if(istype(has_extinguisher, /obj/item/extinguisher/mini))
+		if(istype(has_extinguisher, /obj/item/chems/spray/extinguisher/mini))
 			icon_state = "extinguisher_mini"
 		else
 			icon_state = "extinguisher_full"
 	else
 		icon_state = "extinguisher_empty"
-
-/obj/structure/extinguisher_cabinet/AltClick(var/mob/user)
-	if(CanPhysicallyInteract(user))
-		opened = !opened
-		update_icon()
 
 /obj/structure/extinguisher_cabinet/do_simple_ranged_interaction(var/mob/user)
 	if(has_extinguisher)
@@ -74,3 +70,16 @@
 		opened = !opened
 	update_icon()
 	return TRUE
+
+/obj/structure/extinguisher_cabinet/get_alt_interactions(var/mob/user)
+	. = ..()
+	LAZYADD(., /decl/interaction_handler/extinguisher_cabinet_open)
+
+/decl/interaction_handler/extinguisher_cabinet_open
+	name = "Open/Close"
+	expected_target_type = /obj/structure/extinguisher_cabinet
+
+/decl/interaction_handler/extinguisher_cabinet_open/invoked(var/atom/target, var/mob/user)
+	var/obj/structure/extinguisher_cabinet/C = target
+	C.opened = !C.opened
+	C.update_icon()

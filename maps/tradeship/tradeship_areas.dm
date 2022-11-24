@@ -1,5 +1,14 @@
+/datum/event/prison_break/medical
+	areaType = list(/area/ship/trade/crew/medbay)
+
+/datum/event/prison_break/science
+	areaType = list(/area/ship/trade/livestock)
+
+/datum/event/prison_break/station
+	areaType = list(/area/ship/trade/drunk_tank)
+
 /area/ship/trade
-	name = "\improper Generic Ship"
+	name = "\improper Tradeship"
 	ambience = list('sound/ambience/ambigen3.ogg','sound/ambience/ambigen4.ogg','sound/ambience/ambigen5.ogg','sound/ambience/ambigen6.ogg','sound/ambience/ambigen7.ogg','sound/ambience/ambigen8.ogg','sound/ambience/ambigen9.ogg','sound/ambience/ambigen10.ogg','sound/ambience/ambigen11.ogg','sound/ambience/ambigen12.ogg')
 
 /area/ship/trade/crew
@@ -51,6 +60,7 @@
 
 /area/ship/trade/cargo/lower
 	name = "Loading Bay"
+	area_flags = AREA_FLAG_RAD_SHIELDED
 
 /area/ship/trade/dock
 	name = "\improper Docking Bay"
@@ -59,10 +69,12 @@
 /area/ship/trade/aft_port_underside_maint
 	name = "\improper Underside - Aft Port Maintenance"
 	icon_state = "medbay"
+	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_MAINTENANCE
 
 /area/ship/trade/aft_starboard_underside_maint
 	name = "\improper Underside - Aft Starboard Maintenance"
 	icon_state = "toilet"
+	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_MAINTENANCE
 
 /area/ship/trade/loading_bay
 	name = "\improper Underside - Loading Bay"
@@ -71,14 +83,25 @@
 /area/ship/trade/fore_port_underside_maint
 	name = "\improper Underside - Fore Port Maintenance"
 	icon_state = "green"
+	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_MAINTENANCE
+
+/area/ship/trade/livestock
+	name = "\improper Underside - Livestock Handling"
+	icon_state = "red"
+	req_access = list(access_xenobiology)
 
 /area/ship/trade/fore_starboard_underside_maint
 	name = "\improper Underside - Fore Starboard Maintenance"
 	icon_state = "locker"
+	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_MAINTENANCE
 
 /area/ship/trade/disused
 	name = "\improper Underside - Disused"
 	icon_state = "yellow"
+
+/area/ship/trade/undercomms
+	name = "\improper Underside - Communications Relay"
+	icon_state = "blue"
 
 /area/ship/trade/garden
 	name = "\improper Garden"
@@ -110,6 +133,7 @@
 /area/ship/trade/science/fabricaton
 	name = "\improper Fabrication Bay"
 	icon_state = "yellow"
+	req_access = list(access_research)
 
 /area/ship/trade/crew/medbay/chemistry
 	name = "\improper Chemistry Bay"
@@ -119,6 +143,7 @@
 /area/ship/trade/maintenance
 	name = "\improper Maintenance Compartments"
 	icon_state = "amaint"
+	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_MAINTENANCE
 
 /area/ship/trade/maintenance/hallway
 	name = "\improper Maintenance Corridors"
@@ -176,7 +201,6 @@
 /area/ship/trade/command/hallway
 	name = "\improper Command Deck"
 	icon_state = "centcom"
-	req_access = list(access_heads)
 
 /area/ship/trade/command/bridge
 	name = "\improper Bridge"
@@ -187,11 +211,17 @@
 	name = "\improper Captain's Quarters"
 	icon_state = "captain"
 	req_access = list(access_captain)
+	area_flags = AREA_FLAG_RAD_SHIELDED
 
 /area/ship/trade/command/fmate
 	name = "\improper First Mate's Office"
 	icon_state = "heads_hop"
 	req_access = list(access_hop)
+
+/area/ship/trade/shieldbay
+	name = "\improper Auxillary Shield Bay"
+	icon_state = "engine"
+	req_access = list(access_engine_equip)
 
 /area/ship/trade/command/bridge_upper
 	name = "\improper Upper Bridge"
@@ -219,21 +249,22 @@
 	icon_state = "SolarcontrolA"
 	req_access = list(access_engine)
 
-/area/ship/trade/maintenance/robot
-	name = "\improper Robot Storage"
+/area/ship/trade/artifact_storage
+	name = "\improper Artifact Storage"
 	icon_state = "ai_cyborg"
+	req_access = list(access_xenoarch)
 
 /area/ship/trade/drunk_tank
 	name = "Drunk Tank"
 	icon_state = "brig"
 	req_access = list(access_brig)
-	area_flags = AREA_FLAG_RAD_SHIELDED
+	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_SECURITY
 
 /area/turbolift
 	name = "\improper Cargo Elevator"
 	icon_state = "shuttle"
 	requires_power = 0
-	dynamic_lighting = 1
+	dynamic_lighting = TRUE
 	sound_env = STANDARD_STATION
 	area_flags = AREA_FLAG_RAD_SHIELDED | AREA_FLAG_ION_SHIELDED
 	ambience = list('sound/ambience/ambigen3.ogg','sound/ambience/ambigen4.ogg','sound/ambience/ambigen5.ogg','sound/ambience/ambigen6.ogg','sound/ambience/ambigen7.ogg','sound/ambience/ambigen8.ogg','sound/ambience/ambigen9.ogg','sound/ambience/ambigen10.ogg','sound/ambience/ambigen11.ogg','sound/ambience/ambigen12.ogg')

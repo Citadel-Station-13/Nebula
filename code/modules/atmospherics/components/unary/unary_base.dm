@@ -5,87 +5,51 @@
 	layer = ABOVE_TILE_LAYER
 
 	var/datum/gas_mixture/air_contents
-
-	var/obj/machinery/atmospherics/node
-
-	var/datum/pipe_network/network
-
 	pipe_class = PIPE_CLASS_UNARY
+
+	// code sharing between scrubbers and vents
+	var/controlled = TRUE	// if true, report to air alarm, if false, probably in direct contact with something else by radio (e.g. airlocks)
+
+/obj/machinery/atmospherics/unary/get_single_monetary_worth()
+	. = ..()
+	for(var/gas in air_contents?.gas)
+		var/decl/material/gas_data = GET_DECL(gas)
+		. += gas_data.get_value() * air_contents.gas[gas] * GAS_WORTH_MULTIPLIER
+	. = max(1, round(.))
 
 /obj/machinery/atmospherics/unary/Initialize()
 	air_contents = new
 	air_contents.volume = 200
+	if(controlled)
+		reset_area(null, get_area(src))
+	. = ..()
+
+/obj/machinery/atmospherics/unary/Destroy()
+	reset_area(get_area(src), null)
 	. = ..()
 
 /obj/machinery/atmospherics/unary/get_mass()
 	return ..() + air_contents.get_mass()
 
-// Housekeeping and pipe network stuff below
-/obj/machinery/atmospherics/unary/network_expand(datum/pipe_network/new_network, obj/machinery/atmospherics/pipe/reference)
-	if((reference == node) && (network != new_network))
-		qdel(network)
-		network = new_network
+/obj/machinery/atmospherics/unary/physically_destroyed()
+	if(loc && air_contents)
+		loc.assume_air(air_contents)
+	. = ..()	
 
-	new_network.normal_members |= src
-
-/obj/machinery/atmospherics/unary/Destroy()
-	if(node)
-		node.disconnect(src)
-		qdel(network)
-
-	node = null
-
+/obj/machinery/atmospherics/unary/dismantle()
+	if(loc && air_contents)
+		loc.assume_air(air_contents)
 	. = ..()
 
-/obj/machinery/atmospherics/unary/atmos_init()
-	..()
-	if(node) return
-
-	var/node_connect = dir
-
-	for(var/obj/machinery/atmospherics/target in get_step(src,node_connect))
-		if(target.initialize_directions & get_dir(target,src))
-			if (check_connect_types(target,src))
-				node = target
-				break
-
-	update_icon()
-	update_underlays()
-
-/obj/machinery/atmospherics/unary/build_network()
-	if(!network && node)
-		network = new /datum/pipe_network()
-		network.normal_members += src
-		network.build_network(node, src)
-
-/obj/machinery/atmospherics/unary/return_network(obj/machinery/atmospherics/reference)
-	build_network()
-
-	if(reference==node)
-		return network
-
-	return null
-
-/obj/machinery/atmospherics/unary/reassign_network(datum/pipe_network/old_network, datum/pipe_network/new_network)
-	if(network == old_network)
-		network = new_network
-
-	return 1
-
 /obj/machinery/atmospherics/unary/return_network_air(datum/pipe_network/reference)
-	var/list/results = list()
+	for(var/node in nodes_to_networks)
+		if(nodes_to_networks[node] == reference)
+			return list(air_contents)
 
-	if(network == reference)
-		results += air_contents
+/obj/machinery/atmospherics/unary/area_changed(area/old_area, area/new_area)
+	. = ..()
+	if(. && controlled)
+		reset_area(old_area, new_area)
+		toggle_input_toggle() // this sends an update to nearby air alarms
 
-	return results
-
-/obj/machinery/atmospherics/unary/disconnect(obj/machinery/atmospherics/reference)
-	if(reference==node)
-		qdel(network)
-		node = null
-
-	update_icon()
-	update_underlays()
-
-	return null
+/obj/machinery/atmospherics/unary/proc/reset_area(area/old_area, area/new_area)

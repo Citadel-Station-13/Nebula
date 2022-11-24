@@ -1,4 +1,4 @@
-GLOBAL_LIST_INIT(station_bookcases, new)
+var/global/list/station_bookcases = list()
 /obj/structure/bookcase
 	name = "bookcase"
 	icon = 'icons/obj/library.dmi'
@@ -7,7 +7,7 @@ GLOBAL_LIST_INIT(station_bookcases, new)
 	density = 1
 	opacity = 1
 	obj_flags = OBJ_FLAG_ANCHORABLE
-	material = MAT_WOOD
+	material = /decl/material/solid/wood
 	tool_interaction_flags = (TOOL_INTERACTION_ANCHOR | TOOL_INTERACTION_DECONSTRUCT)
 	material_alteration = MAT_FLAG_ALTERATION_NAME | MAT_FLAG_ALTERATION_COLOR
 
@@ -15,26 +15,26 @@ GLOBAL_LIST_INIT(station_bookcases, new)
 	for(var/obj/item/I in loc)
 		if(istype(I, /obj/item/book))
 			I.forceMove(src)
-	if(z in GLOB.using_map.station_levels)
-		GLOB.station_bookcases += src
+	if(isStationLevel(z))
+		global.station_bookcases += src
 	. = ..()
 
 /obj/structure/bookcase/Destroy()
-	GLOB.station_bookcases -= src
+	global.station_bookcases -= src
 	. = ..()
 
-/obj/structure/bookcase/create_dismantled_products(var/turf/T)
+/obj/structure/bookcase/physically_destroyed(skip_qdel)
 	for(var/obj/item/book/b in contents)
-		b.dropInto(T)
+		b.dropInto(loc)
 	. = ..()
 
-/obj/structure/bookcase/attackby(obj/O, mob/user)
+/obj/structure/bookcase/attackby(obj/item/O, mob/user)
 	. = ..()
 	if(!.)
 		if(istype(O, /obj/item/book) && user.unEquip(O, src))
 			update_icon()
-		else if(istype(O, /obj/item/pen))
-			var/newname = sanitizeSafe(input("What would you like to title this bookshelf?"), MAX_NAME_LEN)
+		else if(IS_PEN(O))
+			var/newname = sanitize_safe(input("What would you like to title this bookshelf?"), MAX_NAME_LEN)
 			if(!newname)
 				return
 			else
@@ -71,6 +71,7 @@ GLOBAL_LIST_INIT(station_bookcases, new)
 			physically_destroyed()
 
 /obj/structure/bookcase/on_update_icon()
+	..()
 	if(contents.len < 5)
 		icon_state = "book-[contents.len]"
 	else

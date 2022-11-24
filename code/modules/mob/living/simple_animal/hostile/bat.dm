@@ -2,15 +2,8 @@
 	name = "space bats"
 	desc = "A swarm of cute little blood sucking bats - they look pretty upset."
 	icon = 'icons/mob/simple_animal/bats.dmi'
-	icon_state = "bat"
-	icon_living = "bat"
-	icon_dead = "bat_dead"
-	icon_gib = "bat_dead"
 	speak_chance = 0
 	turns_per_move = 3
-	response_help = "pets the"
-	response_disarm = "gently pushes aside the"
-	response_harm = "hits the"
 	speed = 4
 	maxHealth = 20
 	health = 20
@@ -32,6 +25,10 @@
 	if(istype(L))
 		owner = L
 
+/mob/living/simple_animal/hostile/scarybat/Destroy()
+	owner = null
+	return ..()
+
 /mob/living/simple_animal/hostile/scarybat/FindTarget()
 	. = ..()
 	if(.)
@@ -47,7 +44,7 @@
 	var/mob/living/L = .
 	if(istype(L))
 		if(prob(15))
-			L.Stun(1)
+			SET_STATUS_MAX(L, STAT_STUN, 1)
 			L.visible_message("<span class='danger'>\the [src] scares \the [L]!</span>")
 
 /mob/living/simple_animal/hostile/scarybat/cult

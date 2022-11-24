@@ -2,20 +2,13 @@
 /mob/living/simple_animal/hostile/vagrant
 	name = "creature"
 	desc = "You get the feeling you should run."
-	icon = 'icons/mob/mob.dmi'
-	icon_state = "vagrant"
-	icon_living = "vagrant"
-	icon_dead = "vagrant"
-	icon_gib = "vagrant"
+	icon = 'icons/mob/simple_animal/vagrant.dmi'
 	maxHealth = 60
 	health = 20
 	speed = 5
 	speak_chance = 0
 	turns_per_move = 4
 	move_to_delay = 4
-	response_help = "pets the"
-	response_disarm = "gently pushes aside the"
-	response_harm = "hits the"
 	break_stuff_probability = 0
 	faction = "vagrant"
 	harm_intent_damage = 3
@@ -24,6 +17,8 @@
 	min_gas = null
 	max_gas = null
 	minbodytemp = 0
+	gene_damage = -1
+
 	var/cloaked = 0
 	var/mob/living/carbon/human/gripping = null
 	var/blood_per_tick = 3
@@ -79,6 +74,7 @@
 		return
 
 /mob/living/simple_animal/hostile/vagrant/on_update_icon()
+	..()
 	if(cloaked) //It's fun time
 		alpha = 75
 		set_light(0)
@@ -86,8 +82,8 @@
 		move_to_delay = initial(move_to_delay)
 	else //It's fight time
 		alpha = 255
-		icon_state = "vagrant_glowing"
-		set_light(0.2, 0.1, 3)
+		icon_state += "-glowing"
+		set_light(3, 0.2)
 		move_to_delay = 2
 
 /mob/living/simple_animal/hostile/vagrant/AttackingTarget()
@@ -95,8 +91,8 @@
 	if(ishuman(.))
 		var/mob/living/carbon/human/H = .
 		if(gripping == H)
-			H.Weaken(1)
-			H.Stun(1)
+			SET_STATUS_MAX(H, STAT_WEAK, 1)
+			SET_STATUS_MAX(H, STAT_STUN, 1)
 			return
 		//This line ensures there's always a reasonable chance of grabbing, while still
 		//Factoring in health
@@ -104,8 +100,8 @@
 			gripping = H
 			cloaked = 0
 			update_icon()
-			H.Weaken(1)
-			H.Stun(1)
+			SET_STATUS_MAX(H, STAT_WEAK, 1)
+			SET_STATUS_MAX(H, STAT_STUN, 1)
 			H.visible_message("<span class='danger'>\the [src] latches onto \the [H], pulsating!</span>")
 			src.forceMove(gripping.loc)
 

@@ -8,11 +8,13 @@
 	w_class = ITEM_SIZE_STRUCTURE
 	canhear_range = 2
 	atom_flags = ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_NO_BLOOD
-	obj_flags = OBJ_FLAG_CONDUCTIBLE
+	obj_flags = OBJ_FLAG_CONDUCTIBLE | OBJ_FLAG_MOVES_UNSUPPORTED
 	layer = ABOVE_WINDOW_LAYER
 	cell = null
 	power_usage = 0
-	var/number = 0
+	intercom = TRUE
+	intercom_handling = TRUE
+	directional_offset = "{'NORTH':{'y':-30}, 'SOUTH':{'y':20}, 'EAST':{'x':-22}, 'WEST':{'x':22}}"
 	var/last_tick //used to delay the powercheck
 
 /obj/item/radio/intercom/custom
@@ -57,7 +59,7 @@
 
 /obj/item/radio/intercom/department/medbay/Initialize()
 	. = ..()
-	internal_channels = GLOB.default_medbay_channels.Copy()
+	internal_channels = global.default_medbay_channels.Copy()
 
 /obj/item/radio/intercom/department/security/Initialize()
 	. = ..()
@@ -73,19 +75,30 @@
 		num2text(ENT_FREQ) = list()
 	)
 
-/obj/item/radio/intercom/syndicate
-	name = "illicit intercom"
-	desc = "Talk through this. Evilly."
+/obj/item/radio/intercom/wizard
+	name = "enchanted intercom"
+	desc = "Talk into this while you ponder your orb."
 	frequency = SYND_FREQ
 	subspace_transmission = 1
 	syndie = 1
 
-/obj/item/radio/intercom/syndicate/Initialize()
+/obj/item/radio/intercom/wizard/Initialize()
 	. = ..()
-	internal_channels[num2text(SYND_FREQ)] = list(access_syndicate)
+	internal_channels[num2text(SYND_FREQ)] = list(access_wizard)
+
+/obj/item/radio/intercom/ninja
+	name = "stealth intercom"
+	desc = "It's hiding in plain sight."
+	frequency = SYND_FREQ
+	subspace_transmission = 1
+	syndie = 1
+
+/obj/item/radio/intercom/ninja/Initialize()
+	. = ..()
+	internal_channels[num2text(SYND_FREQ)] = list(access_ninja)
 
 /obj/item/radio/intercom/raider
-	name = "illicit intercom"
+	name = "piratical intercom"
 	desc = "Pirate radio, but not in the usual sense of the word."
 	frequency = RAID_FREQ
 	subspace_transmission = 1
@@ -93,13 +106,13 @@
 
 /obj/item/radio/intercom/raider/Initialize()
 	. = ..()
-	internal_channels[num2text(RAID_FREQ)] = list(access_syndicate)
+	internal_channels[num2text(RAID_FREQ)] = list(access_raider)
 
 /obj/item/radio/intercom/Destroy()
 	STOP_PROCESSING(SSobj, src)
 	return ..()
 
-/obj/item/radio/intercom/attack_ai(mob/user)
+/obj/item/radio/intercom/attack_ai(mob/living/silicon/ai/user)
 	src.add_fingerprint(user)
 	spawn (0)
 		attack_self(user)
@@ -142,6 +155,7 @@
 			update_icon()
 
 /obj/item/radio/intercom/on_update_icon()
+	. = ..()
 	if(!on)
 		icon_state = "intercom-p"
 	else

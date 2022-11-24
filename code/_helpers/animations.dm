@@ -8,6 +8,8 @@
 	addtimer(CALLBACK(GLOBAL_PROC, .proc/remove_images_from_clients, I, show_to), 0.5 SECONDS)
 
 /proc/animate_speech_bubble(image/I, list/show_to, duration)
+	if(!I)
+		return
 	var/matrix/M = matrix()
 	M.Scale(0,0)
 	I.transform = M
@@ -22,3 +24,47 @@
 	var/pixel_y_diff = rand(-2,2)
 	animate(A, pixel_x = A.pixel_x + pixel_x_diff, pixel_y = A.pixel_y + pixel_y_diff, time = 2)
 	animate(pixel_x = initial(A.pixel_x), pixel_y = initial(A.pixel_y), time = 2)
+
+/proc/animate_throw(atom/A)
+	var/ipx = A.pixel_x
+	var/ipy = A.pixel_y
+	var/mpx = 0
+	var/mpy = 0
+
+	if(A.dir & NORTH)
+		mpy += 3
+	else if(A.dir & SOUTH)
+		mpy -= 3
+	if(A.dir & EAST)
+		mpx += 3
+	else if(A.dir & WEST)
+		mpx -= 3
+
+	var/x = mpx + ipx
+	var/y = mpy + ipy
+
+	animate(A, pixel_x = x, pixel_y = y, time = 0.6, easing = EASE_OUT)
+
+	var/matrix/M = matrix(A.transform)
+	animate(transform = turn(A.transform, (mpx - mpy) * 4), time = 0.6, easing = EASE_OUT)
+	animate(pixel_x = ipx, pixel_y = ipy, time = 0.6, easing = EASE_IN)
+	animate(transform = M, time = 0.6, easing = EASE_IN)
+
+/proc/flick_overlay(image/I, list/show_to, duration)
+	for(var/client/C in show_to)
+		C.images += I
+	addtimer(CALLBACK(GLOBAL_PROC, .proc/remove_images_from_clients, I, show_to), duration)
+
+/atom/movable/proc/do_attack_effect(atom/A, effect) //Simple effects for telegraphing or marking attack locations
+	if (effect)
+		var/image/I = image('icons/effects/effects.dmi', A, effect, ABOVE_PROJECTILE_LAYER)
+
+		if (!I)
+			return
+
+		flick_overlay(I, global.clients, 10)
+
+		// And animate the attack!
+		animate(I, alpha = 175, transform = matrix() * 0.75, pixel_x = 0, pixel_y = 0, pixel_z = 0, time = 3)
+		animate(time = 1)
+		animate(alpha = 0, time = 3, easing = CIRCULAR_EASING|EASE_OUT)

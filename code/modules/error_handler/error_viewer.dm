@@ -8,10 +8,10 @@
 //   right here:
 
 #ifdef DEBUG
-GLOBAL_DATUM_INIT(error_cache, /datum/error_viewer/error_cache, new)
+var/global/datum/error_viewer/error_cache/error_cache = new
 #else
 // If debugging is disabled, there's nothing useful to log, so don't bother.
-GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
+var/global/datum/error_viewer/error_cache/error_cache
 #endif
 
 // - error_source datums exist for each line (of code) that generates an error,
@@ -88,11 +88,10 @@ GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
 /datum/error_viewer/error_cache
 	var/list/errors = list()
 	var/list/error_sources = list()
-	var/list/errors_silenced = list()
 
 /datum/error_viewer/error_cache/show_to(user, datum/error_viewer/back_to, linear)
 	var/html = build_header()
-	html += "<b>[GLOB.total_runtimes]</b> runtimes, <b>[GLOB.total_runtimes_skipped]</b> skipped<br><br>"
+	html += "<b>[global.total_runtimes]</b> runtimes, <b>[global.total_runtimes_skipped]</b> skipped<br><br>"
 	if (!linear)
 		html += "organized | [make_link("linear", null, 1)]<hr>"
 		var/datum/error_viewer/error_source/error_source
@@ -149,7 +148,7 @@ GLOBAL_DATUM(error_cache, /datum/error_viewer/error_cache)
 
 /datum/error_viewer/error_source/show_to(user, datum/error_viewer/back_to, linear)
 	if (!istype(back_to))
-		back_to = GLOB.error_cache
+		back_to = global.error_cache
 
 	var/html = build_header(back_to)
 	for (var/datum/error_viewer/error_entry/error_entry in errors)

@@ -42,7 +42,7 @@ var/global/list/navbeacons = list()
 	if(!T.is_plating())
 		return		// prevent intraction when T-scanner revealed
 
-	if(isScrewdriver(I))
+	if(IS_SCREWDRIVER(I))
 		open = !open
 
 		user.visible_message("\The [user] [open ? "opens" : "closes"] cover of \the [src].", "You [open ? "open" : "close"] cover of \the [src].")
@@ -109,7 +109,7 @@ Transponder Codes:<UL>"}
 	..()
 	if (usr.stat)
 		return
-	if ((in_range(src, usr) && istype(src.loc, /turf)) || (istype(usr, /mob/living/silicon)))
+	if ((in_range(src, usr) && isturf(src.loc)) || (istype(usr, /mob/living/silicon)))
 		if(open && !locked)
 			usr.set_machine(src)
 

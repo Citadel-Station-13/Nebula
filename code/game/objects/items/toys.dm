@@ -29,69 +29,79 @@
 	throw_speed = 4
 	throw_range = 20
 	force = 0
+	material = /decl/material/solid/plastic
 
 /*
  * Balloons
  */
-/obj/item/toy/water_balloon
-	name = "water balloon"
-	desc = "A translucent balloon. There's nothing in it."
-	icon = 'icons/obj/toy.dmi'
-	icon_state = "waterballoon-e"
-	item_state = "balloon-empty"
+/obj/item/chems/water_balloon
+	name                          = "water balloon"
+	desc                          = "A translucent balloon."
+	icon                          = 'icons/obj/toy.dmi'
+	icon_state                    = "waterballoon-e"
+	item_state                    = "balloon-empty"
+	w_class                       = ITEM_SIZE_TINY
+	item_flags                    = ITEM_FLAG_NO_BLUDGEON | ITEM_FLAG_HOLLOW
+	atom_flags                    = ATOM_FLAG_OPEN_CONTAINER
+	hitsound                      = 'sound/weapons/throwtap.ogg'
+	throw_speed                   = 4
+	throw_range                   = 20
+	throwforce                    = 0
+	force                         = 0
+	possible_transfer_amounts     = null
+	amount_per_transfer_from_this = 10
+	volume                        = 10
+	material                      = /decl/material/solid/plastic
 
-/obj/item/toy/water_balloon/Initialize()
+/obj/item/chems/water_balloon/examine(mob/user, distance, infix, suffix)
 	. = ..()
-	create_reagents(10)
+	if(distance == 1)
+		to_chat(user, "It's [reagents?.total_volume > 0? "filled with liquid sloshing around" : "empty"].")
 
-/obj/item/toy/water_balloon/attack(mob/living/carbon/human/M, mob/user)
-	return
+/obj/item/chems/water_balloon/on_reagent_change()
+	. = ..()
+	w_class = (reagents?.total_volume > 0)? ITEM_SIZE_SMALL : ITEM_SIZE_TINY
+	//#TODO: Maybe acids should handle eating their own containers themselves?
+	for(var/reagent in reagents?.reagent_volumes)
+		var/decl/material/M = GET_DECL(reagent)
+		if(M.solvent_power >= MAT_SOLVENT_STRONG)
+			visible_message(SPAN_DANGER("\The [M] chews through \the [src]!"))
+			physically_destroyed()
 
-/obj/item/toy/water_balloon/afterattack(atom/A, mob/user, proximity)
-	if(!proximity) return
-	if (istype(A, /obj/structure/reagent_dispensers/watertank) && get_dist(src,A) <= 1)
-		A.reagents.trans_to_obj(src, 10)
-		to_chat(user, "<span class='notice'>You fill the balloon with the contents of [A].</span>")
-		src.desc = "A translucent balloon with some form of liquid sloshing around in it."
-		src.update_icon()
-	return
+/obj/item/chems/water_balloon/throw_impact(atom/hit_atom, datum/thrownthing/TT)
+	..()
+	if(reagents?.total_volume > 0)
+		visible_message(SPAN_WARNING("\The [src] bursts!"))
+		physically_destroyed()
 
-/obj/item/toy/water_balloon/attackby(obj/O, mob/user)
-	if(istype(O, /obj/item/chems/glass))
-		if(O.reagents)
-			if(O.reagents.total_volume < 1)
-				to_chat(user, "The [O] is empty.")
-			else if(O.reagents.total_volume >= 1)
-				if(O.reagents.has_reagent(/decl/material/liquid/acid/polyacid, 1))
-					to_chat(user, "The acid chews through the balloon!")
-					O.reagents.splash(user, reagents.total_volume)
-					qdel(src)
-				else
-					src.desc = "A translucent balloon with some form of liquid sloshing around in it."
-					to_chat(user, "<span class='notice'>You fill the balloon with the contents of [O].</span>")
-					O.reagents.trans_to_obj(src, 10)
-	src.update_icon()
-	return
+/obj/item/chems/water_balloon/physically_destroyed(skip_qdel)
+	if(reagents?.total_volume > 0)
+		new/obj/effect/temporary(src, 5, icon, "burst")
+		reagents.splash_turf(get_turf(src), reagents.total_volume)
+		playsound(src, 'sound/effects/balloon-pop.ogg', 75, TRUE, 3)
+	. = ..()
 
-/obj/item/toy/water_balloon/throw_impact(atom/hit_atom)
-	if(reagents && reagents.total_volume >= 1)
-		src.visible_message("<span class='warning'>\The [src] bursts!</span>","You hear a pop and a splash.")
-		src.reagents.touch_turf(get_turf(hit_atom))
-		for(var/atom/A in get_turf(hit_atom))
-			src.reagents.touch(A)
-		src.icon_state = "burst"
-		spawn(5)
-			if(src)
-				qdel(src)
-	return
-
-/obj/item/toy/water_balloon/on_update_icon()
-	if(src.reagents.total_volume >= 1)
+/obj/item/chems/water_balloon/on_update_icon()
+	. = ..()
+	if(reagents?.total_volume > 0)
 		icon_state = "waterballoon"
 		item_state = "balloon"
 	else
 		icon_state = "waterballoon-e"
 		item_state = "balloon-empty"
+
+/obj/item/chems/water_balloon/afterattack(obj/target, mob/user, proximity)
+	if(!ATOM_IS_OPEN_CONTAINER(src) || !proximity)
+		return
+	if(standard_dispenser_refill(user, target))
+		return TRUE
+	if(standard_pour_into(user, target))
+		return TRUE
+	. = ..()
+
+/obj/item/chems/water_balloon/get_alt_interactions(mob/user)
+	. = ..()
+	LAZYREMOVE(., /decl/interaction_handler/set_transfer/chems)
 
 /obj/item/toy/balloon
 	name = "\improper 'criminal' balloon"
@@ -129,158 +139,30 @@
 	icon_state = "singularity_s1"
 
 /*
- * Toy crossbow
- */
-
-/obj/item/toy/crossbow
-	name = "foam dart crossbow"
-	desc = "A weapon favored by many overactive children. Ages 8 and up."
-	on_mob_icon = 'icons/obj/guns/energy_crossbow.dmi'
-	icon_state = "world"
-	w_class = ITEM_SIZE_SMALL
-	attack_verb = list("attacked", "struck", "hit")
-	var/bullets = 5
-
-	attackby(obj/item/I as obj, mob/user as mob)
-		if(istype(I, /obj/item/toy/ammo/crossbow))
-			if(bullets <= 4)
-				if(!user.unEquip(I))
-					return
-				qdel(I)
-				bullets++
-				to_chat(user, "<span class='notice'>You load the foam dart into the crossbow.</span>")
-			else
-				to_chat(usr, "<span class='warning'>It's already fully loaded.</span>")
-
-
-	afterattack(atom/target as mob|obj|turf|area, mob/user as mob, flag)
-		if(!isturf(target.loc) || target == user) return
-		if(flag) return
-
-		if (locate (/obj/structure/table, src.loc))
-			return
-		else if (bullets)
-			var/turf/trg = get_turf(target)
-			var/obj/effect/foam_dart_dummy/D = new/obj/effect/foam_dart_dummy(get_turf(src))
-			bullets--
-			D.icon_state = "foamdart"
-			D.SetName("foam dart")
-			playsound(user.loc, 'sound/items/syringeproj.ogg', 50, 1)
-
-			for(var/i=0, i<6, i++)
-				if (D)
-					if(D.loc == trg) break
-					step_towards(D,trg)
-
-					for(var/mob/living/M in D.loc)
-						if(!istype(M,/mob/living)) continue
-						if(M == user) continue
-						for(var/mob/O in viewers(world.view, D))
-							O.show_message(text("<span class='warning'>\The [] was hit by the foam dart!</span>", M), 1)
-						new /obj/item/toy/ammo/crossbow(M.loc)
-						qdel(D)
-						return
-
-					for(var/atom/A in D.loc)
-						if(A == user) continue
-						if(A.density)
-							new /obj/item/toy/ammo/crossbow(A.loc)
-							qdel(D)
-
-				sleep(1)
-
-			spawn(10)
-				if(D)
-					new /obj/item/toy/ammo/crossbow(D.loc)
-					qdel(D)
-
-			return
-		else if (bullets == 0)
-			user.Weaken(5)
-			for(var/mob/O in viewers(world.view, user))
-				O.show_message(text("<span class='warning'>\The [] realized they were out of ammo and starting scrounging for some!</span>", user), 1)
-
-
-	attack(mob/M as mob, mob/user as mob)
-		src.add_fingerprint(user)
-
-// ******* Check
-
-		if (src.bullets > 0 && M.lying)
-
-			for(var/mob/O in viewers(M, null))
-				if(O.client)
-					O.show_message(text("<span class='danger'>\The [] casually lines up a shot with []'s head and pulls the trigger!</span>", user, M), 1, "<span class='warning'>You hear the sound of foam against skull</span>", 2)
-					O.show_message(text("<span class='warning'>\The [] was hit in the head by the foam dart!</span>", M), 1)
-
-			playsound(user.loc, 'sound/items/syringeproj.ogg', 50, 1)
-			new /obj/item/toy/ammo/crossbow(M.loc)
-			src.bullets--
-		else if (M.lying && src.bullets == 0)
-			for(var/mob/O in viewers(M, null))
-				if (O.client)	O.show_message(text("<span class='danger'>\The [] casually lines up a shot with []'s head, pulls the trigger, then realizes they are out of ammo and drops to the floor in search of some!</span>", user, M), 1, "<span class='warning'>You hear someone fall</span>", 2)
-			user.Weaken(5)
-		return
-
-/obj/item/toy/crossbow/examine(mob/user, distance)
-	. = ..()
-	if(distance <= 2 && bullets)
-		to_chat(user, "<span class='notice'>It is loaded with [bullets] foam darts!</span>")
-
-/obj/item/toy/ammo/crossbow
-	name = "foam dart"
-	desc = "It's nerf or nothing! Ages 8 and up."
-	icon = 'icons/obj/toy.dmi'
-	icon_state = "foamdart"
-	w_class = ITEM_SIZE_TINY
-	slot_flags = SLOT_EARS
-
-/obj/effect/foam_dart_dummy
-	name = ""
-	desc = ""
-	icon = 'icons/obj/toy.dmi'
-	icon_state = "null"
-	anchored = 1
-	density = 0
-
-
-/*
  * Toy swords
  */
-/obj/item/toy/sword
+/obj/item/energy_blade/sword/toy
 	name = "toy sword"
 	desc = "A cheap, plastic replica of an energy sword. Realistic sounds! Ages 8 and up."
-	icon = 'icons/obj/items/weapon/e_sword.dmi'
-	icon_state = "sword0"
-	item_state = "sword0"
-	var/active = 0.0
-	w_class = ITEM_SIZE_SMALL
-	attack_verb = list("attacked", "struck", "hit")
+	sharp = FALSE
+	edge =  FALSE
+	force = 1
+	throwforce = 1
+	attack_verb = list("hit")
+	material = /decl/material/solid/plastic
 
-	attack_self(mob/user as mob)
-		src.active = !( src.active )
-		if (src.active)
-			to_chat(user, "<span class='notice'>You extend the plastic blade with a quick flick of your wrist.</span>")
-			playsound(user, 'sound/weapons/saberon.ogg', 50, 1)
-			src.icon_state = "swordblue"
-			src.item_state = "swordblue"
-			src.w_class = ITEM_SIZE_HUGE
-		else
-			to_chat(user, "<span class='notice'>You push the plastic blade back down into the handle.</span>")
-			playsound(user, 'sound/weapons/saberoff.ogg', 50, 1)
-			src.icon_state = "sword0"
-			src.item_state = "sword0"
-			src.w_class = initial(w_class)
+	active_hitsound = 'sound/weapons/genhit.ogg'
+	active_descriptor = "extended"
+	active_force = 1
+	active_throwforce = 1
+	active_attack_verb = list("hit")
+	active_edge = FALSE
+	active_sharp = FALSE
 
-		update_held_icon()
-
-		src.add_fingerprint(user)
-		return
-
-/obj/item/material/sword/katana/toy
+/obj/item/sword/katana/toy
 	name = "toy katana"
 	desc = "Woefully underpowered in D20."
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 
 /*
  * Snap pops
@@ -292,15 +174,13 @@
 	icon_state = "snappop"
 	w_class = ITEM_SIZE_TINY
 
-	throw_impact(atom/hit_atom)
-		..()
-		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-		s.set_up(3, 1, src)
-		s.start()
-		new /obj/effect/decal/cleanable/ash(src.loc)
-		src.visible_message("<span class='warning'>The [src.name] explodes!</span>","<span class='warning'>You hear a snap!</span>")
-		playsound(src, 'sound/effects/snap.ogg', 50, 1)
-		qdel(src)
+/obj/item/toy/snappop/throw_impact(atom/hit_atom)
+	..()
+	spark_at(src, cardinal_only = TRUE)
+	new /obj/effect/decal/cleanable/ash(src.loc)
+	visible_message(SPAN_WARNING("The [src.name] explodes!"),SPAN_WARNING("You hear a snap!"))
+	playsound(src, 'sound/effects/snap.ogg', 50, 1)
+	qdel(src)
 
 /obj/item/toy/snappop/Crossed(H)
 	if((ishuman(H))) //i guess carp and shit shouldn't set them off
@@ -308,9 +188,7 @@
 		if(!MOVING_DELIBERATELY(M))
 			to_chat(M, "<span class='warning'>You step on the snap pop!</span>")
 
-			var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-			s.set_up(2, 0, src)
-			s.start()
+			spark_at(src, amount=2)
 			new /obj/effect/decal/cleanable/ash(src.loc)
 			src.visible_message("<span class='warning'>The [src.name] explodes!</span>","<span class='warning'>You hear a snap!</span>")
 			playsound(src, 'sound/effects/snap.ogg', 50, 1)
@@ -725,8 +603,8 @@
 		user.visible_message("<span class='notice'><b>\The [user]</b> pokes the [src].</span>","<span class='notice'>You poke the [src].</span>")
 
 /obj/item/toy/plushie/mouse
-	name = "snaprat plush"
-	desc = "A plushie of a snaprat! What was once considered a vile rodent is now your very best friend."
+	name = "mouse plush"
+	desc = "A plushie of a mouse! What was once considered a vile rodent is now your very best friend."
 	icon_state = "mouseplushie"
 
 /obj/item/toy/plushie/kitten
@@ -745,42 +623,39 @@
 	icon_state = "spiderplushie"
 
 //Toy cult sword
-/obj/item/material/sword/cult_toy
+/obj/item/sword/cult_toy
 	name = "foam sword"
 	desc = "An arcane weapon (made of foam) wielded by the followers of the hit Saturday morning cartoon \"King Nursee and the Acolytes of Heroism\"."
-	on_mob_icon = 'icons/obj/items/weapon/swords/cult.dmi'
-	material = MAT_PLASTIC
+	icon = 'icons/obj/items/weapon/swords/cult.dmi'
+	material = /decl/material/solid/plastic
 	edge = 0
 	sharp = 0
 
-/obj/item/inflatable_duck
+/obj/item/inflatable_duck //#TODO: Move under obj/item/toy ?
 	name = "inflatable duck"
 	desc = "No bother to sink or swim when you can just float!"
-	icon_state = "inflatable"
-	item_state = "inflatable"
-	icon = 'icons/obj/clothing/obj_belt.dmi'
-	slot_flags = SLOT_BELT
+	icon = 'icons/clothing/belt/inflatable.dmi'
+	icon_state = ICON_STATE_WORLD
+	slot_flags = SLOT_LOWER_BODY
+	material = /decl/material/solid/plastic
 
-/obj/item/marshalling_wand
+/obj/item/marshalling_wand //#TODO: Move under obj/item/toy ?
 	name = "marshalling wand"
 	desc = "An illuminated, hand-held baton used by hangar personnel to visually signal shuttle pilots. The signal changes depending on your intent."
 	icon_state = "marshallingwand"
 	item_state = "marshallingwand"
 	icon = 'icons/obj/toy.dmi'
-	item_icons = list(
-		icon_l_hand = 'icons/mob/onmob/items/lefthand.dmi',
-		icon_r_hand = 'icons/mob/onmob/items/righthand.dmi',
-		)
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	w_class = ITEM_SIZE_SMALL
 	force = 1
 	attack_verb = list("attacked", "whacked", "jabbed", "poked", "marshalled")
+	material = /decl/material/solid/plastic
 
 /obj/item/marshalling_wand/Initialize()
-	set_light(0.6, 0.5, 2, 2, "#ff0000")
+	set_light(1.5, 1.5, "#ff0000")
 	return ..()
 
-/obj/item/marshalling_wand/attack_self(mob/living/user)
+/obj/item/marshalling_wand/attack_self(mob/user)
 	playsound(src.loc, 'sound/effects/rustle1.ogg', 100, 1)
 	if (user.a_intent == I_HELP)
 		user.visible_message("<span class='notice'>[user] beckons with \the [src], signalling forward motion.</span>",
@@ -789,12 +664,15 @@
 		user.visible_message("<span class='notice'>[user] holds \the [src] above their head, signalling a stop.</span>",
 							"<span class='notice'>You hold \the [src] above your head, signalling a stop.</span>")
 	else if (user.a_intent == I_GRAB)
-		var/WAND_TURN_DIRECTION
-		if (user.l_hand == src) WAND_TURN_DIRECTION = "left"
-		else if (user.r_hand == src) WAND_TURN_DIRECTION = "right"
-		else return //how can you not be holding it in either hand?? black magic
-		user.visible_message("<span class='notice'>[user] waves \the [src] to the [WAND_TURN_DIRECTION], signalling a turn.</span>",
-							"<span class='notice'>You wave \the [src] to the [WAND_TURN_DIRECTION], signalling a turn.</span>")
+		var/wand_dir
+		if(user.get_equipped_item(BP_L_HAND) == src)
+			wand_dir = "left"
+		else if (user.get_equipped_item(BP_R_HAND) == src)
+			wand_dir = "right"
+		else
+			wand_dir = pick("left", "right")
+		user.visible_message("<span class='notice'>[user] waves \the [src] to the [wand_dir], signalling a turn.</span>",
+							"<span class='notice'>You wave \the [src] to the [wand_dir], signalling a turn.</span>")
 	else if (user.a_intent == I_HURT)
 		user.visible_message("<span class='warning'>[user] frantically waves \the [src] above their head!</span>",
 							"<span class='warning'>You frantically wave \the [src] above your head!</span>")
@@ -833,6 +711,7 @@
 	var/activation_sound = 'sound/effects/flashlight.ogg'
 
 /obj/item/toy/desk/on_update_icon()
+	. = ..()
 	if(on)
 		icon_state = "[initial(icon_state)]-on"
 	else
@@ -902,3 +781,95 @@
 	. = ..()
 	if (proximity)
 		visible_message("<span class='warning'>\The [src] says, \"[pick(possible_answers) ]\" as it hits \the [O]!</span>")
+
+
+//////////////////////////////////////////////////////
+//					Chess Pieces					//
+//////////////////////////////////////////////////////
+
+/obj/item/toy/chess
+	name = "oversized chess piece"
+	desc = "This should never display."
+	icon = 'icons/obj/items/chess.dmi'
+	w_class = ITEM_SIZE_LARGE
+	force = 1
+	throwforce = 1
+	drop_sound = 'sound/foley/glass.ogg'
+	color = COLOR_OFF_WHITE
+	abstract_type = /obj/item/toy/chess
+	// Some offsets so they start nicely center-ish on the turf.
+	randpixel = 0
+	pixel_y = 6
+	pixel_x = 0
+	var/rule_info
+
+/obj/item/toy/chess/examine(mob/user, distance, infix, suffix)
+	. = ..()
+	if(rule_info)
+		to_chat(user, SPAN_NOTICE(rule_info))
+
+/obj/item/toy/chess/pawn
+	name = "oversized white pawn"
+	desc = "A large pawn piece for playing chess. It's made of white enamel."
+	rule_info = "Pawns can move forward one square, if that square is unoccupied. If the pawn has not yet moved, it has the option of moving two squares forward provided both squares in front of the pawn are unoccupied. A pawn cannot move backward. They can only capture an enemy piece on either of the two tiles diagonally in front of them, but not the tile directly in front of them."
+	icon_state = "pawn"
+
+/obj/item/toy/chess/pawn/black
+	name = "oversized black pawn"
+	desc = "A large pawn piece for playing chess. It's made of black enamel."
+	color = COLOR_GRAY40
+
+/obj/item/toy/chess/rook
+	name = "oversized white rook"
+	desc = "A large rook piece for playing chess. It's made of white enamel."
+	rule_info = "The Rook can move any number of vacant squares vertically or horizontally."
+	icon_state = "rook"
+
+/obj/item/toy/chess/rook/black
+	name = "oversized black rook"
+	desc = "A large rook piece for playing chess. It's made of black enamel."
+	color = COLOR_GRAY40
+
+/obj/item/toy/chess/knight
+	name = "oversized white knight"
+	desc = "A large knight piece for playing chess. It's made of white enamel. Sadly, you can't ride it."
+	rule_info = "The Knight can either move two squares horizontally and one square vertically or two squares vertically and one square horizontally. The knight's movement can also be viewed as an 'L' laid out at any horizontal or vertical angle."
+	icon_state = "knight"
+
+/obj/item/toy/chess/knight/black
+	name = "oversized black knight"
+	desc = "A large knight piece for playing chess. It's made of black enamel. 'Just a flesh wound.'"
+	color = COLOR_GRAY40
+
+/obj/item/toy/chess/bishop
+	name = "oversized white bishop"
+	desc = "A large bishop piece for playing chess. It's made of white enamel."
+	rule_info = "The Bishop can move any number of vacant squares in any diagonal direction."
+	icon_state = "bishop"
+
+/obj/item/toy/chess/bishop/black
+	name = "oversized black bishop"
+	desc = "A large bishop piece for playing chess. It's made of black enamel."
+	color = COLOR_GRAY40
+
+/obj/item/toy/chess/queen
+	name = "oversized white queen"
+	desc = "A large queen piece for playing chess. It's made of white enamel."
+	rule_info = "The Queen can move any number of vacant squares diagonally, horizontally, or vertically."
+	icon_state = "queen"
+
+/obj/item/toy/chess/queen/black
+	name = "oversized black queen"
+	desc = "A large queen piece for playing chess. It's made of black enamel."
+	color = COLOR_GRAY40
+
+/obj/item/toy/chess/king
+	name = "oversized white king"
+	desc = "A large king piece for playing chess. It's made of white enamel."
+	rule_info = "The King can move exactly one square horizontally, vertically, or diagonally. If your opponent captures this piece, you lose."
+	icon_state = "king"
+
+/obj/item/toy/chess/king/black
+	name = "oversized black king"
+	desc = "A large king piece for playing chess. It's made of black enamel."
+	color = COLOR_GRAY40

@@ -21,7 +21,8 @@
 	effect_state = "green_sparkles"
 	effect_duration = 5
 
-	message = "You feel a pleasant rush of heat move through your body."
+	// Vars expect a constant at compile time, so we can't use macros for spans here
+	message = "<span class='notice'><b>You feel a pleasant rush of heat move through your body.</b></span>"
 
 /spell/targeted/heal_target/empower_spell()
 	if(!..())
@@ -32,6 +33,7 @@
 	return "[src] will now heal more."
 
 /spell/targeted/heal_target/tower
+	desc = "Allows you to heal yourself, or others, for a slight amount."
 	charge_max = 2
 
 /spell/targeted/heal_target/touch
@@ -64,7 +66,7 @@
 	amt_dam_robo = -10
 	amt_blood  = 28
 
-	message = "Your body feels like a furnace."
+	message = "<span class='notice'><b>Your body feels like a warm, cozy fire.</b></span>"
 
 /spell/targeted/heal_target/major/empower_spell()
 	if(!..())
@@ -84,6 +86,7 @@
 /spell/targeted/heal_target/major/tower
 	charge_max = 1
 	spell_flags = INCLUDEUSER | SELECTABLE
+	desc = "Allows you to heal others for a great amount."
 
 /spell/targeted/heal_target/area
 	name = "Cure Area"
@@ -112,6 +115,7 @@
 	return "[src] now heals more in a wider area."
 
 /spell/targeted/heal_target/area/tower
+	desc = "Allows you to heal everyone in an area for minor damage."
 	charge_max = 1
 
 /spell/targeted/heal_target/area/slow
@@ -152,7 +156,7 @@
 
 
 /spell/targeted/heal_target/trance
-	name = "trance"
+	name = "Trance"
 	desc = "A mighty spell of restoration that briefly forces its target into a deep, dreamless sleep, rapidly repairing their body and soul as their senses are dulled. The users of this mighty art are known for being short lived, slowly devolving into raving madness as the power they once relied on fails them with excessive use."
 	feedback = "TC"
 	spell_flags = SELECTABLE
@@ -176,7 +180,7 @@
 		L.forceMove(effect)
 		var/time = (L.getBruteLoss() + L.getFireLoss()) * 20
 		L.status_flags &= GODMODE
-		to_chat(L,"<span class='notice'>You will be in stasis for [time/10] second\s</span>")
+		to_chat(L,"<span class='notice'>You will be in stasis for [time/10] second\s.</span>")
 		addtimer(CALLBACK(src,.proc/cancel_rift),time)
 
 /spell/targeted/heal_target/trance/Destroy()

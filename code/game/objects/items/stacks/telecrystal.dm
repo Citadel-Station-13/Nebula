@@ -7,7 +7,7 @@
 	w_class = ITEM_SIZE_TINY
 	max_amount = 50
 	item_flags = ITEM_FLAG_NO_BLUDGEON
-	origin_tech = "{'materials':6,'bluespace':4}"
+	origin_tech = "{'materials':6,'wormholes':4}"
 
 /obj/item/stack/telecrystal/afterattack(var/obj/item/I, mob/user, proximity)
 	if(!proximity)
@@ -21,7 +21,7 @@
 			to_chat(user, "<span class='notice'>You slot \the [src] into \the [I] and charge its internal uplink.</span>")
 
 /obj/item/stack/telecrystal/attack_self(var/mob/user)
-	if(use(ceil(DEFAULT_TELECRYSTAL_AMOUNT/20)))
+	if(use(CEILING(DEFAULT_TELECRYSTAL_AMOUNT/20)))
 		user.visible_message("<span class='warning'>\The [user] crushes a crystal!</span>", "<span class='warning'>You crush \a [src]!</span>", "You hear the sound of a crystal breaking just before a sudden crack of electricity.")
 		var/turf/T = get_random_turf_in_range(user, 7, 3)
 		if(T)

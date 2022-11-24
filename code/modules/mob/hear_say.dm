@@ -4,12 +4,12 @@
 	if(!client)
 		return
 
-	if(speaker && !speaker.client && isghost(src) && get_preference_value(/datum/client_preference/ghost_ears) == GLOB.PREF_ALL_SPEECH && !(speaker in view(src)))
+	if(speaker && !speaker.client && isghost(src) && get_preference_value(/datum/client_preference/ghost_ears) == PREF_ALL_SPEECH && !(speaker in view(src)))
 			//Does the speaker have a client?  It's either random stuff that observers won't care about (Experiment 97B says, 'EHEHEHEHEHEHEHE')
 			//Or someone snoring.  So we make it where they won't hear it.
 		return
 
-	if(language && (language.flags & (NONVERBAL|SIGNLANG)))
+	if(language && (language.flags & (LANG_FLAG_NONVERBAL|LANG_FLAG_SIGNLANG)))
 		sound_vol = 0
 		speech_sound = null
 
@@ -25,34 +25,24 @@
 			italics = 1
 			sound_vol *= 0.5 //muffle the sound a bit, so it's like we're actually talking through contact
 
-	if(sleeping || stat == UNCONSCIOUS)
+	if(HAS_STATUS(src, STAT_ASLEEP) || stat == UNCONSCIOUS)
 		hear_sleep(message)
 		return
 
 	//non-verbal languages are garbled if you can't see the speaker. Yes, this includes if they are inside a closet.
-	if (language && (language.flags & NONVERBAL))
+	if (language && (language.flags & LANG_FLAG_NONVERBAL))
 		if (!speaker || (src.sdisabilities & BLINDED || src.blinded) || !(speaker in view(src)))
 			message = stars(message)
 
-	if(!(language && (language.flags & INNATE))) // skip understanding checks for INNATE languages
-		if(!say_understands(speaker,language))
-			if(istype(speaker,/mob/living/simple_animal))
-				var/mob/living/simple_animal/S = speaker
-				message = pick(S.speak)
+	var/understands_language = say_understands(speaker, language)
+	if(!(language && (language.flags & LANG_FLAG_INNATE))) // skip understanding checks for INNATE languages
+		if(!understands_language)
+			if(language)
+				message = language.scramble(speaker, message, languages)
 			else
-				if(language)
-					message = language.scramble(message, languages)
-				else
-					message = stars(message)
+				message = stars(message)
 
-	var/speaker_name = "Unknown"
-	if(speaker)
-		speaker_name = speaker.name
-
-	if(istype(speaker, /mob/living/carbon/human))
-		var/mob/living/carbon/human/H = speaker
-		speaker_name = H.GetVoice()
-
+	var/speaker_name = speaker?.GetVoice() || "Unknown"
 	if(italics)
 		message = "<i>[message]</i>"
 
@@ -61,30 +51,31 @@
 		if(speaker_name != speaker.real_name && speaker.real_name)
 			speaker_name = "[speaker.real_name] ([speaker_name])"
 		track = "([ghost_follow_link(speaker, src)]) "
-		if(get_preference_value(/datum/client_preference/ghost_ears) == GLOB.PREF_ALL_SPEECH && (speaker in view(src)))
+		if(get_preference_value(/datum/client_preference/ghost_ears) == PREF_ALL_SPEECH && (speaker in view(src)))
 			message = "<b>[message]</b>"
 
 	if(is_deaf() || get_sound_volume_multiplier() < 0.2)
-		if(!language || !(language.flags & INNATE)) // INNATE is the flag for audible-emote-language, so we don't want to show an "x talks but you cannot hear them" message if it's set
+		if(!language || !(language.flags & LANG_FLAG_INNATE)) // LANG_FLAG_INNATE is the flag for audible-emote-language, so we don't want to show an "x talks but you cannot hear them" message if it's set
 			if(speaker == src)
-				to_chat(src, "<span class='warning'>You cannot hear yourself speak!</span>")
+				to_chat(src, SPAN_WARNING("You cannot hear yourself speak!"))
 			else if(!is_blind())
-				to_chat(src, "<span class='name'>[speaker_name]</span>[alt_name] talks but you cannot hear \him.")
+				var/decl/pronouns/G = speaker.get_pronouns()
+				to_chat(src, "<span class='name'>\The [speaker_name]</span>[alt_name] talks but you cannot hear [G.him].")
 	else
 		if (language)
 			var/nverb = verb
-			if (say_understands(speaker, language))
+			if (understands_language)
 				var/skip = FALSE
 				if (isliving(src))
 					var/mob/living/L = src
 					skip = L.default_language == language
 				if (!skip)
 					switch(src.get_preference_value(/datum/client_preference/language_display))
-						if(GLOB.PREF_FULL) // Full language name
+						if(PREF_FULL) // Full language name
 							nverb = "[verb] in [language.name]"
-						if(GLOB.PREF_SHORTHAND) //Shorthand codes
+						if(PREF_SHORTHAND) //Shorthand codes
 							nverb = "[verb] ([language.shorthand])"
-						if(GLOB.PREF_OFF)//Regular output
+						if(PREF_OFF)//Regular output
 							nverb = verb
 			on_hear_say("<span class='game say'>[track]<span class='name'>[speaker_name]</span>[alt_name] [language.format_message(message, nverb)]</span>")
 		else
@@ -105,18 +96,18 @@
 	if(!client)
 		return
 
-	if(sleeping || stat==1) //If unconscious or sleeping
+	if(HAS_STATUS(src, STAT_ASLEEP) || stat == UNCONSCIOUS) //If unconscious or sleeping
 		hear_sleep(message)
 		return
 
 	var/track = null
 
 	//non-verbal languages are garbled if you can't see the speaker. Yes, this includes if they are inside a closet.
-	if (language && (language.flags & NONVERBAL))
+	if (language && (language.flags & LANG_FLAG_NONVERBAL))
 		if (!speaker || (src.sdisabilities & BLINDED || src.blinded) || !(speaker in view(src)))
 			message = stars(message)
 
-	if(!(language && (language.flags & INNATE))) // skip understanding checks for INNATE languages
+	if(!(language && (language.flags & LANG_FLAG_INNATE))) // skip understanding checks for LANG_FLAG_INNATE languages
 		if(!say_understands(speaker,language))
 			if(istype(speaker,/mob/living/simple_animal))
 				var/mob/living/simple_animal/S = speaker
@@ -126,7 +117,7 @@
 					return
 			else
 				if(language)
-					message = language.scramble(message, languages)
+					message = language.scramble(speaker, message, languages)
 				else
 					message = stars(message)
 
@@ -155,7 +146,7 @@
 		if (ishuman(speaker))
 			var/mob/living/carbon/human/H = speaker
 
-			if(H.wear_mask && istype(H.wear_mask,/obj/item/clothing/mask/chameleon/voice))
+			if(istype(H.get_equipped_item(slot_wear_mask_str), /obj/item/clothing/mask/chameleon/voice))
 				changed_voice = 1
 				var/list/impersonated = new()
 				var/mob/living/carbon/human/I = impersonated[speaker_name]
@@ -169,7 +160,7 @@
 
 				// If I's display name is currently different from the voice name and using an agent ID then don't impersonate
 				// as this would allow the AI to track I and realize the mismatch.
-				if(I && !(I.name != speaker_name && I.wear_id && istype(I.wear_id,/obj/item/card/id/syndicate)))
+				if(I && !(I.name != speaker_name && istype(I.get_equipped_item(slot_wear_id_str),/obj/item/card/id/syndicate)))
 					impersonating = I
 					jobname = impersonating.get_assignment()
 				else
@@ -214,16 +205,16 @@
 				skip = L.default_language == language
 			if (!skip)
 				switch(src.get_preference_value(/datum/client_preference/language_display))
-					if (GLOB.PREF_FULL)
+					if (PREF_FULL)
 						nverb = "[verb] in [language.name]"
-					if(GLOB.PREF_SHORTHAND)
+					if(PREF_SHORTHAND)
 						nverb = "[verb] ([language.shorthand])"
-					if(GLOB.PREF_OFF)
+					if(PREF_OFF)
 						nverb = verb
 		formatted = language.format_message_radio(message, nverb)
 	else
 		formatted = "[verb], <span class=\"body\">\"[message]\"</span>"
-	if(sdisabilities & DEAFENED || ear_deaf)
+	if(sdisabilities & DEAFENED || GET_STATUS(src, STAT_DEAF))
 		var/mob/living/carbon/human/H = src
 		if(istype(H) && H.has_headset_in_ears() && prob(20))
 			to_chat(src, SPAN_WARNING("You feel your headset vibrate but can hear nothing from it!"))
@@ -251,23 +242,23 @@
 	if(!client)
 		return
 
-	if(sleeping || stat == UNCONSCIOUS)
+	if(HAS_STATUS(src, STAT_ASLEEP) || stat == UNCONSCIOUS)
 		return 0
 
 	if(say_understands(speaker, language))
 		var/nverb = null
 		switch(src.get_preference_value(/datum/client_preference/language_display))
-			if(GLOB.PREF_FULL) // Full language name
+			if(PREF_FULL) // Full language name
 				nverb = "[verb] in [language.name]"
-			if(GLOB.PREF_SHORTHAND) //Shorthand codes
+			if(PREF_SHORTHAND) //Shorthand codes
 				nverb = "[verb] ([language.shorthand])"
-			if(GLOB.PREF_OFF)//Regular output
+			if(PREF_OFF)//Regular output
 				nverb = verb
 		message = "<B>[speaker]</B> [nverb], \"[message]\""
 	else
 		var/adverb
-		var/length = length(message) * pick(0.8, 0.9, 1.0, 1.1, 1.2)	//Inserts a little fuzziness.
-		switch(length)
+		var/msg_length = length(message) * pick(0.8, 0.9, 1.0, 1.1, 1.2)	//Inserts a little fuzziness.
+		switch(msg_length)
 			if(0 to 12) 	adverb = " briefly"
 			if(12 to 30)	adverb = " a short message"
 			if(30 to 48)	adverb = " a message"
@@ -283,6 +274,8 @@
 	src.show_message(message)
 
 /mob/proc/hear_sleep(var/message)
+	if (is_deaf())
+		return
 	var/heard = ""
 	if(prob(15))
 		var/list/punctuation = list(",", "!", ".", ";", "?")

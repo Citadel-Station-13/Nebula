@@ -6,6 +6,7 @@
 	desc = "Cools gas when connected to a pipe network."
 	icon = 'icons/obj/Cryogenic2.dmi'
 	icon_state = "freezer_0"
+	layer = STRUCTURE_LAYER
 	density = 1
 	anchored = 1
 	use_power = POWER_USE_OFF
@@ -24,36 +25,14 @@
 	var/set_temperature = T20C		// Thermostat
 	var/cooling = 0
 
-/obj/machinery/atmospherics/unary/freezer/atmos_init()
-	..()
-	if(node)
-		return
-
-	var/node_connect = dir
-
-	for(var/obj/machinery/atmospherics/target in get_step(src, node_connect))
-		if(target.initialize_directions & get_dir(target, src))
-			node = target
-			break
-
-	//copied from pipe construction code since heaters/freezers don't use fittings and weren't doing this check - this all really really needs to be refactored someday.
-	//check that there are no incompatible pipes/machinery in our own location
-	for(var/obj/machinery/atmospherics/M in src.loc)
-		if(M != src && (M.initialize_directions & node_connect) && M.check_connect_types(M,src))	// matches at least one direction on either type of pipe & same connection type
-			node = null
-			break
-
-	update_icon()
-
 /obj/machinery/atmospherics/unary/freezer/on_update_icon()
-	if(node)
+	if(LAZYLEN(nodes_to_networks))
 		if(use_power && cooling)
 			icon_state = "freezer_1"
 		else
 			icon_state = "freezer"
 	else
 		icon_state = "freezer_0"
-	return
 
 /obj/machinery/atmospherics/unary/freezer/interface_interact(mob/user)
 	ui_interact(user)
@@ -95,7 +74,6 @@
 		return 1
 	if(href_list["toggleStatus"])
 		update_use_power(!use_power)
-		update_icon()
 	if(href_list["temp"])
 		var/amount = text2num(href_list["temp"])
 		if(amount > 0)
@@ -103,7 +81,7 @@
 		else
 			set_temperature = max(set_temperature + amount, 0)
 	if(href_list["setPower"]) //setting power to 0 is redundant anyways
-		var/new_setting = between(0, text2num(href_list["setPower"]), 100)
+		var/new_setting = clamp(0, text2num(href_list["setPower"]), 100)
 		set_power_level(new_setting)
 
 	add_fingerprint(usr)
@@ -116,7 +94,7 @@
 		update_icon()
 		return
 
-	if(network && air_contents.temperature > set_temperature)
+	if(LAZYLEN(nodes_to_networks) && air_contents.temperature > set_temperature)
 		cooling = 1
 
 		var/heat_transfer = max( -air_contents.get_thermal_energy_change(set_temperature - 5), 0 )
@@ -132,7 +110,7 @@
 
 		use_power_oneoff(power_rating)
 
-		network.update = 1
+		update_networks()
 	else
 		cooling = 0
 
@@ -141,9 +119,9 @@
 //upgrading parts
 /obj/machinery/atmospherics/unary/freezer/RefreshParts()
 	..()
-	var/cap_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/capacitor), 0, 20)
-	var/manip_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 1, 10)
-	var/bin_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/matter_bin), 0, 10)
+	var/cap_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/capacitor), 0, 20)
+	var/manip_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 1, 10)
+	var/bin_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/matter_bin), 0, 10)
 
 	power_rating = initial(power_rating) * cap_rating / 2			//more powerful
 	heatsink_temperature = initial(heatsink_temperature) / ((manip_rating + bin_rating) / 2)	//more efficient

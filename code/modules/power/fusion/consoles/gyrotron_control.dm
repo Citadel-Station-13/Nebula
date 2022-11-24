@@ -9,12 +9,12 @@
 
 	if(href_list["modifypower"] || href_list["modifyrate"] || href_list["toggle"])
 
-		var/obj/machinery/power/emitter/gyrotron/G = locate(href_list["machine"])
+		var/obj/machinery/emitter/gyrotron/G = locate(href_list["machine"])
 		if(!istype(G))
 			return TOPIC_NOACTION
 
 		var/datum/local_network/lan = get_local_network()
-		var/list/gyrotrons = lan.get_devices(/obj/machinery/power/emitter/gyrotron)
+		var/list/gyrotrons = lan.get_devices(/obj/machinery/emitter/gyrotron)
 		if(!lan || !gyrotrons || !gyrotrons[G])
 			return TOPIC_NOACTION
 
@@ -25,7 +25,7 @@
 			if(!new_val)
 				to_chat(user, SPAN_WARNING("That's not a valid number."))
 				return TOPIC_NOACTION
-			G.mega_energy = Clamp(new_val, 1, 50)
+			G.mega_energy = clamp(new_val, 1, 50)
 			G.change_power_consumption(G.mega_energy * 1500, POWER_USE_ACTIVE)
 			return TOPIC_REFRESH
 
@@ -36,7 +36,7 @@
 			if(!new_val)
 				to_chat(user, SPAN_WARNING("That's not a valid number."))
 				return TOPIC_NOACTION
-			G.rate = Clamp(new_val, 2, 10)
+			G.rate = clamp(new_val, 2, 10)
 			return TOPIC_REFRESH
 
 		if(href_list["toggle"])
@@ -49,12 +49,12 @@
 	var/datum/local_network/lan = fusion.get_local_network()
 	var/list/gyrotrons = list()
 	if(lan && gyrotrons)
-		var/list/lan_gyrotrons = lan.get_devices(/obj/machinery/power/emitter/gyrotron)
+		var/list/lan_gyrotrons = lan.get_devices(/obj/machinery/emitter/gyrotron)
 		for(var/i = 1 to LAZYLEN(lan_gyrotrons))
 			var/list/gyrotron = list()
-			var/obj/machinery/power/emitter/gyrotron/G = lan_gyrotrons[i]
+			var/obj/machinery/emitter/gyrotron/G = lan_gyrotrons[i]
 			gyrotron["id"] =        "#[i]"
-			gyrotron["ref"] =       "\ref[G]" 
+			gyrotron["ref"] =       "\ref[G]"
 			gyrotron["active"] =    G.active
 			gyrotron["firedelay"] = G.rate
 			gyrotron["energy"] = G.mega_energy

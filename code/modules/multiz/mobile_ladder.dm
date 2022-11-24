@@ -1,8 +1,11 @@
 /obj/item/mobile_ladder
 	name = "mobile ladder"
 	desc = "A lightweight deployable ladder, which you can use to move up or down. Or alternatively, you can bash some faces in."
-	icon = 'icons/obj/multiz_items.dmi'
-	icon_state = "mobile_ladder"
+	icon = 'icons/obj/mobile_ladder.dmi'
+	
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/plastic = MATTER_AMOUNT_SECONDARY)
+	icon_state = ICON_STATE_WORLD
 	throw_range = 3
 	force = 10
 	w_class = ITEM_SIZE_LARGE
@@ -11,17 +14,31 @@
 /obj/item/mobile_ladder/proc/place_ladder(atom/A, mob/user)
 	var/above = FALSE
 	var/turf/target
-	if(isopenspace(A))
+
+	var/turf/T = get_turf(A)
+	if(!istype(T) || T.contains_dense_objects())
+		return FALSE
+
+	if(T.is_open())
 		target = GetBelow(A)
-		if (!target || (istype(/turf/space, target) || isopenspace(target)))
-			to_chat(user, SPAN_WARNING("There is nothing below you."))
+		if(!istype(target))
+			to_chat(user, SPAN_WARNING("There's nothing below you!"))
 			return FALSE
-	else if (istype(A, /turf/simulated/floor) || istype(A, /turf/unsimulated/floor))
+		else if(target.contains_dense_objects())
+			to_chat(user, SPAN_WARNING("Objects below block \the [src] from deploying!"))
+			return FALSE
+		else if(T.CanZPass(T, DOWN))
+			to_chat(user, SPAN_WARNING("You can't find anything to support \the [src] on!"))
+			return FALSE
+	else if (istype(T, /turf/simulated/floor) || istype(T, /turf/unsimulated/floor))
 		target = GetAbove(A)
-		if (!target || !isopenspace(target))
-			to_chat(user, SPAN_WARNING("There is something above you. You can't deploy \the [src]!"))
+		if(!istype(target) || !target.is_open() || target.contains_dense_objects())
+			to_chat(user, SPAN_WARNING("There is something above \the [T]. You can't deploy \the [src]!"))
 			return FALSE
 		above = TRUE
+	else
+		to_chat(user, SPAN_WARNING("You can't place \the [src] there."))
+		return FALSE
 
 	if(above)
 		user.visible_message(
@@ -39,7 +56,7 @@
 
 	var/obj/structure/ladder/mobile/ladder = new (target)
 	transfer_fingerprints_to(ladder)
-	ladder = new(get_turf(A))
+	ladder = new(T)
 	transfer_fingerprints_to(ladder)
 
 	user.drop_from_inventory(src,get_turf(src))
@@ -54,25 +71,25 @@
 /obj/item/mobile_ladder/proc/handle_action(atom/A, mob/user)
 	if (!do_after(user, 30, user))
 		return FALSE
-	if (!QDELETED(A) || QDELETED(src))
+	if (QDELETED(A) || QDELETED(src))
 		// Shit was deleted during delay, call is no longer valid.
 		return FALSE
 	return TRUE
 
 /obj/structure/ladder/mobile
+	name = "mobile ladder"
+	desc = "A lightweight deployable ladder, it can be folded back into its portable form."
 	base_icon = "mobile_ladder"
 	climb_time = 4 SECONDS
 	draw_shadow = FALSE
 	tool_interaction_flags = 0
+	material_alteration = 0
 
 /obj/structure/ladder/mobile/verb/fold_ladder()
 	set name = "Fold Ladder"
 	set category = "Object"
 	set src in oview(1)
 	fold(usr)
-
-/obj/structure/ladder/mobile/AltClick(mob/user)
-	fold(user)
 
 /obj/structure/ladder/mobile/proc/fold(mob/user)
 	if(user)
@@ -105,3 +122,15 @@
 	else if(target_up && istype(target_up, /obj/structure/ladder/mobile))
 		QDEL_NULL(target_up)
 		qdel(src)
+
+/obj/structure/ladder/mobile/get_alt_interactions(var/mob/user)
+	. = ..()
+	LAZYADD(., /decl/interaction_handler/ladder_fold)
+
+/decl/interaction_handler/ladder_fold
+	name = "Fold Ladder"
+	expected_target_type = /obj/structure/ladder/mobile
+
+/decl/interaction_handler/ladder_fold/invoked(var/atom/target, var/mob/user)
+	var/obj/structure/ladder/mobile/L
+	L.fold(user)

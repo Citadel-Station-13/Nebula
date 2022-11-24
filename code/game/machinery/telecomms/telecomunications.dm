@@ -26,14 +26,12 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 	var/list/freq_listening = list() // list of frequencies to tune into: if none, will listen to all
 	var/list/channel_tags = list() // a list specifying what to tag packets on different frequencies
 
-	var/machinetype = 0 // just a hacky way of preventing alike machines from pairing
 	var/toggled = 1 	// Is it toggled on
 	var/on = 1
 	var/integrity = 100 // basically HP, loses integrity by heat
 	var/produces_heat = 1	//whether the machine will produce heat when on.
 	var/delay = 10 // how many process() ticks to delay per heat
 	var/long_range_link = 0	// Can you link it across Z levels or on the otherside of the map? (Relay & Hub)
-	var/circuitboard = null // string pointing to a circuitboard type
 	var/hide = 0				// Is it a hidden machine?
 	var/listening_levels = null	// null = auto set in Initialize() - these are the z levels that the machine is listening to.
 	var/overloaded_for = 0
@@ -144,7 +142,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 	for(var/obj/machinery/telecomms/comm in telecomms_list)
 		comm.links -= src
 	links = list()
-	..()
+	return ..()
 
 // Used in auto linking
 /obj/machinery/telecomms/proc/add_link(var/obj/machinery/telecomms/T)
@@ -216,7 +214,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 		if((T0C + 200) to INFINITY)					// More than 200C, INFERNO. Takes damage every tick.
 			damage_chance = 100
 	if (damage_chance && prob(damage_chance))
-		integrity = between(0, integrity - 1, 100)
+		integrity = clamp(0, integrity - 1, 100)
 
 
 	if(delay > 0)
@@ -262,15 +260,13 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 /obj/machinery/telecomms/receiver
 	name = "Subspace Receiver"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/receiver.dmi'
 	icon_state = "broadcast receiver"
 	desc = "This machine has a dish-like shape and green lights. It is designed to detect and process subspace radio activity."
 	density = 1
 	anchored = 1
 	idle_power_usage = 600
-	machinetype = 1
 	produces_heat = 0
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/receiver
 	base_type = /obj/machinery/telecomms/receiver
 	outage_probability = 10
 
@@ -313,14 +309,12 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 /obj/machinery/telecomms/hub
 	name = "Telecommunication Hub"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/hub.dmi'
 	icon_state = "hub"
 	desc = "A mighty piece of hardware used to send/receive massive amounts of data."
 	density = 1
 	anchored = 1
 	idle_power_usage = 1600
-	machinetype = 7
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/hub
 	base_type = /obj/machinery/telecomms/hub
 	long_range_link = 1
 	netspeed = 40
@@ -346,14 +340,12 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 /obj/machinery/telecomms/bus
 	name = "Bus Mainframe"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/bus.dmi'
 	icon_state = "bus"
 	desc = "A mighty piece of hardware used to send massive amounts of data quickly."
 	density = 1
 	anchored = 1
 	idle_power_usage = 1000
-	machinetype = 2
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/bus
 	base_type = /obj/machinery/telecomms/bus
 	netspeed = 40
 	var/change_frequency = 0
@@ -398,15 +390,13 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 /obj/machinery/telecomms/processor
 	name = "Processor Unit"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/processor.dmi'
 	icon_state = "processor"
 	desc = "This machine is used to process large quantities of information."
 	density = 1
 	anchored = 1
 	idle_power_usage = 600
-	machinetype = 3
 	delay = 5
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/processor
 	base_type = /obj/machinery/telecomms/processor
 	var/process_mode = 1 // 1 = Uncompress Signals, 0 = Compress Signals
 
@@ -436,26 +426,17 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 /obj/machinery/telecomms/server
 	name = "Telecommunication Server"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/comm_server.dmi'
 	icon_state = "comm_server"
 	desc = "A machine used to store data and network statistics."
 	density = 1
 	anchored = 1
 	idle_power_usage = 300
-	machinetype = 4
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/server
 	base_type = /obj/machinery/telecomms/server
 	var/list/log_entries = list()
 	var/list/stored_names = list()
-	var/list/TrafficActions = list()
 	var/logs = 0 // number of logs
 	var/totaltraffic = 0 // gigabytes (if > 1024, divide by 1024 -> terrabytes)
-
-	var/list/memory = list()	// stored memory
-	var/encryption = "null" // encryption key: ie "password"
-	var/salt = "null"		// encryption salt: ie "123comsat"
-							// would add up to md5("password123comsat")
-	var/language = "human"
 	var/obj/item/radio/headset/server_radio = null
 
 /obj/machinery/telecomms/server/Initialize()
@@ -473,7 +454,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 			// channel tag the signal
 			var/list/data = get_channel_info(signal.frequency)
-			signal.data["channel_tag"] = data[1]
+			signal.data["channel_tag"] =   data[1]
 			signal.data["channel_color"] = data[2]
 
 			//Is this a test signal? Bypass logging
@@ -497,21 +478,9 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 				log.parameters["realname"] = signal.data["realname"]
 				log.parameters["language"] = signal.data["language"]
 
-				var/race = "Unknown"
-				if(ishuman(M) || isbrain(M))
-					race = "Sapient Race"
-					log.parameters["intelligible"] = 1
-				else if(M.isMonkey())
-					race = "Monkey"
-				else if(issilicon(M))
-					race = "Artificial Life"
-					log.parameters["intelligible"] = 1
-				else if(isslime(M))
-					race = "Slime"
-				else if(isanimal(M))
-					race = "Domestic Animal"
-
-				log.parameters["race"] = race
+				var/list/tcomms_data = M.get_telecomms_race_info()
+				log.parameters["race"] =         tcomms_data[1]
+				log.parameters["intelligible"] = tcomms_data[2]
 
 				if(!istype(M, /mob/new_player) && M)
 					log.parameters["uspeech"] = M.universal_speak

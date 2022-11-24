@@ -13,6 +13,12 @@ BAN_LEGACY_SYSTEM
 ## Add a # here if you wish to use the setup where jobs have more access. This is intended for servers with low populations - where there are not enough players to fill all roles, so players need to do more than just one job. Also for servers where they don't want people to hide in their own departments.
 JOBS_HAVE_MINIMAL_ACCESS
 
+## Uncomment this and set it to a file path relative to the executing binary to prefix all custom item icon locations with this location ie. '[CUSTOM_ITEM_ICON_LOCATION]/[custom item icon path value]'
+# CUSTOM_ITEM_ICON_LOCATION config/custom_items/icons
+
+## Uncomment this and set it to a file path relative to the executing binary to prefix all custom icon locations with this location ie. '[CUSTOM_ICON_ICON_LOCATION]/[custom icon path value]'
+# CUSTOM_ICON_ICON_LOCATION config/custom_icons/icons
+
 ## Unhash this entry to have certain jobs require your account to be at least a certain number of days old to select. You can configure the exact age requirement for different jobs by editing
 ## the minimal_player_age variable in the files in folder /code/game/jobs/job/.. for the job you want to edit. Set minimal_player_age to 0 to disable age requirement for that job.
 ## REQUIRES the database set up to work. Keep it hashed if you don't have a database set up.
@@ -129,9 +135,6 @@ TRAITOR_SCALING
 
 ## Comment this out to stop admins being able to choose their personal ooccolor
 ALLOW_ADMIN_OOCCOLOR
-
-## If metadata is supported
-# ALLOW_METADATA
 
 ## allow players to initiate a restart vote
 ALLOW_VOTE_RESTART
@@ -377,6 +380,9 @@ STARLIGHT 0
 ## Uncomment to have the changelog file automatically open when a user connects and hasn't seen the latest changelog
 #AGGRESSIVE_CHANGELOG
 
+## Uncomment to make Discord webhooks send in plaintext rather than as embeds.
+# DISABLE_WEBHOOK_EMBEDS
+
 ## Uncomment to override default brain health.
 #DEFAULT_BRAIN_HEALTH 400
 
@@ -395,6 +401,9 @@ STARLIGHT 0
 
 ## Uncomment to enable auto-stealthing staff who are AFK for more than specified minutes
 # AUTOSTEALTH 30
+
+## Set to 0/1 to disable/enable automatic admin rights for users connecting from the host the server is running on.
+AUTO_LOCAL_ADMIN 0
 
 ## How many loadout points are available. Use 0 to disable loadout, and any negative number to indicate infinite points.
 MAX_GEAR_COST 10
@@ -426,6 +435,12 @@ RADIATION_LOWER_LIMIT 0.15
 ## Uncomment this to modify the number of actions permitted per interval before being kicked for spam.
 #MAX_ACTS_PER_INTERVAL 140
 
+## Is the panic bunker currently on by default.
+#PANIC_BUNKER
+
+## A message when user did not pass the panic bunker.
+#PANIC_BUNKER_MESSAGE Sorry! The panic bunker is enabled. Please head to our Discord or forum to get yourself added to the panic bunker bypass.
+
 ##Clients will be unable to connect unless their version is equal to or higher than this (a number, e.g. 511)
 #MINIMUM_BYOND_VERSION
 
@@ -438,3 +453,13 @@ RADIATION_LOWER_LIMIT 0.15
 ## clients will still download from the server *too*. This will randomly select one URL if more than one is provided.
 ## Spaces are prohibited in each URL by spec, you must use encoded spaces.
 #RESOURCE_URLS URL URL2 URL3
+
+## Whether or not to make localhost immune to throttling.
+## Localhost will still be throttled internally; it just won't be affected by it.
+#NO_THROTTLE_LOCALHOST
+
+## Uncomment this to enable expanded alt interactions with objects.
+#EXPANDED_ALT_INTERACTIONS
+
+## Uncomment this to show a typing indicator for people writing whispers.
+#SHOW_TYPING_INDICATOR_FOR_WHISPERS

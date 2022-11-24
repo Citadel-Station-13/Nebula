@@ -1,13 +1,12 @@
 /obj/item/aicard
 	name = "inteliCard"
 	icon = 'icons/obj/items/device/ai_card.dmi'
-	icon_state = "aicard" // aicard-full
-	item_state = "electronic"
+	icon_state = ICON_STATE_WORLD
 	w_class = ITEM_SIZE_SMALL
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	origin_tech = "{'programming':4,'materials':4}"
-	material = MAT_GLASS
-	matter = list(MAT_GOLD = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/fiberglass
+	matter = list(/decl/material/solid/metal/gold = MATTER_AMOUNT_REINFORCEMENT)
 
 	var/flush
 	var/mob/living/silicon/ai/carded_ai
@@ -16,7 +15,7 @@
 
 	ui_interact(user)
 
-/obj/item/aicard/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.inventory_state)
+/obj/item/aicard/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.inventory_topic_state)
 	var/data[0]
 	data["has_ai"] = carded_ai != null
 	if(carded_ai)
@@ -72,16 +71,14 @@
 	return 1
 
 /obj/item/aicard/on_update_icon()
-	overlays.Cut()
+	. = ..()
 	if(carded_ai)
 		if (!carded_ai.control_disabled)
-			overlays += image(icon, "aicard-on")
+			add_overlay("[icon_state]-on")
 		if(carded_ai.stat)
-			icon_state = "aicard-404"
+			add_overlay("[icon_state]-404")
 		else
-			icon_state = "aicard-full"
-	else
-		icon_state = "aicard"
+			add_overlay("[icon_state]-full")
 
 /obj/item/aicard/proc/grab_ai(var/mob/living/silicon/ai/ai, var/mob/living/user)
 	if(!ai.client)
@@ -120,7 +117,7 @@
 	return 1
 
 /obj/item/aicard/proc/clear()
-	if(carded_ai && istype(carded_ai.loc, /turf))
+	if(carded_ai && isturf(carded_ai.loc))
 		carded_ai.carded = 0
 	SetName(initial(name))
 	carded_ai.calculate_power_usage()
@@ -140,7 +137,7 @@
 	..()
 
 /obj/item/aicard/relaymove(var/mob/user, var/direction)
-	if(user.stat || user.stunned)
+	if(user.incapacitated(INCAPACITATION_KNOCKOUT))
 		return
 	var/obj/item/rig/rig = src.get_rig()
 	if(istype(rig))

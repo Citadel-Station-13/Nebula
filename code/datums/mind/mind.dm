@@ -36,22 +36,19 @@
 	var/mob/living/original	//TODO: remove.not used in any meaningful way ~Carn. First I'll need to tweak the way silicon-mobs handle minds.
 	var/active = 0
 
-	var/list/known_connections //list of known (RNG) relations between people
 	var/gen_relations_info
 
 	var/assigned_role
-	var/special_role
+	var/assigned_special_role
 
 	var/role_alt_title
 
 	var/datum/job/assigned_job
 
 	var/list/datum/objective/objectives = list()
-	var/list/datum/objective/special_verbs = list()
 
 	var/has_been_rev = 0//Tracks if this mind has been a rev or not
 
-	var/faction 			//associated faction
 	var/datum/changeling/changeling		//changeling holder
 
 	var/rev_cooldown = 0
@@ -62,7 +59,8 @@
 	//put this here for easier tracking ingame
 	var/datum/money_account/initial_account
 
-	var/list/initial_email_login = list("login" = "", "password" = "")
+	var/list/initial_account_login = list("login" = "", "password" = "")
+	var/account_network	// Network id of the network the account was created on.
 
 /datum/mind/New(var/key)
 	src.key = key
@@ -70,8 +68,18 @@
 
 /datum/mind/Destroy()
 	QDEL_NULL_LIST(memories)
+	QDEL_NULL_LIST(objectives)
+	QDEL_NULL(changeling)
 	SSticker.minds -= src
 	. = ..()
+
+/datum/mind/proc/handle_mob_deletion(mob/living/deleted_mob)
+	if (current == deleted_mob)
+		current.spellremove()
+		current = null
+
+	if (original == deleted_mob)
+		original = null
 
 /datum/mind/proc/transfer_to(mob/living/new_character)
 	if(!istype(new_character))
@@ -110,9 +118,9 @@
 	out += "Assigned role: [assigned_role]. <a href='?src=\ref[src];role_edit=1'>Edit</a><br>"
 	out += "<hr>"
 	out += "Factions and special roles:<br><table>"
-	var/list/all_antag_types = GLOB.all_antag_types_
+	var/list/all_antag_types = decls_repository.get_decls_of_subtype(/decl/special_role)
 	for(var/antag_type in all_antag_types)
-		var/datum/antagonist/antag = all_antag_types[antag_type]
+		var/decl/special_role/antag = all_antag_types[antag_type]
 		out += "[antag.get_panel_entry(src)]"
 	out += "</table><hr>"
 	out += "<b>Objectives</b></br>"
@@ -199,27 +207,27 @@
 	if(!is_admin) return
 
 	if(href_list["add_antagonist"])
-		var/datum/antagonist/antag = GLOB.all_antag_types_[href_list["add_antagonist"]]
+		var/decl/special_role/antag = locate(href_list["add_antagonist"])
 		if(antag)
 			if(antag.add_antagonist(src, 1, 1, 0, 1, 1)) // Ignore equipment and role type for this.
-				log_admin("[key_name_admin(usr)] made [key_name(src)] into a [antag.role_text].")
+				log_admin("[key_name_admin(usr)] made [key_name(src)] into a [antag.name].")
 			else
-				to_chat(usr, "<span class='warning'>[src] could not be made into a [antag.role_text]!</span>")
+				to_chat(usr, "<span class='warning'>[src] could not be made into a [antag.name]!</span>")
 
 	else if(href_list["remove_antagonist"])
-		var/datum/antagonist/antag = GLOB.all_antag_types_[href_list["remove_antagonist"]]
+		var/decl/special_role/antag = locate(href_list["remove_antagonist"])
 		if(antag) antag.remove_antagonist(src)
 
 	else if(href_list["equip_antagonist"])
-		var/datum/antagonist/antag = GLOB.all_antag_types_[href_list["equip_antagonist"]]
+		var/decl/special_role/antag = locate(href_list["equip_antagonist"])
 		if(antag) antag.equip(src.current)
 
 	else if(href_list["unequip_antagonist"])
-		var/datum/antagonist/antag = GLOB.all_antag_types_[href_list["unequip_antagonist"]]
+		var/decl/special_role/antag = locate(href_list["unequip_antagonist"])
 		if(antag) antag.unequip(src.current)
 
 	else if(href_list["move_antag_to_spawn"])
-		var/datum/antagonist/antag = GLOB.all_antag_types_[href_list["move_antag_to_spawn"]]
+		var/decl/special_role/antag = locate(href_list["move_antag_to_spawn"])
 		if(antag) antag.place_mob(src.current)
 
 	else if (href_list["role_edit"])
@@ -310,7 +318,7 @@
 					new_objective = new objective_path
 					new_objective.owner = src
 					new_objective:target = M.mind
-					new_objective.explanation_text = "[objective_type] [M.real_name], the [M.mind.special_role ? M.mind:special_role : M.mind:assigned_role]."
+					new_objective.explanation_text = "[objective_type] [M.real_name], the [M.mind.get_special_role_name(M.mind.assigned_role)]."
 
 			if ("hijack")
 				new_objective = new /datum/objective/hijack
@@ -329,14 +337,8 @@
 				new_objective.owner = src
 
 			if ("steal")
-				if (!istype(objective, /datum/objective/steal))
-					new_objective = new /datum/objective/steal
-					new_objective.owner = src
-				else
-					new_objective = objective
-				var/datum/objective/steal/steal = new_objective
-				if (!steal.select_target())
-					return
+				new_objective = new /datum/objective/steal
+				new_objective.owner = src
 
 			if("download","capture","absorb")
 				var/def_num
@@ -388,7 +390,7 @@
 		switch(href_list["implant"])
 			if("remove")
 				for(var/obj/item/implant/loyalty/I in H.contents)
-					for(var/obj/item/organ/external/organs in H.organs)
+					for(var/obj/item/organ/external/organs in H.get_external_organs())
 						if(I in organs.implants)
 							qdel(I)
 							break
@@ -481,17 +483,8 @@
 // check whether this mind's mob has been brigged for the given duration
 // have to call this periodically for the duration to work properly
 /datum/mind/proc/is_brigged(duration)
-	var/turf/T = current.loc
-	if(!istype(T))
-		brigged_since = -1
-		return 0
-	var/is_currently_brigged = 0
-	if(istype(T.loc,/area/security/brig))
-		is_currently_brigged = 1
-		if(current.GetIdCard())
-			is_currently_brigged = 0
-
-	if(!is_currently_brigged)
+	var/area/A = get_area(current)
+	if(!isturf(current.loc) || !istype(A) || !(A.area_flags & AREA_FLAG_PRISON) || current.GetIdCard())
 		brigged_since = -1
 		return 0
 
@@ -501,28 +494,16 @@
 	return (duration <= world.time - brigged_since)
 
 /datum/mind/proc/reset()
-	assigned_role =   null
-	special_role =    null
-	role_alt_title =  null
-	assigned_job =    null
-	//faction =       null //Uncommenting this causes a compile error due to 'undefined type', fucked if I know.
-	changeling =      null
-	initial_account = null
-	objectives =      list()
-	special_verbs =   list()
-	has_been_rev =    0
-	rev_cooldown =    0
-	brigged_since =   -1
-
-//Antagonist role check
-/mob/living/proc/check_special_role(role)
-	if(mind)
-		if(!role)
-			return mind.special_role
-		else
-			return (mind.special_role == role) ? 1 : 0
-	else
-		return 0
+	assigned_role =         null
+	assigned_special_role = null
+	role_alt_title =        null
+	assigned_job =          null
+	changeling =            null
+	initial_account =       null
+	objectives =            list()
+	has_been_rev =          0
+	rev_cooldown =          0
+	brigged_since =         -1
 
 //Initialisation procs
 /mob/living/proc/mind_initialize()
@@ -541,28 +522,23 @@
 /mob/living/carbon/human/mind_initialize()
 	..()
 	if(!mind.assigned_role)
-		mind.assigned_role = GLOB.using_map.default_assistant_title
-
-//slime
-/mob/living/carbon/slime/mind_initialize()
-	..()
-	mind.assigned_role = "slime"
+		mind.assigned_role = global.using_map.default_job_title
 
 //AI
 /mob/living/silicon/ai/mind_initialize()
 	..()
-	mind.assigned_role = "AI"
+	mind.assigned_role = ASSIGNMENT_COMPUTER
 
 //BORG
 /mob/living/silicon/robot/mind_initialize()
 	..()
-	mind.assigned_role = "Robot"
+	mind.assigned_role = ASSIGNMENT_ROBOT
 
 //PAI
 /mob/living/silicon/pai/mind_initialize()
 	..()
 	mind.assigned_role = "pAI"
-	mind.special_role = ""
+	mind.assigned_special_role = "Personal Artificial Intelligence"
 
 //Animals
 /mob/living/simple_animal/mind_initialize()
@@ -580,14 +556,23 @@
 /mob/living/simple_animal/construct/builder/mind_initialize()
 	..()
 	mind.assigned_role = "Artificer"
-	mind.special_role = "Cultist"
+	mind.assigned_special_role = "Cultist"
 
 /mob/living/simple_animal/construct/wraith/mind_initialize()
 	..()
 	mind.assigned_role = "Wraith"
-	mind.special_role = "Cultist"
+	mind.assigned_special_role = "Cultist"
 
 /mob/living/simple_animal/construct/armoured/mind_initialize()
 	..()
 	mind.assigned_role = "Juggernaut"
-	mind.special_role = "Cultist"
+	mind.assigned_special_role = "Cultist"
+
+/datum/mind/proc/get_special_role_name(var/default_role_name)
+	if(istext(assigned_special_role))
+		return assigned_special_role
+	if(ispath(assigned_special_role, /decl/special_role))
+		var/decl/special_role/special_role = GET_DECL(assigned_special_role)
+		if(istype(special_role))
+			return special_role.name
+	return default_role_name

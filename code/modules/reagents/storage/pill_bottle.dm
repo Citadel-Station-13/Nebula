@@ -9,6 +9,7 @@
 	item_state = "contsolid"
 	w_class = ITEM_SIZE_SMALL
 	max_w_class = ITEM_SIZE_TINY
+	item_flags =  ITEM_FLAG_HOLLOW
 	max_storage_space = 21
 	can_hold = list(
 		/obj/item/chems/pill,
@@ -18,11 +19,10 @@
 	allow_quick_gather = 1
 	use_to_pickup = 1
 	use_sound = 'sound/effects/storage/pillbottle.ogg'
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 
 	var/pop_sound = 'sound/effects/peelz.ogg'
 	var/wrapper_color
-	var/label
 
 /obj/item/storage/pill_bottle/remove_from_storage(obj/item/W, atom/new_location, NoUpdate)
 	. = ..()
@@ -37,7 +37,7 @@
 			to_chat(user, SPAN_WARNING("You can't eat anything!"))
 			return TRUE
 	else
-		if(user.get_inactive_hand())
+		if(!user.get_empty_hand_slot())
 			to_chat(user, SPAN_WARNING("You need an empty hand to take something from \the [src]."))
 			return TRUE
 
@@ -54,7 +54,6 @@
 		else
 			if(user.put_in_inactive_hand(pill))
 				to_chat(user, SPAN_NOTICE("You take \the [pill] out of \the [src]."))
-				user.swap_hand()
 			else
 				pill.dropInto(loc)
 				to_chat(user, SPAN_DANGER("You fumble around with \the [src] and drop \the [pill]."))
@@ -63,7 +62,7 @@
 /obj/item/storage/pill_bottle/afterattack(mob/living/target, mob/living/user, proximity_flag)
 	. = (proximity_flag && user == target && pop_pill(user)) || ..()
 
-/obj/item/storage/pill_bottle/attack_self(mob/living/user)
+/obj/item/storage/pill_bottle/attack_self(mob/user)
 	. = pop_pill(user) || ..()
 
 /obj/item/storage/pill_bottle/Initialize()
@@ -71,8 +70,6 @@
 	update_icon()
 
 /obj/item/storage/pill_bottle/on_update_icon()
-	overlays.Cut()
+	. = ..()
 	if(wrapper_color)
-		var/image/I = image(icon, "pillbottle_wrap")
-		I.color = wrapper_color
-		overlays += I
+		add_overlay(overlay_image(icon, "pillbottle_wrap", wrapper_color, RESET_COLOR))

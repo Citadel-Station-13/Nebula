@@ -28,13 +28,13 @@
 	products = list(
 		/obj/item/chems/glass/beaker/bowl =2,
 		/obj/item/storage/tray/metal/aluminium = 8,
-		/obj/item/material/knife/kitchen = 3,
-		/obj/item/material/kitchen/rollingpin = 2,
-		/obj/item/chems/food/drinks/pitcher = 2,
-		/obj/item/chems/food/drinks/glass2/coffeecup = 8,
-		/obj/item/chems/food/drinks/glass2/coffeecup/teacup = 8,
-		/obj/item/chems/food/drinks/glass2/carafe = 2,
-		/obj/item/chems/food/drinks/glass2/square = 8,
+		/obj/item/knife/kitchen = 3,
+		/obj/item/kitchen/rollingpin = 2,
+		/obj/item/chems/drinks/pitcher = 2,
+		/obj/item/chems/drinks/glass2/coffeecup = 8,
+		/obj/item/chems/drinks/glass2/coffeecup/teacup = 8,
+		/obj/item/chems/drinks/glass2/carafe = 2,
+		/obj/item/chems/drinks/glass2/square = 8,
 		/obj/item/clothing/suit/chef/classic = 2,
 		/obj/item/storage/lunchbox = 3,
 		/obj/item/storage/lunchbox/heart = 3,
@@ -42,9 +42,9 @@
 		/obj/item/storage/lunchbox/mars = 3,
 		/obj/item/storage/lunchbox/cti = 3,
 		/obj/item/storage/lunchbox/syndicate = 3,
-		/obj/item/material/knife/kitchen/cleaver = 1
+		/obj/item/knife/kitchen/cleaver = 1
 	)
-	contraband = list(/obj/item/material/knife/kitchen/cleaver/bronze = 1,/obj/item/storage/tray/metal/silver = 1)
+	contraband = list(/obj/item/knife/kitchen/cleaver/bronze = 1,/obj/item/storage/tray/metal/silver = 1)
 
 /obj/machinery/vending/fashionvend
 	name = "Smashing Fashions"
@@ -58,14 +58,14 @@
 	products = list(
 		/obj/item/mirror = 8,
 		/obj/item/haircomb = 8,
-		/obj/item/clothing/glasses/monocle = 5,
+		/obj/item/clothing/glasses/eyepatch/monocle = 5,
 		/obj/item/clothing/glasses/sunglasses = 5,
 		/obj/item/lipstick = 3,
 		/obj/random/lipstick = 3,
 		/obj/item/storage/wallet/poly = 2
 	)
 	contraband = list(
-		/obj/item/clothing/glasses/eyepatch = 2, 
+		/obj/item/clothing/glasses/eyepatch = 2,
 		/obj/item/clothing/accessory/horrible = 2,
 		/obj/item/clothing/mask/smokable/pipe = 3
 	)
@@ -82,24 +82,26 @@
 	icon_vend = "games-vend"
 	base_type = /obj/machinery/vending/games
 	products = list(
-		/obj/item/toy/blink = 5, 
-		/obj/item/toy/eightball = 8, 
-		/obj/item/deck/cards = 5, 
-		/obj/item/deck/tarot = 5, 
-		/obj/item/pack/cardemon = 6, 
-		/obj/item/pack/spaceball = 6, 
-		/obj/item/storage/pill_bottle/dice_nerd = 5, 
-		/obj/item/storage/pill_bottle/dice = 5, 
-		/obj/item/storage/box/checkers = 2, 
-		/obj/item/storage/box/checkers/chess/red = 2, 
-		/obj/item/storage/box/checkers/chess = 2, 
+		/obj/item/toy/blink = 5,
+		/obj/item/toy/eightball = 8,
+		/obj/item/deck/cards = 5,
+		/obj/item/deck/tarot = 5,
+		/obj/item/deck/cag/white = 5,
+		/obj/item/deck/cag/black = 5,
+		/obj/item/pack/cardemon = 6,
+		/obj/item/pack/spaceball = 6,
+		/obj/item/storage/pill_bottle/dice_nerd = 5,
+		/obj/item/storage/pill_bottle/dice = 5,
+		/obj/item/storage/box/checkers = 2,
+		/obj/item/storage/box/checkers/chess/red = 2,
+		/obj/item/storage/box/checkers/chess = 2,
 		/obj/item/board = 2
 	)
 	contraband = list(
-		/obj/item/chems/spray/waterflower = 2, 
+		/obj/item/chems/spray/waterflower = 2,
 		/obj/item/storage/box/snappops = 3,
-		/obj/item/spirit_board = 1, 
-		/obj/item/gun/projectile/revolver/capgun = 1, 
+		/obj/item/spirit_board = 1,
+		/obj/item/gun/projectile/revolver/capgun = 1,
 		/obj/item/ammo_magazine/caps = 4
 	)
 
@@ -109,7 +111,7 @@
 	name = "Lavatory Essentials"
 	desc = "Vends things that make you less reviled in the work-place!"
 	vend_delay = 15
-	product_slogans = "Take a shower you hippie.;Get a haircut, hippie!;Reeking of vox taint? Take a shower!"
+	product_slogans = "Take a shower you hippie.;Get a haircut, hippie!;Reeking of scale taint? Take a shower!"
 
 	icon_state = "lavatory"
 	icon_deny = "lavatory-deny"

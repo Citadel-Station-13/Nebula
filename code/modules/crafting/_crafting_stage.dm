@@ -11,12 +11,12 @@
 	var/list/next_stages
 	var/product
 
-/decl/crafting_stage/New()
+/decl/crafting_stage/Initialize()
+	. = ..()
 	var/stages = list()
 	for(var/nid in next_stages)
-		stages += decls_repository.get_decl(nid)
+		stages += GET_DECL(nid)
 	next_stages = stages
-	..()
 
 /decl/crafting_stage/proc/can_begin_with(var/obj/item/thing)
 	. = istype(thing, begins_with_object_type)
@@ -60,10 +60,10 @@
 	consume_completion_trigger = FALSE
 
 /decl/crafting_stage/material
-	completion_trigger_type = /obj/item/stack/material
+	completion_trigger_type = /obj/item/stack/material/sheet
 	stack_consume_amount = 5
 	consume_completion_trigger = FALSE
-	var/stack_material = MAT_STEEL
+	var/stack_material = /decl/material/solid/metal/steel
 
 /decl/crafting_stage/material/consume(var/mob/user, var/obj/item/thing, var/obj/item/target)
 	var/obj/item/stack/material/M = thing
@@ -71,7 +71,7 @@
 
 /decl/crafting_stage/welding/consume(var/mob/user, var/obj/item/thing, var/obj/item/target)
 	var/obj/item/weldingtool/T = thing
-	. = istype(T) && T.remove_fuel(0, user) && T.isOn()
+	. = istype(T) && T.weld(0, user) && T.isOn()
 
 /decl/crafting_stage/welding
 	consume_completion_trigger = FALSE
@@ -88,11 +88,16 @@
 	playsound(user.loc, 'sound/items/Screwdriver.ogg', 100, 1)
 
 /decl/crafting_stage/screwdriver/progress_to(obj/item/thing, mob/user)
-	. = ..() && isScrewdriver(thing)
+	. = ..() && IS_SCREWDRIVER(thing)
 
 /decl/crafting_stage/tape
+	stack_consume_amount = 4
 	consume_completion_trigger = FALSE
-	completion_trigger_type = /obj/item/tape_roll
+	completion_trigger_type = /obj/item/stack/tape_roll/duct_tape
+
+/decl/crafting_stage/tape/on_progress(var/mob/user)
+	..()
+	playsound(user.loc, 'sound/effects/tape.ogg', 100, 1)
 
 /decl/crafting_stage/pipe
 	completion_trigger_type = /obj/item/pipe

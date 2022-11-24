@@ -1,4 +1,3 @@
-
 /obj/machinery/vending/tool
 	name = "YouTool"
 	desc = "Tools for tools."
@@ -17,21 +16,15 @@
 		/obj/item/scanner/gas = 5,
 		/obj/item/t_scanner = 5,
 		/obj/item/screwdriver = 5,
-		/obj/item/flashlight/flare/glowstick = 3, 
-		/obj/item/flashlight/flare/glowstick/red = 3, 
-		/obj/item/tape_roll = 8,
+		/obj/item/flashlight/flare/glowstick = 3,
+		/obj/item/flashlight/flare/glowstick/red = 3,
+		/obj/item/stack/tape_roll/duct_tape = 8,
 		/obj/item/clothing/gloves/insulated/cheap = 2
 	)
 	contraband = list(
 		/obj/item/weldingtool/hugetank = 2,
 		/obj/item/clothing/gloves/insulated = 1
 	)
-
-/obj/machinery/vending/tool/adherent/vend(var/datum/stored_items/vending_products/R, var/mob/living/carbon/user)
-	if(emagged)
-		. = ..()
-	else
-		to_chat(user, "<span class='notice'>The vending machine emits a discordant note, and a small hole blinks several times. It looks like it wants something inserted.</span>")
 
 /obj/machinery/vending/engivend
 	name = "Engi-Vend"
@@ -42,16 +35,15 @@
 	markup = 0
 	vend_delay = 21
 	base_type = /obj/machinery/vending/engivend
-	initial_access = list(list(access_atmospherics, access_engine_equip))
+	initial_access = list(access_atmospherics, access_engine_equip)
 	products = list(
 		/obj/item/clothing/glasses/meson = 2,
 		/obj/item/multitool = 4,
 		/obj/item/geiger = 4,
 		/obj/item/stock_parts/circuitboard/airlock_electronics = 10,
-		/obj/item/stock_parts/circuitboard/apc = 10,
-		/obj/item/stock_parts/circuitboard/air_alarm = 10,
+		/obj/item/frame/apc/kit = 10,
+		/obj/item/frame/air_alarm/kit = 10,
 		/obj/item/cell = 10,
-		/obj/item/clamp = 10,
 		/obj/item/storage/belt/utility
 	)
 	contraband = list(/obj/item/cell/high = 3)
@@ -65,18 +57,18 @@
 	icon_vend = "engi-vend"
 	base_type = /obj/machinery/vending/engineering
 	markup = 0
-	initial_access = list(list(access_atmospherics, access_engine_equip))
+	initial_access = list(access_atmospherics, access_engine_equip)
 	products = list(
 		/obj/item/storage/belt/utility = 4,
 		/obj/item/clothing/glasses/meson = 4,
-		/obj/item/clothing/gloves/insulated = 4, 
+		/obj/item/clothing/gloves/insulated = 4,
 		/obj/item/screwdriver = 12,
 		/obj/item/crowbar = 12,
 		/obj/item/wirecutters = 12,
 		/obj/item/multitool = 12,
 		/obj/item/wrench = 12,
 		/obj/item/t_scanner = 12,
-		/obj/item/cell = 8, 
+		/obj/item/cell = 8,
 		/obj/item/weldingtool = 8,
 		/obj/item/clothing/head/welding = 8,
 		/obj/item/light/tube = 10,
@@ -85,8 +77,8 @@
 		/obj/item/stock_parts/matter_bin = 5,
 		/obj/item/stock_parts/manipulator = 5,
 		/obj/item/stock_parts/console_screen = 5,
-		/obj/item/stock_parts/capacitor = 5, 
-		/obj/item/stock_parts/keyboard = 5, 
+		/obj/item/stock_parts/capacitor = 5,
+		/obj/item/stock_parts/keyboard = 5,
 		/obj/item/stock_parts/power/apc/buildable = 5
 	)
 	contraband = list(/obj/item/rcd = 1, /obj/item/rcd_ammo = 5)
@@ -107,7 +99,6 @@
 		/obj/item/scanner/health = 2,
 		/obj/item/scalpel = 1,
 		/obj/item/circular_saw = 1,
-		/obj/item/tank/anesthetic = 2,
 		/obj/item/clothing/mask/breath/medical = 5,
 		/obj/item/screwdriver = 2,
 		/obj/item/crowbar = 2
@@ -124,18 +115,14 @@
 	vend_delay = 21
 	base_type = /obj/machinery/vending/materials
 	products = list(
-		/obj/item/stack/material/steel/fifty = 3,
-		/obj/item/stack/material/plastic/fifty = 4,
-		/obj/item/stack/material/aluminium/fifty = 3,
-		/obj/item/stack/material/plasteel/ten = 4,
-		/obj/item/stack/material/glass/fifty = 4
+		/obj/item/stack/material/sheet/mapped/steel/fifty =            3,
+		/obj/item/stack/material/panel/mapped/plastic/fifty =          4,
+		/obj/item/stack/material/shiny/mapped/aluminium/fifty =        3,
+		/obj/item/stack/material/reinforced/mapped/plasteel/ten =      4,
+		/obj/item/stack/material/ingot/mapped/copper/fifty =           4,
+		/obj/item/stack/material/pane/mapped/glass/fifty =             4,
+		/obj/item/stack/material/reinforced/mapped/fiberglass/fifty =  4
 	)
-	contraband = list(/obj/item/stack/material/ocp/ten = 3)
-
-/obj/machinery/vending/materials/build_inventory()
-	..()
-	for(var/datum/stored_items/vending_products/P in product_records)
-		if(ispath(P.item_path, /obj/item/stack/material))
-			var/obj/item/stack/material/S = P.item_path
-			var/decl/material/sheet_material = decls_repository.get_decl(initial(S.material))
-			P.item_name = "[sheet_material.solid_name] [sheet_material.sheet_plural_name] ([initial(S.amount)]x)"
+	contraband = list(
+		/obj/item/stack/material/reinforced/mapped/ocp/ten = 3
+	)

@@ -17,7 +17,7 @@
 	//  the specific order matters to get a usable icon_state, it is
 	//  copied here so that, in the unlikely case that alldirs is changed,
 	//  this continues to work.
-	var/global/list/tube_dir_list = list(NORTH, SOUTH, EAST, WEST, NORTHEAST, NORTHWEST, SOUTHEAST, SOUTHWEST)
+	var/static/list/tube_dir_list = list(NORTH, SOUTH, EAST, WEST, NORTHEAST, NORTHWEST, SOUTHEAST, SOUTHWEST)
 
 
 // A place where tube pods stop, and people can get in or out.
@@ -56,7 +56,7 @@
 /obj/structure/transit_tube_pod/Initialize()
 	. = ..()
 
-	air_contents.adjust_multi(MAT_OXYGEN, MOLES_O2STANDARD * 2, MAT_NITROGEN, MOLES_N2STANDARD)
+	air_contents.adjust_multi(/decl/material/gas/oxygen, MOLES_O2STANDARD * 2, /decl/material/gas/nitrogen, MOLES_N2STANDARD)
 	air_contents.temperature = T20C
 
 	// Give auto tubes time to align before trying to start moving
@@ -310,7 +310,7 @@
 			do
 				sleep(last_delay)
 
-				if(!istype(loc, /turf/space))
+				if(!isspaceturf(loc))
 					last_delay++
 
 				if(last_delay > 10)
@@ -350,10 +350,6 @@
 			var/turf/T = get_turf(src)
 			mob.forceMove(T)
 			mob.client.Move(get_step(T, direction), direction)
-
-			//if(moving && istype(loc, /turf/space))
-				// Todo: If you get out of a moving pod in space, you should move as well.
-				//  Same direction as pod? Direcion you moved? Halfway between?
 
 		if(!moving)
 			for(var/obj/structure/transit_tube/station/station in loc)
@@ -503,7 +499,7 @@
 //  but it is probably safer to assume the existence of, and
 //  rely on, a sufficiently smart compiler/optimizer.
 /obj/structure/transit_tube/proc/parse_dirs(text)
-	var/global/list/direction_table = list()
+	var/static/list/direction_table = list()
 
 	if(text in direction_table)
 		return direction_table[text]

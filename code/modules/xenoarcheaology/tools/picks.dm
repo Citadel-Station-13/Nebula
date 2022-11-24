@@ -6,7 +6,8 @@
 	force = 3
 	throwforce = 0
 	attack_verb = list("stabbed", "jabbed", "spiked", "attacked")
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/chromium
+	matter = list(/decl/material/solid/metal/steel = MATTER_AMOUNT_SECONDARY)
 	w_class = ITEM_SIZE_SMALL
 	drill_verb = "delicately picking"
 	digspeed = 20
@@ -28,6 +29,8 @@
 	drill_sound = 'sound/weapons/thudswoosh.ogg'
 	drill_verb = "brushing"
 	sharp = 0
+	material = /decl/material/solid/wood
+	matter = list(/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT)
 
 /obj/item/pickaxe/xeno/one_pick
 	name = "2cm pick"
@@ -73,7 +76,8 @@
 	excavation_amount = 30
 	drill_sound = 'sound/items/Crowbar.ogg'
 	drill_verb = "clearing"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/chromium
+	matter = list(/decl/material/solid/metal/steel = MATTER_AMOUNT_SECONDARY)
 	w_class = ITEM_SIZE_NORMAL
 	force = 6
 	throwforce = 3
@@ -89,20 +93,27 @@
 	desc = "A rugged case containing a set of standardized picks used in archaeological digs."
 	item_state = "syringe_kit"
 	storage_slots = 7
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	w_class = ITEM_SIZE_NORMAL
 	can_hold = list(/obj/item/pickaxe/xeno)
 	max_storage_space = 18
 	max_w_class = ITEM_SIZE_NORMAL
 	use_to_pickup = 1
-	startswith = list(
-		/obj/item/pickaxe/xeno/brush,
-		/obj/item/pickaxe/xeno/one_pick,
-		/obj/item/pickaxe/xeno/two_pick,
-		/obj/item/pickaxe/xeno/three_pick,
-		/obj/item/pickaxe/xeno/four_pick,
-		/obj/item/pickaxe/xeno/five_pick,
-		/obj/item/pickaxe/xeno/six_pick)
+	material = /decl/material/solid/leather/synth
+
+/obj/item/storage/excavation/WillContain()
+	return list(
+			/obj/item/pickaxe/xeno/brush,
+			/obj/item/pickaxe/xeno/one_pick,
+			/obj/item/pickaxe/xeno/two_pick,
+			/obj/item/pickaxe/xeno/three_pick,
+			/obj/item/pickaxe/xeno/four_pick,
+			/obj/item/pickaxe/xeno/five_pick,
+			/obj/item/pickaxe/xeno/six_pick
+		)
+
+/obj/item/storage/excavation/empty/WillContain()
+	return
 
 /obj/item/storage/excavation/handle_item_insertion()
 	..()
@@ -112,7 +123,7 @@
 	var/list/obj/item/pickaxe/xeno/picksToSort = list()
 	for(var/obj/item/pickaxe/xeno/P in src)
 		picksToSort += P
-		P.loc = null
+		P.forceMove(null)
 	while(picksToSort.len)
 		var/min = 200 // No pick is bigger than 200
 		var/selected = 0
@@ -122,6 +133,6 @@
 				selected = i
 				min = current.excavation_amount
 		var/obj/item/pickaxe/xeno/smallest = picksToSort[selected]
-		smallest.loc = src
+		smallest.forceMove(src)
 		picksToSort -= smallest
 	prepare_ui()

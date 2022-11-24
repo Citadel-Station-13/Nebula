@@ -8,22 +8,25 @@
 	origin_tech = "{'programming':2}"
 	usage_flags = PROGRAM_ALL & ~PROGRAM_PDA
 	external_slot = TRUE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
-	var/can_write = TRUE
 	var/can_broadcast = FALSE
+	// TODO: reimplment charge stick write access and can_write
 	var/obj/item/charge_stick/stored_stick = null
 
 /obj/item/stock_parts/computer/charge_stick_slot/proc/get_currency_name()
-	var/decl/currency/cur = decls_repository.get_decl(GLOB.using_map.default_currency)
+	var/decl/currency/cur = GET_DECL(global.using_map.default_currency)
 	return cur.name
 
 /obj/item/stock_parts/computer/charge_stick_slot/diagnostics()
 	. = ..()
-	. += "[name] status: [stored_stick ? "[get_currency_name()]-stick Inserted" : "[get_currency_name()]-stick Not Present"]\n"
-	. += "Stick status: [stored_stick.is_locked() ? "Locked" : "Unlocked"]\n"
+	. += "[name] status: [stored_stick ? "[get_currency_name()]-stick Inserted" : "[get_currency_name()]-stick Not Present"]"
+	if(!stored_stick)
+		. += "\nStick status: Missing"
+	else
+		. += "\nStick status: [stored_stick.is_locked() ? "Locked" : "Unlocked"]"
 	if(!stored_stick.is_locked())
-		. += "Stick balance: [stored_stick.loaded_worth]\n"
+		. += "\nStick balance: [stored_stick.loaded_worth]"
 
 /obj/item/stock_parts/computer/charge_stick_slot/proc/verb_eject_stick()
 	set name = "Remove Charge-stick"
@@ -40,7 +43,7 @@
 
 	if(!device.stored_stick)
 		if(usr)
-			to_chat(usr, "There is no [get_currency_name()]-stick in \the [src]")
+			to_chat(usr, "There is no [get_currency_name()]-stick in \the [src].")
 		return
 
 	device.eject_stick(usr)
@@ -56,7 +59,7 @@
 		dropInto(loc)
 	stored_stick = null
 
-	var/datum/extension/interactive/ntos/os = get_extension(loc, /datum/extension/interactive/ntos)
+	var/datum/extension/interactive/os/os = get_extension(loc, /datum/extension/interactive/os)
 	if(os)
 		os.event_idremoved()
 	loc.verbs -= /obj/item/stock_parts/computer/charge_stick_slot/proc/verb_eject_stick
@@ -79,7 +82,7 @@
 		loc.verbs |= /obj/item/stock_parts/computer/charge_stick_slot/proc/verb_eject_stick
 	return TRUE
 
-/obj/item/stock_parts/computer/charge_stick_slot/attackby(obj/item/card/id/I, mob/living/user)
+/obj/item/stock_parts/computer/charge_stick_slot/attackby(obj/item/card/id/I, mob/user)
 	if(!istype(I))
 		return
 	insert_stick(I, user)
@@ -88,7 +91,6 @@
 /obj/item/stock_parts/computer/charge_stick_slot/broadcaster // read only
 	name = "NFC charge-stick broadcaster"
 	desc = "Reads and broadcasts the NFC signal of an inserted charge-stick."
-	can_write = FALSE
 	can_broadcast = TRUE
 
 	usage_flags = PROGRAM_PDA

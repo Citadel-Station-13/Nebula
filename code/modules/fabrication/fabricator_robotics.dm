@@ -8,14 +8,30 @@
 	active_power_usage = 5000
 	base_type = /obj/machinery/fabricator/robotics
 	fabricator_class = FABRICATOR_CLASS_ROBOTICS
-	base_storage_capacity = list(
-		MAT_STEEL =     SHEET_MATERIAL_AMOUNT * 100,
-		MAT_ALUMINIUM = SHEET_MATERIAL_AMOUNT * 100,
-		MAT_PLASTIC =   SHEET_MATERIAL_AMOUNT * 100,
-		MAT_GLASS =     SHEET_MATERIAL_AMOUNT * 100,
-		MAT_GOLD =      SHEET_MATERIAL_AMOUNT * 100,
-		MAT_SILVER =    SHEET_MATERIAL_AMOUNT * 100,
-		MAT_PHORON =    SHEET_MATERIAL_AMOUNT * 100,
-		MAT_URANIUM =   SHEET_MATERIAL_AMOUNT * 100,
-		MAT_DIAMOND =   SHEET_MATERIAL_AMOUNT * 100
-	)
+	base_storage_capacity_mult = 100
+	var/picked_prosthetic_species //Prosthetics will be printed with this species
+
+/obj/machinery/fabricator/robotics/Initialize()
+	. = ..()
+	picked_prosthetic_species = global.using_map?.default_species //Set it by default to the base species to preserve earlier behavior for now
+
+/obj/machinery/fabricator/robotics/make_order(datum/fabricator_recipe/recipe, multiplier)
+	var/datum/fabricator_build_order/order = ..()
+	order.set_data("species", picked_prosthetic_species)
+	return order
+
+
+/obj/machinery/fabricator/robotics/OnTopic(user, href_list, state)
+	. = ..()
+	if(href_list["pick_species"])
+		var/chosen_species = input(user, "Choose a species to produce prosthetics for", "Target Species", null) in get_playable_species()
+		if(chosen_species)
+			picked_prosthetic_species = chosen_species
+		. = TOPIC_REFRESH
+
+/obj/machinery/fabricator/robotics/ui_data(mob/user, ui_key)
+	. = ..()
+	LAZYSET(., "species", picked_prosthetic_species)
+
+/obj/machinery/fabricator/robotics/get_nano_template()
+	return "fabricator_robot.tmpl"

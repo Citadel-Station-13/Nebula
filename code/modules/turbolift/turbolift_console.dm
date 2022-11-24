@@ -5,21 +5,9 @@
 	anchored = 1
 	density = 0
 	layer = ABOVE_OBJ_LAYER
-
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'EAST':{'x':-32}, 'WEST':{'x':32}}"
 	var/datum/turbolift/lift
-
-/obj/structure/lift/set_dir(var/newdir)
-	. = ..()
-	pixel_x = 0
-	pixel_y = 0
-	if(dir & NORTH)
-		pixel_y = -32
-	else if(dir & SOUTH)
-		pixel_y = 32
-	else if(dir & EAST)
-		pixel_x = -32
-	else if(dir & WEST)
-		pixel_x = 32
 
 /obj/structure/lift/proc/pressed(var/mob/user)
 	if(!istype(user, /mob/living/silicon))
@@ -42,8 +30,10 @@
 
 /obj/structure/lift/interact(var/mob/user)
 	if(!lift.is_functional())
-		return 0
-	return 1
+		return FALSE
+	if(!user.check_dexterity(DEXTERITY_SIMPLE_MACHINES))
+		return FALSE
+	return TRUE
 // End base.
 
 // Button. No HTML interface, just calls the associated lift to its floor.
@@ -84,6 +74,7 @@
 	icon_state = "plinth"
 
 /obj/structure/lift/button/on_update_icon()
+	..()
 	if(light_up)
 		icon_state = "[initial(icon_state)]_lit"
 	else
@@ -98,6 +89,8 @@
 
 /obj/structure/lift/panel/standalone
 	icon_state = "standing_panel"
+	obj_flags = 0
+	directional_offset = null
 
 /obj/structure/lift/panel/attack_ghost(var/mob/user)
 	return interact(user)
@@ -127,7 +120,7 @@
 	dat += "<a href='?src=\ref[src];emergency_stop=1'>Emergency Stop</a>"
 	dat += "<hr></body></html>"
 
-	var/datum/browser/written/popup = new(user, "turbolift_panel", "Lift Panel", 230, 260)
+	var/datum/browser/written_digital/popup = new(user, "turbolift_panel", "Lift Panel", 230, 260)
 	popup.set_content(jointext(dat, null))
 	popup.open()
 	return

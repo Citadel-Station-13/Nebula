@@ -24,11 +24,11 @@
 	else
 		O.vars[variable] = var_value
 
-/decl/vv_set_handler/location_hander
+/decl/vv_set_handler/location_handler
 	handled_type = /atom/movable
 	handled_vars = list("loc","x","y","z")
 
-/decl/vv_set_handler/location_hander/handle_set_var(var/atom/movable/AM, variable, var_value, client)
+/decl/vv_set_handler/location_handler/handle_set_var(var/atom/movable/AM, variable, var_value, client)
 	if(variable == "loc")
 		if(istype(var_value, /atom) || isnull(var_value) || var_value == "")	// Proper null or empty string is fine, 0 is not
 			AM.forceMove(var_value)
@@ -118,17 +118,66 @@
 
 /decl/vv_set_handler/light_handler
 	handled_type = /atom
-	handled_vars = list("light_max_bright","light_inner_range","light_outer_range","light_falloff_curve")
+	handled_vars = list("light_color", "light_range", "light_power", "light_wedge")
+
+// I'm lazy, ok.
+#define VV_LIGHTING_SET(V) var/new_##V = variable == #V ? var_value : A.##V
 
 /decl/vv_set_handler/light_handler/handle_set_var(var/atom/A, variable, var_value, client)
 	var_value = text2num(var_value)
-	if(!is_num_predicate(var_value, client))
+	if (variable == "light_color")	// This one's text.
+		if (!is_text_predicate(var_value, client))
+			return
+	else if(!is_num_predicate(var_value, client))
 		return
 	// More sanity checks
 
-	var/new_max = variable == "light_max_bright" ? var_value : A.light_max_bright
-	var/new_inner = variable == "light_inner_range" ? var_value : A.light_inner_range
-	var/new_outer = variable == "light_outer_range" ? var_value : A.light_outer_range
-	var/new_falloff = variable == "light_falloff_curve" ? var_value : A.light_falloff_curve
+	VV_LIGHTING_SET(light_range)
+	VV_LIGHTING_SET(light_power)
+	VV_LIGHTING_SET(light_wedge)
+	VV_LIGHTING_SET(light_color)
 
-	A.set_light(new_max, new_inner, new_outer, new_falloff)
+	A.set_light(new_light_range, new_light_power, new_light_color, new_light_wedge)
+
+#undef VV_LIGHTING_SET
+
+/decl/vv_set_handler/ambient_light_handler
+	handled_type = /turf
+	handled_vars = list("ambient_light", "ambient_light_multiplier")
+
+/decl/vv_set_handler/ambient_light_handler/handle_set_var(turf/T, variable, value, client)
+	switch (variable)
+		if ("ambient_light")
+			if (!istext(value) && !isnull(value))
+				to_chat(client, "<span class='alert'><pre>ambient_light</pre> must be text or null.</span>")
+				return
+			var/static/regex/color_regex = regex(@"^#[\dA-Fa-f]{6}$")
+			if (istext(value) && !color_regex.Find(value))
+				to_chat(client, "<span class='alert'><pre>ambient_light</pre> must be a 6 digit (<pre>#AABBCC</pre>) hexadecimal color string.</span>")
+				return
+			T.set_ambient_light(value)
+
+		if ("ambient_light_multiplier")
+			if (!isnum(value))
+				to_chat(client, "<span class='alert'><pre>ambient_light_multiplier</pre> must be num.</span>")
+				return
+			T.set_ambient_light(multiplier = value)
+
+/decl/vv_set_handler/icon_rotation_handler
+	handled_type = /atom
+	handled_vars = list("icon_rotation" = /atom/proc/set_rotation)
+	predicates = list(/proc/is_num_predicate)
+
+/decl/vv_set_handler/icon_scale_handler
+	handled_type = /atom
+	handled_vars = list("icon_scale_x", "icon_scale_y")
+
+/decl/vv_set_handler/icon_scale_handler/handle_set_var(atom/A, variable, var_value, client)
+	var_value = text2num(var_value)
+	if(!is_num_predicate(var_value, client))
+		return
+
+	var/new_scale_x = variable == "icon_scale_x" ? var_value : A.icon_scale_x
+	var/new_scale_y = variable == "icon_scale_y" ? var_value : A.icon_scale_y
+
+	A.set_scale(new_scale_x, new_scale_y)

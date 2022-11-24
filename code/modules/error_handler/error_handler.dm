@@ -1,12 +1,15 @@
-GLOBAL_VAR_INIT(total_runtimes, 0)
-GLOBAL_VAR_INIT(total_runtimes_skipped, 0)
-GLOBAL_VAR_INIT(actual_error_file_line, new/regex("^%% (.*?),(.*?) %% "))
+var/global/total_runtimes = 0
+var/global/total_runtimes_skipped = 0
+var/global/regex/actual_error_file_line
 
 #ifdef DEBUG
 /world/Error(exception/E)
 	if(!istype(E)) //Something threw an unusual exception
 		log_world("\[[time_stamp()]] Uncaught exception: [E]")
 		return ..()
+
+	if (!global.actual_error_file_line)
+		global.actual_error_file_line = regex("^%% (.*?),(.*?) %% ")
 
 	var/static/list/error_last_seen = list()
 	var/static/list/error_cooldown = list() /* Error_cooldown items will either be positive(cooldown time) or negative(silenced error)
@@ -15,12 +18,12 @@ GLOBAL_VAR_INIT(actual_error_file_line, new/regex("^%% (.*?),(.*?) %% "))
 	if(!error_last_seen) // A runtime is occurring too early in start-up initialization
 		return ..()
 
-	GLOB.total_runtimes++
+	global.total_runtimes++
 
 	var/efile = E.file
 	var/eline = E.line
 
-	var/regex/actual_error_file_line = GLOB.actual_error_file_line
+	var/regex/actual_error_file_line = global.actual_error_file_line
 	if(actual_error_file_line.Find(E.name))
 		efile = actual_error_file_line.group[1]
 		eline = actual_error_file_line.group[2]
@@ -36,7 +39,7 @@ GLOBAL_VAR_INIT(actual_error_file_line, new/regex("^%% (.*?),(.*?) %% "))
 
 	if(cooldown < 0)
 		error_cooldown[erroruid]-- //Used to keep track of skip count for this error
-		GLOB.total_runtimes_skipped++
+		global.total_runtimes_skipped++
 		return //Error is currently silenced, skip handling it
 	//Handle cooldowns and silencing spammy errors
 	var/silencing = FALSE
@@ -66,7 +69,8 @@ GLOBAL_VAR_INIT(actual_error_file_line, new/regex("^%% (.*?),(.*?) %% "))
 			error_cooldown[erroruid] = 0
 			if(skipcount > 0)
 				to_world_log("\[[time_stamp()]] Skipped [skipcount] runtimes in [erroruid].")
-				GLOB.error_cache.log_error(E, skip_count = skipcount)
+				if(istype(global.error_cache))
+					global.error_cache.log_error(E, skip_count = skipcount)
 
 	error_last_seen[erroruid] = world.time
 	error_cooldown[erroruid] = cooldown
@@ -99,11 +103,13 @@ GLOBAL_VAR_INIT(actual_error_file_line, new/regex("^%% (.*?),(.*?) %% "))
 		desclines.Add(usrinfo)
 	if(silencing)
 		desclines += "  (This error will now be silenced for [configured_error_silence_time / 600] minutes)"
-	if(GLOB.error_cache)
-		GLOB.error_cache.log_error(E, desclines)
+	if(istype(global.error_cache)) // istype() rather than nullcheck to avoid new ordering weirdness
+		global.error_cache.log_error(E, desclines)
 
-	to_world_log("\[[time_stamp()]] Runtime in [erroruid]: [E]")
+	error_write_log("\[[time_stamp()]] Runtime in [erroruid]: [E]")
 	for(var/line in desclines)
-		to_world_log(line)
+		error_write_log(line)
 
+/proc/error_write_log(msg)
+	to_world_log(msg)
 #endif

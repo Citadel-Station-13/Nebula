@@ -1,7 +1,11 @@
 #define NEXT_PAGE_ID "__next__"
 #define DEFAULT_CHECK_DELAY 20
 
-GLOBAL_LIST_EMPTY(radial_menus)
+var/global/list/radial_menus = list()
+
+/obj/screen/radial/Destroy()
+	parent = null
+	return ..()
 
 /obj/screen/radial
 	icon = 'icons/screen/radial.dmi'
@@ -28,7 +32,7 @@ GLOBAL_LIST_EMPTY(radial_menus)
 		closeToolTip(usr)
 
 /obj/screen/radial/slice/Click(location, control, params)
-	if(usr.client == parent.current_user)
+	if(parent && usr.client == parent.current_user)
 		if(next_page)
 			parent.next_page()
 		else
@@ -220,7 +224,7 @@ GLOBAL_LIST_EMPTY(radial_menus)
 /datum/radial_menu/proc/get_next_id()
 	return "c_[choices.len]"
 
-/datum/radial_menu/proc/set_choices(list/new_choices, use_tooltips)
+/datum/radial_menu/proc/set_choices(list/new_choices, use_tooltips, use_labels)
 	if(choices.len)
 		Reset()
 	for(var/E in new_choices)
@@ -228,17 +232,25 @@ GLOBAL_LIST_EMPTY(radial_menus)
 		choices += id
 		choices_values[id] = E
 		if(new_choices[E])
-			var/I = extract_image(new_choices[E])
+			var/I = extract_image(new_choices[E], use_labels)
 			if(I)
 				choices_icons[id] = I
 	setup_menu(use_tooltips)
 
 
-/datum/radial_menu/proc/extract_image(E)
+/datum/radial_menu/proc/extract_image(image/E, var/use_labels)
 	var/mutable_appearance/MA = new /mutable_appearance(E)
 	if(MA)
-		MA.layer = HUD_ABOVE_ITEM_LAYER
+		MA.layer = HUD_ABOVE_HUD_LAYER
 		MA.appearance_flags |= RESET_TRANSFORM
+		if(use_labels)
+			MA.maptext_width = 64
+			MA.maptext_height = 64
+			MA.appearance_flags = APPEARANCE_UI_IGNORE_ALPHA
+			MA.maptext_x = -round(MA.maptext_width/2) + 16
+			MA.maptext_x = -round(MA.maptext_height/2) + 16
+			MA.maptext = STYLE_SMALLFONTS_OUTLINE("<center>[E.name]</center>", 7, COLOR_WHITE, COLOR_BLACK)
+
 	return MA
 
 
@@ -256,17 +268,22 @@ GLOBAL_LIST_EMPTY(radial_menus)
 	//Blank
 	menu_holder = image(icon = 'icons/effects/effects.dmi', loc = anchor, icon_state = "nothing", layer = HUD_ABOVE_ITEM_LAYER)
 	menu_holder.appearance_flags |= KEEP_APART
-	menu_holder.vis_contents += elements + close_button
+	add_vis_contents(menu_holder, elements + close_button)
 	current_user.images += menu_holder
 
 /datum/radial_menu/proc/hide()
 	if(current_user)
 		current_user.images -= menu_holder
 
-/datum/radial_menu/proc/wait(atom/user, atom/anchor, require_near = FALSE)
+/datum/radial_menu/proc/wait(atom/user, atom/anchor, require_near = FALSE, list/check_locs)
 	while (current_user && !finished && !selected_choice)
 		if(require_near && !in_range(anchor, user))
 			return
+
+		for(var/atom/movable/thing in check_locs)
+			if(QDELETED(thing) || thing.loc != check_locs[thing])
+				return
+
 		if(custom_check_callback && next_check < world.time)
 			if(!custom_check_callback.Invoke())
 				return
@@ -277,6 +294,8 @@ GLOBAL_LIST_EMPTY(radial_menus)
 /datum/radial_menu/Destroy()
 	Reset()
 	hide()
+	QDEL_NULL_LIST(elements)
+	QDEL_NULL(close_button)
 	QDEL_NULL(custom_check_callback)
 	return ..()
 
@@ -285,32 +304,55 @@ GLOBAL_LIST_EMPTY(radial_menus)
 	Choices should be a list where list keys are movables or text used for element names and return value
 	and list values are movables/icons/images used for element icons
 */
-/proc/show_radial_menu(mob/user, atom/anchor, list/choices, uniqueid, radius, datum/callback/custom_check, require_near = FALSE, tooltips = FALSE, no_repeat_close = FALSE)
+/proc/show_radial_menu(mob/user, atom/anchor, list/choices, uniqueid, radius, datum/callback/custom_check, require_near = FALSE, tooltips = FALSE, no_repeat_close = FALSE, list/check_locs, use_labels = FALSE)
 	if(!user || !anchor || !length(choices))
 		return
 	if(!uniqueid)
 		uniqueid = "defmenu_[any2ref(user)]_[any2ref(anchor)]"
 
-	if(GLOB.radial_menus[uniqueid])
+	if(check_locs)
+		for(var/atom/thing in check_locs)
+			check_locs[thing] = thing.loc
+
+	if(global.radial_menus[uniqueid])
 		if(!no_repeat_close)
-			var/datum/radial_menu/menu = GLOB.radial_menus[uniqueid]
+			var/datum/radial_menu/menu = global.radial_menus[uniqueid]
 			menu.finished = TRUE
 		return
 
 	var/datum/radial_menu/menu = new
-	GLOB.radial_menus[uniqueid] = menu
+	global.radial_menus[uniqueid] = menu
 	if(radius)
 		menu.radius = radius
 	if(istype(custom_check))
 		menu.custom_check_callback = custom_check
 	menu.anchor = anchor
 	menu.check_screen_border(user) //Do what's needed to make it look good near borders or on hud
-	menu.set_choices(choices, tooltips)
+	menu.set_choices(choices, tooltips, use_labels)
 	menu.show_to(user)
-	menu.wait(user, anchor, require_near)
+	menu.wait(user, anchor, require_near, check_locs)
 	var/answer = menu.selected_choice
 	qdel(menu)
-	GLOB.radial_menus -= uniqueid
+	global.radial_menus -= uniqueid
 	return answer
 
 #define RADIAL_INPUT(user, choices) show_radial_menu(user, user, choices)
+
+/*
+	Helper to make a radial menu button with a name and icon for a given atom.
+*/
+/proc/make_item_radial_menu_button(var/atom/movable/AM, var/name_prefix = "", var/name_suffix = "")
+	var/image/radial_button = new
+	radial_button.appearance = AM
+	radial_button.plane = FLOAT_PLANE
+	radial_button.layer = FLOAT_LAYER
+	radial_button.name = "[name_prefix][AM.name][name_suffix]"
+	return radial_button
+
+/*
+	Helper to make a radial menu button for a set of atoms with their names and icons.
+*/
+/proc/make_item_radial_menu_choices(var/list/items, var/name_prefix = "", var/name_suffix = "")
+	for(var/atom/movable/AM in items)
+		LAZYSET(., AM, make_item_radial_menu_button(AM, name_prefix, name_suffix))
+	

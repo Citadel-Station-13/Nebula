@@ -6,7 +6,7 @@
 		return TRUE // Doesn't necessarily mean the mob physically moved
 
 /mob/CanPass(atom/movable/mover, turf/target, height=0, air_group=0)
-	. = lying || ..() || (mover == buckled)
+	. = lying || ..() || !mover.density
 
 /mob/proc/SetMoveCooldown(var/timeout)
 	var/datum/movement_handler/mob/delay/delay = GetMovementHandler(/datum/movement_handler/mob/delay)
@@ -49,23 +49,22 @@
 			mob.hotkey_drop()
 
 /mob/proc/hotkey_drop()
-	to_chat(src, "<span class='warning'>This mob type cannot drop items.</span>")
+	. = has_extension(src, /datum/extension/hattable)
 
 /mob/living/hotkey_drop()
-	if(length(get_active_grabs()))
+	if(length(get_active_grabs()) || ..())
 		drop_item()
 
 /mob/living/carbon/hotkey_drop()
 	var/obj/item/hand = get_active_hand()
-	if(!hand)
-		to_chat(src, "<span class='warning'>You have nothing to drop in your hand.</span>")
-	else if(hand.can_be_dropped_by_client(src))
+	if(hand?.can_be_dropped_by_client(src) || ..())
 		drop_item()
 
 /client/verb/swap_hand()
 	set hidden = 1
 	if(istype(mob, /mob/living/carbon))
-		mob:swap_hand()
+		var/mob/M = mob
+		M.swap_hand()
 	if(istype(mob,/mob/living/silicon/robot))
 		var/mob/living/silicon/robot/R = mob
 		R.cycle_modules()
@@ -139,7 +138,7 @@
 		src.m_flag = 1
 		if ((A != src.loc && A && A.z == src.z))
 			src.last_move = get_dir(A, src.loc)
-	
+
 	if(!inertia_moving)
 		inertia_next_move = world.time + inertia_move_delay
 		space_drift(direct ? direct : last_move)
@@ -147,8 +146,10 @@
 /client/Move(n, direction)
 	if(!user_acted(src))
 		return
+
 	if(!mob)
 		return // Moved here to avoid nullrefs below
+
 	return mob.SelfMove(direction)
 
 /mob/Process_Spacemove(var/allow_movement)
@@ -162,7 +163,7 @@
 			return backup
 		return -1
 
-/mob/proc/space_do_move(var/allow_move, var/direction)	
+/mob/proc/space_do_move(var/allow_move, var/direction)
 	if(ismovable(allow_move))//push off things in space
 		handle_space_pushoff(allow_move, direction)
 		allow_move = -1
@@ -273,7 +274,7 @@
 	var/checking_intent = (istype(move_intent) ? move_intent.type : move_intents[1])
 	for(var/i = 1 to length(move_intents)) // One full iteration of the move set.
 		checking_intent = next_in_list(checking_intent, move_intents)
-		if(set_move_intent(decls_repository.get_decl(checking_intent)))
+		if(set_move_intent(GET_DECL(checking_intent)))
 			return
 
 /mob/proc/set_move_intent(var/decl/move_intent/next_intent)
@@ -286,27 +287,27 @@
 
 /mob/proc/get_movement_datum_by_flag(var/move_flag = MOVE_INTENT_DELIBERATE)
 	for(var/m_intent in move_intents)
-		var/decl/move_intent/check_move_intent = decls_repository.get_decl(m_intent)
+		var/decl/move_intent/check_move_intent = GET_DECL(m_intent)
 		if(check_move_intent.flags & move_flag)
 			return check_move_intent
 
 /mob/proc/get_movement_datum_by_missing_flag(var/move_flag = MOVE_INTENT_DELIBERATE)
 	for(var/m_intent in move_intents)
-		var/decl/move_intent/check_move_intent = decls_repository.get_decl(m_intent)
+		var/decl/move_intent/check_move_intent = GET_DECL(m_intent)
 		if(!(check_move_intent.flags & move_flag))
 			return check_move_intent
 
 /mob/proc/get_movement_datums_by_flag(var/move_flag = MOVE_INTENT_DELIBERATE)
 	. = list()
 	for(var/m_intent in move_intents)
-		var/decl/move_intent/check_move_intent = decls_repository.get_decl(m_intent)
+		var/decl/move_intent/check_move_intent = GET_DECL(m_intent)
 		if(check_move_intent.flags & move_flag)
 			. += check_move_intent
 
 /mob/proc/get_movement_datums_by_missing_flag(var/move_flag = MOVE_INTENT_DELIBERATE)
 	. = list()
 	for(var/m_intent in move_intents)
-		var/decl/move_intent/check_move_intent = decls_repository.get_decl(m_intent)
+		var/decl/move_intent/check_move_intent = GET_DECL(m_intent)
 		if(!(check_move_intent.flags & move_flag))
 			. += check_move_intent
 

@@ -11,12 +11,7 @@
 	src.storing_object = storing_object
 	src.item_path = path
 	src.amount = amount
-
-	if(!name)
-		var/atom/tmp = path
-		src.item_name = initial(tmp.name)
-	else
-		src.item_name = name
+	src.item_name = name || atom_info_repository.get_name_for(path)
 	..()
 
 /datum/stored_items/Destroy()
@@ -52,7 +47,8 @@
 		product = new item_path(storing_object)
 
 	amount--
-	product.forceMove(product_location)
+	if(!QDELETED(product)) // Some spawners will qdel after vending.
+		product.forceMove(product_location)
 	return product
 
 /datum/stored_items/proc/get_specific_product(var/product_location, var/atom/movable/product)

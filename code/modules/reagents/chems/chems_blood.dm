@@ -1,5 +1,7 @@
 /decl/material/liquid/blood
 	name = "blood"
+	codex_name = "whole blood"
+	uid = "chem_blood"
 	lore_text = "A red (or blue) liquid commonly found inside animals, most of whom are pretty insistent about it being left where you found it."
 	metabolism = REM * 5
 	color = "#c80000"
@@ -9,6 +11,9 @@
 	glass_name = "tomato juice"
 	glass_desc = "Are you sure this is tomato juice?"
 	value = 2.5
+	opacity = 1
+	min_fluid_opacity = FLUID_MAX_ALPHA
+	max_fluid_opacity = 240
 
 	chilling_products = list(
 		/decl/material/liquid/coagulated_blood = 1
@@ -25,9 +30,9 @@
 /decl/material/liquid/blood/initialize_data(var/newdata)
 	. = ..() || list()
 	if(.)
-		.["species"] = .["species"] || GLOB.using_map.default_species
+		.["species"] = .["species"] || global.using_map.default_species
 
-/decl/material/liquid/blood/mix_data(var/datum/reagents/reagents, var/list/newdata, var/amount)	
+/decl/material/liquid/blood/mix_data(var/datum/reagents/reagents, var/list/newdata, var/amount)
 	var/list/data = REAGENT_DATA(reagents, type)
 	if(LAZYACCESS(newdata, "trace_chem"))
 		var/list/other_chems = LAZYACCESS(newdata, "trace_chem")
@@ -57,27 +62,31 @@
 		if(B)
 			B.blood_DNA["UNKNOWN DNA STRUCTURE"] = "X*"
 
-/decl/material/liquid/blood/affect_ingest(var/mob/living/carbon/M, var/alien, var/removed, var/datum/reagents/holder)
-
-	if(M.chem_doses[type] > 5)
+/decl/material/liquid/blood/affect_ingest(var/mob/living/M, var/removed, var/datum/reagents/holder)
+	if(M.HasTrait(/decl/trait/metabolically_inert))
+		return
+	if(LAZYACCESS(M.chem_doses, type) > 5)
 		M.adjustToxLoss(removed)
-	if(M.chem_doses[type] > 15)
+	if(LAZYACCESS(M.chem_doses, type) > 15)
 		M.adjustToxLoss(removed)
 
-/decl/material/liquid/blood/affect_touch(var/mob/living/carbon/M, var/alien, var/removed, var/datum/reagents/holder)
+/decl/material/liquid/blood/affect_touch(var/mob/living/M, var/removed, var/datum/reagents/holder)
 	if(ishuman(M))
 		var/mob/living/carbon/human/H = M
 		if(H.isSynthetic())
 			return
 
-/decl/material/liquid/blood/affect_blood(var/mob/living/carbon/M, var/alien, var/removed, var/datum/reagents/holder)
-	var/volume = REAGENT_VOLUME(holder, type)
-	M.inject_blood(volume, holder)
-	holder.remove_reagent(type, volume)
+/decl/material/liquid/blood/affect_blood(var/mob/living/M, var/removed, var/datum/reagents/holder)
+	if(ishuman(M))
+		var/volume = REAGENT_VOLUME(holder, type)
+		var/mob/living/carbon/H = M
+		H.inject_blood(volume, holder)
+		holder.remove_reagent(type, volume)
 
 /decl/material/liquid/coagulated_blood
 	name = "coagulated blood"
 	color = "#aa0000"
+	uid = "chem_blood_coagulated"
 	taste_description = "chewy iron"
 	taste_mult = 1.5
 	lore_text = "When exposed to unsuitable conditions, such as the floor or an oven, blood becomes coagulated and useless for transfusions. It's great for making blood pudding, though."

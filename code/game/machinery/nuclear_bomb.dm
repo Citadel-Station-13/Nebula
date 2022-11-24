@@ -1,4 +1,4 @@
-var/bomb_set
+var/global/bomb_set
 
 /obj/machinery/nuclearbomb
 	name = "\improper Nuclear Fission Explosive"
@@ -15,6 +15,8 @@ var/bomb_set
 	var/extended = 0
 	var/lighthack = 0
 	var/timeleft = 120
+	var/minTime = 120
+	var/maxTime = 600
 	var/timing = 0
 	var/r_code = "ADMIN"
 	var/code = ""
@@ -23,7 +25,6 @@ var/bomb_set
 	var/obj/item/disk/nuclear/auth = null
 	var/removal_stage = 0 // 0 is no removal, 1 is covers removed, 2 is covers open, 3 is sealant open, 4 is unwrenched, 5 is removed from bolts.
 	var/lastentered
-	var/previous_level = ""
 	wires = /datum/wires/nuclearbomb
 	var/decl/security_level/original_level
 
@@ -36,7 +37,7 @@ var/bomb_set
 	auth = null
 	return ..()
 
-/obj/machinery/nuclearbomb/Process(var/wait)
+/obj/machinery/nuclearbomb/Process(wait, tick)
 	if(timing)
 		timeleft = max(timeleft - (wait / 10), 0)
 		playsound(loc, 'sound/items/timer.ogg', 50)
@@ -45,7 +46,7 @@ var/bomb_set
 		SSnano.update_uis(src)
 
 /obj/machinery/nuclearbomb/attackby(obj/item/O, mob/user, params)
-	if(isScrewdriver(O))
+	if(IS_SCREWDRIVER(O))
 		add_fingerprint(user)
 		if(auth)
 			if(panel_open == 0)
@@ -69,7 +70,7 @@ var/bomb_set
 			flick("lock", src)
 		return
 
-	if(panel_open && isMultitool(O) || isWirecutter(O))
+	if(panel_open && (IS_MULTITOOL(O) || IS_WIRECUTTER(O)))
 		return attack_hand(user)
 
 	if(extended)
@@ -83,7 +84,7 @@ var/bomb_set
 	if(anchored)
 		switch(removal_stage)
 			if(0)
-				if(isWelder(O))
+				if(IS_WELDER(O))
 					var/obj/item/weldingtool/WT = O
 					if(!WT.isOn()) return
 					if(WT.get_fuel() < 5) // uses up 5 fuel.
@@ -93,13 +94,13 @@ var/bomb_set
 					user.visible_message("[user] starts cutting loose the anchoring bolt covers on [src].", "You start cutting loose the anchoring bolt covers with [O]...")
 
 					if(do_after(user,40, src))
-						if(!src || !user || !WT.remove_fuel(5, user)) return
+						if(!src || !user || !WT.weld(5, user)) return
 						user.visible_message("\The [user] cuts through the bolt covers on \the [src].", "You cut through the bolt cover.")
 						removal_stage = 1
 				return
 
 			if(1)
-				if(isCrowbar(O))
+				if(IS_CROWBAR(O))
 					user.visible_message("[user] starts forcing open the bolt covers on [src].", "You start forcing open the anchoring bolt covers with [O]...")
 
 					if(do_after(user, 15, src))
@@ -109,7 +110,7 @@ var/bomb_set
 				return
 
 			if(2)
-				if(isWelder(O))
+				if(IS_WELDER(O))
 					var/obj/item/weldingtool/WT = O
 					if(!WT.isOn()) return
 					if (WT.get_fuel() < 5) // uses up 5 fuel.
@@ -119,13 +120,13 @@ var/bomb_set
 					user.visible_message("[user] starts cutting apart the anchoring system sealant on [src].", "You start cutting apart the anchoring system's sealant with [O]...")
 
 					if(do_after(user, 40, src))
-						if(!src || !user || !WT.remove_fuel(5, user)) return
+						if(!src || !user || !WT.weld(5, user)) return
 						user.visible_message("\The [user] cuts apart the anchoring system sealant on \the [src].", "You cut apart the anchoring system's sealant.")
 						removal_stage = 3
 				return
 
 			if(3)
-				if(isWrench(O))
+				if(IS_WRENCH(O))
 					user.visible_message("[user] begins unwrenching the anchoring bolts on [src].", "You begin unwrenching the anchoring bolts...")
 					if(do_after(user, 50, src))
 						if(!src || !user) return
@@ -134,7 +135,7 @@ var/bomb_set
 				return
 
 			if(4)
-				if(isCrowbar(O))
+				if(IS_CROWBAR(O))
 					user.visible_message("[user] begins lifting [src] off of the anchors.", "You begin lifting the device off the anchors...")
 					if(do_after(user, 80, src))
 						if(!src || !user) return
@@ -263,7 +264,7 @@ var/bomb_set
 
 				var/time = text2num(href_list["time"])
 				timeleft += time
-				timeleft = Clamp(timeleft, 120, 600)
+				timeleft = clamp(timeleft, minTime, maxTime)
 			if(href_list["timer"])
 				if(timing == -1)
 					return 1
@@ -294,7 +295,7 @@ var/bomb_set
 					visible_message("<span class='warning'>\The [src] makes a highly unpleasant crunching noise. It looks like the anchoring bolts have been cut.</span>")
 					return 1
 
-				if(!isinspace())
+				if(!isspaceturf(get_turf(src)))
 					anchored = !anchored
 					if(anchored)
 						visible_message("<span class='warning'>With a steely snap, bolts slide out of \the [src] and anchor it to the flooring.</span>")
@@ -309,7 +310,7 @@ var/bomb_set
 	timing = 1
 	log_and_message_admins("activated the detonation countdown of \the [src]")
 	bomb_set++ //There can still be issues with this resetting when there are multiple bombs. Not a big deal though for Nuke/N
-	var/decl/security_state/security_state = decls_repository.get_decl(GLOB.using_map.security_state)
+	var/decl/security_state/security_state = GET_DECL(global.using_map.security_state)
 	original_level = security_state.current_security_level
 	security_state.set_security_level(security_state.severe_security_level, TRUE)
 	update_icon()
@@ -320,12 +321,12 @@ var/bomb_set
 /obj/machinery/nuclearbomb/proc/secure_device()
 	if(timing <= 0)
 		return
-	var/decl/security_state/security_state = decls_repository.get_decl(GLOB.using_map.security_state)
+	var/decl/security_state/security_state = GET_DECL(global.using_map.security_state)
 	security_state.set_security_level(original_level, TRUE)
 	bomb_set--
 	safety = TRUE
 	timing = 0
-	timeleft = Clamp(timeleft, 120, 600)
+	timeleft = clamp(timeleft, 120, 600)
 	update_icon()
 
 /obj/machinery/nuclearbomb/explosion_act(severity)
@@ -360,31 +361,28 @@ var/bomb_set
 /obj/item/disk/nuclear
 	name = "nuclear authentication disk"
 	desc = "Better keep this safe."
-	icon = 'icons/obj/items/device/diskette.dmi'
-	icon_state = "nucleardisk"
-	item_state = "card-id"
-	w_class = ITEM_SIZE_TINY
-
+	color = COLOR_GRAY20
+	label = "label_warning"
 
 /obj/item/disk/nuclear/Initialize()
 	. = ..()
-	nuke_disks |= src
+	global.nuke_disks |= src
 	// Can never be quite sure that a game mode has been properly initiated or not at this point, so always register
-	GLOB.moved_event.register(src, src, /obj/item/disk/nuclear/proc/check_z_level)
+	events_repository.register(/decl/observ/moved, src, src, /obj/item/disk/nuclear/proc/check_z_level)
 
 /obj/item/disk/nuclear/proc/check_z_level()
 	if(!(istype(SSticker.mode, /datum/game_mode/nuclear)))
-		GLOB.moved_event.unregister(src, src, /obj/item/disk/nuclear/proc/check_z_level) // However, when we are certain unregister if necessary
+		events_repository.unregister(/decl/observ/moved, src, src, /obj/item/disk/nuclear/proc/check_z_level) // However, when we are certain unregister if necessary
 		return
 	var/turf/T = get_turf(src)
 	if(!T || isNotStationLevel(T.z))
 		qdel(src)
 
 /obj/item/disk/nuclear/Destroy()
-	GLOB.moved_event.unregister(src, src, /obj/item/disk/nuclear/proc/check_z_level)
-	nuke_disks -= src
-	if(!nuke_disks.len)
-		var/turf/T = pick_area_turf(/area/maintenance, list(/proc/is_station_turf, /proc/not_turf_contains_dense_objects))
+	events_repository.unregister(/decl/observ/moved, src, src, /obj/item/disk/nuclear/proc/check_z_level)
+	global.nuke_disks -= src
+	if(!length(global.nuke_disks))
+		var/turf/T = pick_area_turf_by_flag(AREA_FLAG_MAINTENANCE, list(/proc/is_station_turf, /proc/not_turf_contains_dense_objects))
 		if(T)
 			var/obj/D = new /obj/item/disk/nuclear(T)
 			log_and_message_admins("[src], the last authentication disk, has been destroyed. Spawning [D] at ([D.x], [D.y], [D.z]).", location = T)
@@ -395,16 +393,18 @@ var/bomb_set
 //====the nuclear football (holds the disk and instructions)====
 /obj/item/storage/secure/briefcase/nukedisk
 	desc = "A large briefcase with a digital locking system."
-	startswith = list(
+
+/obj/item/storage/secure/briefcase/nukedisk/WillContain()
+	return list(
 		/obj/item/disk/nuclear,
 		/obj/item/pinpointer,
 		/obj/item/folder/envelope/nuke_instructions,
-		/obj/item/modular_computer/laptop/preset/custom_loadout/cheap/
+		/obj/item/modular_computer/laptop/preset/custom_loadout/cheap
 	)
 
 /obj/item/storage/secure/briefcase/nukedisk/examine(mob/user)
 	. = ..()
-	to_chat(user,"On closer inspection, you see \a [GLOB.using_map.company_name] emblem is etched into the front of it.")
+	to_chat(user,"On closer inspection, you see \a [global.using_map.company_name] emblem is etched into the front of it.")
 
 /obj/item/folder/envelope/nuke_instructions
 	name = "instructions envelope"
@@ -413,33 +413,30 @@ var/bomb_set
 /obj/item/folder/envelope/nuke_instructions/Initialize()
 	. = ..()
 	var/obj/item/paper/R = new(src)
-	R.set_content("<center><b>Warning: Classified<br>[GLOB.using_map.station_name] Self-Destruct System - Instructions</b></center><br><br>\
-	In the event of a Delta-level emergency, this document will guide you through the activation of the vessel's \
-	on-board nuclear self-destruct system. Please read carefully.<br><br>\
-	1) (Optional) Announce the imminent activation to any surviving crew members, and begin evacuation procedures.<br>\
-	2) Notify two heads of staff, both with ID cards with access to the ship's Keycard Authentication Devices.<br>\
-	3) Proceed to the self-destruct chamber, located on Deck One by the stairwell.<br>\
-	4) Unbolt the door and enter the chamber.<br>\
-	5) Both heads of staff should stand in front of their own Keycard Authentication Devices. On the KAD interface, select \
-	Grant Nuclear Authentication Code. Both heads of staff should then swipe their ID cards simultaneously.<br>\
-	6) The KAD will now display the Authentication Code. Memorize this code.<br>\
-	7) Insert the nuclear authentication disk into the self-destruct terminal.<br>\
-	8) Enter the code into the self-destruct terminal.<br>\
-	9) Authentication procedures are now complete. Open the two cabinets containing the nuclear cylinders. They are \
-	located on the back wall of the chamber.<br>\
-	10) Place the cylinders upon the six nuclear cylinder inserters.<br>\
-	11) Activate the inserters. The cylinders will be pulled down into the self-destruct system.<br>\
-	12) Return to the terminal. Enter the desired countdown time.<br>\
-	13) When ready, disable the safety switch.<br>\
-	14) Start the countdown.<br><br>\
-	This concludes the instructions.", "vessel self-destruct instructions")
+	R.set_content({"<center><b>Warning: Classified<br>[global.using_map.station_name] Self-Destruct System - Instructions</b></center><br><br>
+	In the event of a Delta-level emergency, this document will guide you through the activation of the vessel's 
+	on-board nuclear self-destruct system. Please read carefully.<br><br>
+	1) (Optional) Announce the imminent activation to any surviving crew members, and begin evacuation procedures.<br>
+	2) Notify two heads of staff, both with ID cards with access to the ship's Keycard Authentication Devices.<br>
+	3) Proceed to the self-destruct chamber, located on Deck One by the stairwell.<br>
+	4) Unbolt the door and enter the chamber.<br>
+	5) Both heads of staff should stand in front of their own Keycard Authentication Devices. On the KAD interface, select 
+	Grant Nuclear Authentication Code. Both heads of staff should then swipe their ID cards simultaneously.<br>
+	6) The KAD will now display the Authentication Code. Memorize this code.<br>
+	7) Insert the nuclear authentication disk into the self-destruct terminal.<br>
+	8) Enter the code into the self-destruct terminal.<br>
+	9) Authentication procedures are now complete. Open the two cabinets containing the nuclear cylinders. They are 
+	located on the back wall of the chamber.<br>
+	10) Place the cylinders upon the six nuclear cylinder inserters.<br>
+	11) Activate the inserters. The cylinders will be pulled down into the self-destruct system.<br>
+	12) Return to the terminal. Enter the desired countdown time.<br>
+	13) When ready, disable the safety switch.<br>
+	14) Start the countdown.<br><br>
+	This concludes the instructions."}, 
+		"vessel self-destruct instructions")
 
 	//stamp the paper
-	var/image/stampoverlay = image('icons/obj/bureaucracy.dmi')
-	stampoverlay.icon_state = "paper_stamp-hos"
-	R.stamped += /obj/item/stamp
-	R.overlays += stampoverlay
-	R.stamps += "<HR><i>This paper has been stamped as 'Top Secret'.</i>"
+	R.apply_custom_stamp(overlay_image('icons/obj/bureaucracy.dmi', icon_state = "paper_stamp-hos", flags = RESET_COLOR), "'Top Secret'")
 
 //====vessel self-destruct system====
 /obj/machinery/nuclearbomb/station
@@ -449,6 +446,10 @@ var/bomb_set
 	anchored = 1
 	deployable = 1
 	extended = 1
+
+	timeleft = 300
+	minTime = 300
+	maxTime = 900
 
 	var/list/flash_tiles = list()
 	var/list/inserters = list()
@@ -469,7 +470,7 @@ var/bomb_set
 		inserters += ch
 
 /obj/machinery/nuclearbomb/station/attackby(obj/item/O, mob/user)
-	if(isWrench(O))
+	if(IS_WRENCH(O))
 		return
 
 /obj/machinery/nuclearbomb/station/Topic(href, href_list)
@@ -478,15 +479,6 @@ var/bomb_set
 
 	if(href_list["anchor"])
 		return
-
-	if(href_list["time"])
-		if(timing)
-			to_chat(usr, "<span class='warning'>Cannot alter the timing during countdown.</span>")
-			return
-		var/time = text2num(href_list["time"])
-		timeleft += time
-		timeleft = Clamp(timeleft, 300, 900)
-		return 1
 
 /obj/machinery/nuclearbomb/station/start_bomb()
 	for(var/inserter in inserters)
@@ -528,7 +520,7 @@ var/bomb_set
 					high_intensity = rand(3, 6)
 					low_intensity = rand(5, 8)
 					time_to_explosion = world.time + 5 SECONDS
-				var/turf/T = pick_area_and_turf(GLOB.is_station_but_not_space_or_shuttle_area)
+				var/turf/T = pick_area_and_turf(global.is_station_but_not_space_or_shuttle_area)
 				explosion(T, range, high_intensity, low_intensity)
 
 /obj/machinery/nuclearbomb/station/secure_device()

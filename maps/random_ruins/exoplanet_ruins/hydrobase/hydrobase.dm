@@ -1,7 +1,6 @@
 /datum/map_template/ruin/exoplanet/hydrobase
 	name = "hydroponics base"
-	id = "exoplanet_hydrobase"
-	description = "hydroponics base with random plants and a lot of enemies"
+	description = "A hydroponics base with random plants and a lot of enemies."
 	suffixes = list("hydrobase/hydrobase.dmm")
 	cost = 2
 	template_flags = TEMPLATE_FLAG_CLEAR_CONTENTS | TEMPLATE_FLAG_NO_RUINS
@@ -96,12 +95,9 @@
 /mob/living/simple_animal/hostile/retaliate/malf_drone/hydro
 	name = "Farmbot"
 	desc = "The botanist's best friend. There's something slightly odd about the way it moves."
-	icon = 'maps/random_ruins/exoplanet_ruins/hydrobase/hydro.dmi'
+	icon = 'maps/random_ruins/exoplanet_ruins/hydrobase/farmbot.dmi'
 	speak = list("Initiating harvesting subrout-ine-ine.", "Connection timed out.", "Connection with master AI syst-tem-tem lost.", "Core systems override enab-...")
 	emote_see = list("beeps repeatedly", "whirrs violently", "flashes its indicator lights", "emits a ping sound")
-	icon_state = "farmbot"
-	icon_living = "farmbot"
-	icon_dead = "farmbot_dead"
 	faction = "farmbots"
 	health = 225
 	maxHealth = 225
@@ -120,9 +116,3 @@
 	destroy_surroundings = 1
 	projectiletype = initial(projectiletype)
 	walk(src,0)
-
-/mob/living/simple_animal/hostile/retaliate/malf_drone/hydro/ListTargets()
-	if(hostile_drone)
-		return view(src, 3)
-	else
-		return ..()

@@ -39,10 +39,10 @@
 	use_power_cost = 200
 	origin_tech = "{'magnets':3,'biotech':3,'engineering':5}"
 	device = /obj/item/scanner/health
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	matter = list(
-		MAT_STEEL = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/device/defib
@@ -68,11 +68,11 @@
 	module_cooldown = 0
 	origin_tech = "{'materials':6,'powerstorage':4,'engineering':6}"
 	device = /obj/item/pickaxe/diamonddrill
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_DIAMOND = MATTER_AMOUNT_TRACE,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/gemstone/diamond = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/device/anomaly_scanner
@@ -86,11 +86,11 @@
 	usable = 1
 	selectable = 0
 	device = /obj/item/ano_scanner
-	origin_tech = "{'bluespace':4,'magnets':4,'engineering':6}"
-	material = MAT_PLASTIC
+	origin_tech = "{'wormholes':4,'magnets':4,'engineering':6}"
+	material = /decl/material/solid/plastic
 	matter = list(
-		MAT_STEEL = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/device/orescanner
@@ -106,10 +106,10 @@
 	use_power_cost = 200
 	device = /obj/item/scanner/mining
 	origin_tech = "{'materials':4,'magnets':4,'engineering':6}"
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	matter = list(
-		MAT_STEEL = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/device/orescanner/activate()
@@ -130,14 +130,14 @@
 	use_power_cost = 300
 	origin_tech = "{'materials':6,'magnets':5,'engineering':7}"
 	device = /obj/item/rcd/mounted
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE,
-		MAT_GOLD = MATTER_AMOUNT_TRACE,
-		MAT_SILVER = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE
 	)
-	
+
 /obj/item/rig_module/device/Initialize()
 	. = ..()
 	if(ispath(device))
@@ -226,9 +226,9 @@
 				break
 
 	if(total_transferred)
-		to_chat(user, "<font color='blue'>You transfer [total_transferred] units into the suit reservoir.</font>")
+		to_chat(user, SPAN_NOTICE("You transfer [total_transferred] units into the suit reservoir."))
 	else
-		to_chat(user, "<span class='danger'>None of the reagents seem suitable.</span>")
+		to_chat(user, SPAN_WARNING("None of the reagents seem suitable."))
 	return 1
 
 /obj/item/rig_module/chem_dispenser/engage(atom/target)
@@ -239,7 +239,7 @@
 	var/mob/living/carbon/human/H = holder.wearer
 
 	if(!charge_selected)
-		to_chat(H, "<span class='danger'>You have not selected a chemical type.</span>")
+		to_chat(H, SPAN_WARNING("You have not selected a chemical type."))
 		return 0
 
 	var/datum/rig_charge/charge = charges[charge_selected]
@@ -350,17 +350,17 @@
 		if("Enable")
 			active = 1
 			voice_holder.active = 1
-			to_chat(usr, "<font color='blue'>You enable the speech synthesiser.</font>")
+			to_chat(usr, SPAN_NOTICE("You enable the speech synthesiser."))
 		if("Disable")
 			active = 0
 			voice_holder.active = 0
-			to_chat(usr, "<font color='blue'>You disable the speech synthesiser.</font>")
+			to_chat(usr, SPAN_NOTICE("You disable the speech synthesiser."))
 		if("Set Name")
 			var/raw_choice = sanitize(input(usr, "Please enter a new name.")  as text|null, MAX_NAME_LEN)
 			if(!raw_choice)
 				return 0
 			voice_holder.voice = raw_choice
-			to_chat(usr, "<font color='blue'>You are now mimicking <B>[voice_holder.voice]</B>.</font>")
+			to_chat(usr, SPAN_NOTICE("You are now mimicking <B>[voice_holder.voice]</B>."))
 	return 1
 
 /obj/item/rig_module/maneuvering_jets
@@ -382,14 +382,32 @@
 	deactivate_string = "Deactivate Thrusters"
 
 	interface_name = "maneuvering jets"
-	interface_desc = "An inbuilt EVA maneuvering system that runs off the rig air supply."
+	interface_desc = "An inbuilt EVA maneuvering system that runs off a seperate gas supply."
 	origin_tech = "{'materials':6,'engineering':7}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_PLASTIC = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE
+		/decl/material/solid/plastic = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE
 	)
 	var/obj/item/tank/jetpack/rig/jets
+
+/obj/item/rig_module/maneuvering_jets/attackby(obj/item/W, mob/user)
+	if(W.do_tool_interaction(TOOL_WRENCH, user, src, 1, "removing the propellant tank", "removing the propellant tank"))
+		jets.forceMove(get_turf(user))
+		user.put_in_hands(jets)
+		jets = null
+		return TRUE
+
+	if(istype(W, /obj/item/tank/jetpack/rig))
+		if(jets)
+			to_chat(user, SPAN_WARNING("There's already a propellant tank inside of \the [src]!"))
+			return
+		if(user.unEquip(W))
+			to_chat(user, SPAN_NOTICE("You insert \the [W] into [src]."))
+			W.forceMove(src)
+			jets = W
+			return TRUE
+	. = ..()
 
 /obj/item/rig_module/maneuvering_jets/engage()
 	if(!..())
@@ -435,6 +453,10 @@
 	..()
 	jets.holder = null
 	jets.ion_trail.set_up(jets)
+
+/obj/item/rig_module/maneuvering_jets/Destroy()
+	. = ..()
+	QDEL_NULL(jets)
 
 /obj/item/rig_module/device/paperdispenser
 	name = "hardsuit paper dispenser"
@@ -505,10 +527,10 @@
 	interface_desc = "Eats trash like no one's business."
 	origin_tech = "{'materials':5,'engineering':5}"
 	device = /obj/item/matter_decompiler
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_PLASTIC = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE
+		/decl/material/solid/plastic = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/cooling_unit
@@ -518,10 +540,10 @@
 	interface_name = "mounted cooling unit"
 	interface_desc = "A heat sink with a liquid cooled radiator."
 	module_cooldown = 0 SECONDS //no cd because its critical for a life-support module
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 	var/charge_consumption = 0.5 KILOWATTS
 	var/max_cooling = 12

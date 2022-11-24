@@ -2,22 +2,23 @@
 	name = "emergency response drone module"
 	display_name = "Emergency Response"
 	channels = list("Medical" = TRUE)
-	networks = list(NETWORK_MEDICAL)
+	camera_channels = list(CAMERA_CHANNEL_MEDICAL)
 	software = list(
 		/datum/computer_file/program/suit_sensors
 	)
-	sprites = list(
-		"Drone" = "drone-medical",
-		"Eyebot" = "eyebot-medical"
+	module_sprites = list(
+		"Drone" = 'icons/mob/robots/flying/flying_medical.dmi',
+		"Eyebot" = 'icons/mob/robots/flying/eyebot_medical.dmi'
 	)
 	equipment = list(
 		/obj/item/flash,
 		/obj/item/borg/sight/hud/med,
 		/obj/item/scanner/health,
+		/obj/item/scanner/breath,
 		/obj/item/scanner/reagent/adv,
 		/obj/item/chems/borghypo/crisis,
-		/obj/item/extinguisher/mini,
-		/obj/item/taperoll/medical,
+		/obj/item/chems/spray/extinguisher/mini,
+		/obj/item/stack/tape_roll/barricade_tape/medical,
 		/obj/item/inflatable_dispenser/robot,
 		/obj/item/weldingtool/mini,
 		/obj/item/screwdriver,
@@ -36,7 +37,6 @@
 		SKILL_ANATOMY      = SKILL_BASIC,
 		SKILL_MEDICAL      = SKILL_PROF,
 		SKILL_EVA          = SKILL_EXPERT,
-		SKILL_MECH         = HAS_PERK,
 		SKILL_CONSTRUCTION = SKILL_EXPERT,
 		SKILL_ELECTRICAL   = SKILL_EXPERT
 	)

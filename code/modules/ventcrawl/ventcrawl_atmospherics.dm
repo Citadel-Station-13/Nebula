@@ -5,7 +5,7 @@
 		M.remove_ventcrawl()
 		M.dropInto(loc)
 	if(pipe_image)
-		for(var/mob/living/M in GLOB.player_list)
+		for(var/mob/living/M in global.player_list)
 			if(M.client)
 				M.client.images -= pipe_image
 				M.pipes_shown -= pipe_image
@@ -15,7 +15,10 @@
 /obj/machinery/atmospherics/relaymove(mob/living/user, direction)
 	if(user.loc != src || !(direction & initialize_directions)) //can't go in a way we aren't connecting to
 		return
-	ventcrawl_to(user,findConnecting(direction),direction)
+
+	// Only cardinals allowed.
+	direction = FIRST_DIR(direction)
+	ventcrawl_to(user,findConnecting(direction), direction)
 
 /obj/machinery/atmospherics/proc/ventcrawl_to(var/mob/living/user, var/obj/machinery/atmospherics/target_move, var/direction)
 	if(target_move)
@@ -37,7 +40,7 @@
 			user.remove_ventcrawl()
 			user.forceMove(src.loc)
 			user.visible_message("You hear something squeezing through the pipes.", "You climb out the ventilation system.")
-	user.SetMoveCooldown(user.movement_delay())
+	user.SetMoveCooldown(user.get_movement_delay(direction))
 
 /obj/machinery/atmospherics/proc/can_crawl_through()
 	return 1
@@ -55,28 +58,7 @@
 				return target
 
 /obj/machinery/atmospherics/proc/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node1 || target == node2)
-
-/obj/machinery/atmospherics/pipe/manifold/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node3 || ..())
-
-obj/machinery/atmospherics/trinary/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node3 || ..())
-
-/obj/machinery/atmospherics/pipe/manifold4w/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node3 || target == node4 || ..())
-
-/obj/machinery/atmospherics/tvalve/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node3 || ..())
-
-/obj/machinery/atmospherics/pipe/cap/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node || ..())
-
-/obj/machinery/atmospherics/portables_connector/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node || ..())
-
-/obj/machinery/atmospherics/unary/isConnectable(var/obj/machinery/atmospherics/target)
-	return (target == node || ..())
+	return (target in nodes_to_networks)
 
 /obj/machinery/atmospherics/valve/isConnectable()
 	return (open && ..())

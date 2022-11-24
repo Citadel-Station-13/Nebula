@@ -1,9 +1,19 @@
+var/global/list/tracking_implants = list()
+
 /obj/item/implant/tracking
 	name = "tracking implant"
 	desc = "Track with this."
-	origin_tech = "{'materials':1,'biotech':2,'bluespace':2}"
+	origin_tech = "{'materials':1,'biotech':2,'wormholes':2}"
 	known = 1
 	var/id = 1
+
+/obj/item/implant/tracking/Initialize(ml, material_key)
+	. = ..()
+	global.tracking_implants += src
+
+/obj/item/implant/tracking/Destroy()
+	global.tracking_implants -= src
+	. = ..()
 
 /obj/item/implant/tracking/get_data()
 	. = {"<b>Implant Specifications:</b><BR>
@@ -29,7 +39,7 @@
 /obj/item/implant/tracking/Topic(href, href_list)
 	..()
 	if (href_list["tracking_id"])
-		id = Clamp(id+text2num(href_list["tracking_id"]), 1, 100)
+		id = clamp(id+text2num(href_list["tracking_id"]), 1, 100)
 		interact(usr)
 
 /obj/item/implant/tracking/islegal()

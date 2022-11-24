@@ -1,13 +1,13 @@
 var/global/list/responsive_carriers = list(
-	/decl/material/solid/carbon 			= "Trace organic cells",
-	/decl/material/solid/potassium 		= "Long exposure particles",
-	/decl/material/liquid/fuel/hydrazine 	= "Trace water particles",
-	/decl/material/gas/ammonia 			= "Crystalline structures",
-	/decl/material/liquid/mercury 			= "Metallic derivative",
-	/decl/material/solid/metal/iron 			= "Metallic composite",
-	/decl/material/gas/chlorine 	= "Metamorphic/igneous rock composite",
-	/decl/material/solid/phosphorus 		= "Metamorphic/sedimentary rock composite",
-	/decl/material/solid/phoron 	= "Anomalous material")
+	/decl/material/solid/carbon          = "Trace organic cells",
+	/decl/material/solid/potassium       = "Long exposure particles",
+	/decl/material/liquid/fuel/hydrazine = "Trace water particles",
+	/decl/material/gas/ammonia 			 = "Crystalline structures",
+	/decl/material/liquid/mercury        = "Metallic derivative",
+	/decl/material/solid/metal/iron      = "Metallic composite",
+	/decl/material/gas/chlorine          = "Metamorphic/igneous rock composite",
+	/decl/material/solid/phosphorus      = "Metamorphic/sedimentary rock composite"
+)
 
 /decl/archaeological_find
 	var/item_type = "object"
@@ -27,7 +27,7 @@ var/global/list/responsive_carriers = list(
 
 	if(prob(engraving_chance))
 		descriptors += generate_engravings(I)
-	
+
 	var/extra_desc = get_additional_description()
 	if(extra_desc)
 		descriptors += extra_desc
@@ -39,22 +39,26 @@ var/global/list/responsive_carriers = list(
 		new_name = "[pick(name_prefixes)] [new_name]"
 	I.SetName(new_name)
 	if(modification_flags & XENOFIND_REPLACE_ICON)
-		I.icon = new_icon
+		I.icon = new_icon()
+		I.has_inventory_icon = check_state_in_icon(ICON_STATE_INV, I.icon)
 		I.icon_state = new_icon_state()
 	I.desc = jointext(descriptors, "\n")
 	I.forceMove(location)
-	I.set_material(MAT_ALIENALLOY)
+	I.set_material(/decl/material/solid/metal/aliumium)
 	if(modification_flags & XENOFIND_APPLY_PREFIX)
 		new_name = "[pick(name_prefixes)] [new_name]"
 	I.SetName(new_name)
 	if(prob(5))
 		I.talking_atom = new(I)
-	
+
 	return I
 
 /decl/archaeological_find/proc/spawn_item(atom/loc)
 	var/spawn_type = pickweight(possible_types)
 	return new spawn_type(loc)
+
+/decl/archaeological_find/proc/new_icon()
+	return new_icon
 
 /decl/archaeological_find/proc/new_icon_state()
 	if(new_icon_state)
@@ -69,7 +73,7 @@ var/global/list/responsive_carriers = list(
 	return
 
 /decl/archaeological_find/proc/generate_engravings(obj/item/I)
-	var/obj/effect/overmap/visitable/sector/exoplanet/E = map_sectors["[get_z(I)]"]
+	var/obj/effect/overmap/visitable/sector/exoplanet/E = global.overmap_sectors["[get_z(I)]"]
 	. = "[pick("Engraved","Carved","Etched")] on the item is [pick("an image of","a frieze of","a depiction of")] "
 	if(istype(E))
 		. += E.get_engravings()

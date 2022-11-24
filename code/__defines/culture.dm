@@ -3,25 +3,9 @@
 #define TAG_FACTION   "faction"
 #define TAG_RELIGION  "religion"
 
-#define ALL_CULTURAL_TAGS list( \
-	TAG_CULTURE =   "Culture", \
-	TAG_HOMEWORLD = "Residence", \
-	TAG_FACTION =   "Faction", \
-	TAG_RELIGION =  "Beliefs" \
-	)
-
-// Cultural IDs.
-#define FACTION_OTHER          "Other Faction"
-
-#define HOME_SYSTEM_STATELESS  "Stateless"
-#define HOME_SYSTEM_OTHER      "Other System"
-#define HOME_SYSTEM_DEEP_SPACE "Deep Space"
-
-#define CULTURE_OTHER          "Other Culture"
-#define CULTURE_HUMAN          "Humankind"
-#define CULTURE_MONKEY         "Test Subjects"
-#define CULTURE_ALIUM          "Mysterious Aliens"
-#define CULTURE_CULTIST        "Blood Cult"
-
-#define RELIGION_OTHER         "Other Religion"
-
+var/global/list/ALL_CULTURAL_TAGS = list(
+	TAG_CULTURE =   "Culture",
+	TAG_HOMEWORLD = "Residence",
+	TAG_FACTION =   "Faction",
+	TAG_RELIGION =  "Beliefs"
+)

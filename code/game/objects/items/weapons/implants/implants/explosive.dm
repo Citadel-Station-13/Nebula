@@ -48,7 +48,7 @@
 
 /obj/item/implant/explosive/Initialize()
 	. = ..()
-	GLOB.listening_objects += src
+	global.listening_objects += src
 	set_frequency(frequency)
 
 /obj/item/implant/explosive/Topic(href, href_list)
@@ -64,7 +64,7 @@
 			code = input("Set radio activation code","Radio activation") as num
 		else
 			code += adj
-		code = Clamp(code,1,100)
+		code = clamp(code,1,100)
 		interact(usr)
 	if (href_list["mode"])
 		var/mod = input("Set explosion mode", "Explosion mode") as null|anything in list("Localized Limb", "Destroy Body", "Full Explosion")
@@ -103,7 +103,8 @@
 
 /obj/item/implant/explosive/exposed()
 	if(warning_message)
-		GLOB.global_headset.autosay(warning_message, "Anti Tampering System")
+		var/obj/item/radio/headset = get_global_headset()
+		headset.autosay(warning_message, "Anti Tampering System")
 
 /obj/item/implant/explosive/proc/sanitize_phrase(phrase)
 	var/list/replacechars = list("'" = "","\"" = "",">" = "","<" = "","(" = "",")" = "")
@@ -134,7 +135,7 @@
 					istype(part,/obj/item/organ/external/groin))
 					part.take_external_damage(60, used_weapon = "Explosion")
 				else
-					part.droplimb(0,DROPLIMB_BLUNT)
+					part.dismember(0,DISMEMBER_METHOD_BLUNT)
 			explosion(T, -1, -1, 2, 3)
 		if ("Destroy Body")
 			explosion(T, -1, 0, 1, 6)
@@ -161,7 +162,9 @@
 
 /obj/item/implant/explosive/Destroy()
 	removed()
-	GLOB.listening_objects -= src
+	radio_controller.remove_object(src, frequency)
+	radio_connection = null
+	global.listening_objects -= src
 	return ..()
 
 /obj/item/implanter/explosive

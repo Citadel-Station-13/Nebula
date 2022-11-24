@@ -4,23 +4,27 @@
 	icon_state = "launcherbtt"
 	desc = "A remote control switch for something."
 	anchored = 1
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
 	layer = ABOVE_WINDOW_LAYER
 	power_channel = ENVIRON
 	idle_power_usage = 10
 	public_variables = list(
 		/decl/public_access/public_variable/button_active,
+		/decl/public_access/public_variable/inv_button_active,
 		/decl/public_access/public_variable/button_state,
 		/decl/public_access/public_variable/input_toggle
 	)
 	public_methods = list(/decl/public_access/public_method/toggle_input_toggle)
 	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/button = 1)
 	uncreated_component_parts = list(
-		/obj/item/stock_parts/power/apc/buildable,
-		/obj/item/stock_parts/radio/transmitter/basic/buildable
+		/obj/item/stock_parts/power/apc = 1,
+		/obj/item/stock_parts/radio/transmitter/basic/buildable = 1
 	)
 	base_type = /obj/machinery/button/buildable
 	construct_state = /decl/machine_construction/wall_frame/panel_closed/simple
 	frame_type = /obj/item/frame/button
+	required_interaction_dexterity = DEXTERITY_SIMPLE_MACHINES
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':30}, 'EAST':{'x':-24}, 'WEST':{'x':24}}"
 
 	var/active = FALSE
 	var/operating = FALSE
@@ -28,7 +32,9 @@
 	var/cooldown = 1 SECOND
 
 /obj/machinery/button/buildable
-	uncreated_component_parts = null
+	uncreated_component_parts = list(
+		/obj/item/stock_parts/power/apc = 1,
+	)
 
 /obj/machinery/button/Initialize()
 	. = ..()
@@ -56,7 +62,7 @@
 		return
 
 	operating = TRUE
-	var/decl/public_access/public_variable/variable = decls_repository.get_decl(/decl/public_access/public_variable/button_active)
+	var/decl/public_access/public_variable/variable = GET_DECL(/decl/public_access/public_variable/button_active)
 	state = !state
 	variable.write_var(src, !active)
 	use_power_oneoff(500)
@@ -71,6 +77,12 @@
 		icon_state = "launcheract"
 	else
 		icon_state = "launcherbtt"
+
+//#TODO: Button might want their cases to handle being installed on tables to stay coherent with mapped button on tables?
+/obj/machinery/button/update_directional_offset(force = FALSE)
+	if(!force && (!length(directional_offset) || !is_wall_mounted())) //Check if the button is actually mapped onto a table or something
+		return
+	. = ..()
 
 /decl/public_access/public_variable/button_active
 	expected_type = /obj/machinery/button
@@ -87,6 +99,21 @@
 	if(.)
 		button.active = new_val
 
+/decl/public_access/public_variable/inv_button_active
+	expected_type = /obj/machinery/button
+	name = "inverse button toggle"
+	desc = "Toggled whenever the button is pressed. Inverse value of button toggle."
+	can_write = FALSE
+	has_updates = TRUE
+
+/decl/public_access/public_variable/inv_button_active/access_var(obj/machinery/button/button)
+	return !button.active
+
+/decl/public_access/public_variable/inv_button_active/write_var(obj/machinery/button/button, new_val)
+	. = ..()
+	if(.)
+		button.active = !new_val
+
 // The point here is that button_active just pulses on button press and can't be changed otherwise, while button_state can be changed externally.
 /decl/public_access/public_variable/button_state
 	expected_type = /obj/machinery/button
@@ -94,14 +121,16 @@
 	desc = "Whether the button is currently in the on state."
 	can_write = TRUE
 	has_updates = FALSE
+	var_type = IC_FORMAT_BOOLEAN
 
 /decl/public_access/public_variable/button_state/access_var(obj/machinery/button/button)
 	return button.state
 
 /decl/public_access/public_variable/button_state/write_var(obj/machinery/button/button, new_val)
+	new_val = !!new_val
 	. = ..()
 	if(.)
-		button.state = new_val
+		button.state = !!new_val
 
 /decl/stock_part_preset/radio/basic_transmitter/button
 	transmit_on_change = list("button_active" = /decl/public_access/public_variable/button_active)
@@ -117,8 +146,14 @@
 
 //alternate button with the same functionality, except has a door control sprite instead
 /obj/machinery/button/alternate
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/button_door.dmi'
 	icon_state = "doorctrl"
+	frame_type = /obj/item/frame/button/alternate
+
+/obj/machinery/button/alternate/buildable
+	uncreated_component_parts = list(
+		/obj/item/stock_parts/radio/transmitter/basic = 1,
+	)
 
 /obj/machinery/button/alternate/on_update_icon()
 	if(operating)
@@ -145,8 +180,9 @@
 
 //alternate button with the same toggle functionality, except has a door control sprite instead
 /obj/machinery/button/toggle/alternate
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/button_door.dmi'
 	icon_state = "doorctrl"
+	frame_type = /obj/item/frame/button/alternate
 
 /obj/machinery/button/toggle/alternate/on_update_icon()
 	if(active)
@@ -166,7 +202,7 @@
 //-------------------------------
 
 /obj/machinery/button/alternate/door
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/button_door.dmi'
 	icon_state = "doorctrl"
 	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/button/door)
 
@@ -202,3 +238,12 @@
 /decl/stock_part_preset/radio/basic_transmitter/button/atmosia
 	transmit_on_change = list("valve_toggle" = /decl/public_access/public_variable/button_active)
 	frequency = FUEL_FREQ
+
+// Vent control
+/obj/machinery/button/toggle/engine
+	name = "engine vent control"
+	stock_part_presets = list(/decl/stock_part_preset/radio/basic_transmitter/button/engine = 1)
+
+/decl/stock_part_preset/radio/basic_transmitter/button/engine
+	transmit_on_change = list("power_toggle" = /decl/public_access/public_variable/button_active)
+	frequency = ATMOS_ENGINE_FREQ

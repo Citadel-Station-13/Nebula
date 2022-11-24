@@ -1,6 +1,6 @@
 // Glass shards
 
-/obj/item/material/shard
+/obj/item/shard
 	name = "shard"
 	icon = 'icons/obj/items/shards.dmi'
 	desc = "Made of nothing. How does this even exist?" // set based on material, if this desc is visible it's a bug (shards default to being made of glass)
@@ -13,22 +13,28 @@
 	thrown_material_force_multiplier = 0.1 // 3 with weight 30 (glass)
 	item_state = "shard-glass"
 	attack_verb = list("stabbed", "slashed", "sliced", "cut")
-	material = MAT_GLASS
+	material = /decl/material/solid/glass
+	applies_material_colour = TRUE
+	applies_material_name = TRUE
 	unbreakable = 1 //It's already broken.
 	item_flags = ITEM_FLAG_CAN_HIDE_IN_SHOES
 	var/has_handle
 
-/obj/item/material/shard/attack(mob/living/M, mob/living/user, var/target_zone)
+/obj/item/shard/Initialize(ml, material_key)
+	. = ..()
+	set_extension(src, /datum/extension/tool, list(TOOL_SCALPEL = TOOL_QUALITY_BAD))
+
+/obj/item/shard/attack(mob/living/M, mob/living/user, var/target_zone)
 	. = ..()
 	if(. && !has_handle)
 		var/mob/living/carbon/human/H = user
-		if(istype(H) && !H.gloves && !(H.species.species_flags & SPECIES_FLAG_NO_MINOR_CUT))
-			var/obj/item/organ/external/hand = H.get_organ(H.hand ? BP_L_HAND : BP_R_HAND)
+		if(istype(H) && !H.get_equipped_item(slot_gloves_str) && !(H.species.species_flags & SPECIES_FLAG_NO_MINOR_CUT))
+			var/obj/item/organ/external/hand = GET_EXTERNAL_ORGAN(H, H.get_active_held_item_slot())
 			if(istype(hand) && !BP_IS_PROSTHETIC(hand))
 				to_chat(H, SPAN_DANGER("You slice your hand on \the [src]!"))
 				hand.take_external_damage(rand(5,10), used_weapon = src)
 
-/obj/item/material/shard/set_material(var/new_material)
+/obj/item/shard/set_material(var/new_material)
 	..(new_material)
 	if(!istype(material))
 		return
@@ -47,7 +53,8 @@
 	else
 		qdel(src)
 
-/obj/item/material/shard/on_update_icon()
+/obj/item/shard/on_update_icon()
+	. = ..()
 	if(material)
 		color = material.color
 		// 1-(1-x)^2, so that glass shards with 0.3 opacity end up somewhat visible at 0.51 opacity
@@ -56,11 +63,11 @@
 		color = "#ffffff"
 		alpha = 255
 
-/obj/item/material/shard/attackby(obj/item/W, mob/user)
-	if(isWelder(W) && material.shard_can_repair)
+/obj/item/shard/attackby(obj/item/W, mob/user)
+	if(IS_WELDER(W) && material.shard_can_repair)
 		var/obj/item/weldingtool/WT = W
-		if(WT.remove_fuel(0, user))
-			material.place_sheet(get_turf(src))
+		if(WT.weld(0, user))
+			material.create_object(get_turf(src))
 			qdel(src)
 			return
 	if(istype(W, /obj/item/stack/cable_coil))
@@ -82,16 +89,12 @@
 		return
 	return ..()
 
-/obj/item/material/shard/on_update_icon()
-	overlays.Cut()
+/obj/item/shard/on_update_icon()
 	. = ..()
 	if(has_handle)
-		var/image/I = image(icon, "handle")
-		I.appearance_flags |= RESET_COLOR
-		I.color = has_handle
-		overlays += I
+		add_overlay(overlay_image(icon, "handle", has_handle, RESET_COLOR))
 
-/obj/item/material/shard/Crossed(atom/movable/AM)
+/obj/item/shard/Crossed(atom/movable/AM)
 	..()
 	if(isliving(AM))
 		var/mob/M = AM
@@ -106,35 +109,37 @@
 			if(H.species.siemens_coefficient<0.5 || (H.species.species_flags & (SPECIES_FLAG_NO_EMBED|SPECIES_FLAG_NO_MINOR_CUT))) //Thick skin.
 				return
 
-			if( H.shoes || ( H.wear_suit && (H.wear_suit.body_parts_covered & FEET) ) )
+			var/obj/item/shoes = H.get_equipped_item(slot_shoes_str)
+			var/obj/item/suit = H.get_equipped_item(slot_wear_suit_str)
+			if(shoes || (suit && (suit.body_parts_covered & SLOT_FEET)))
 				return
 
-			to_chat(M, "<span class='danger'>You step on \the [src]!</span>")
+			to_chat(M, SPAN_DANGER("You step on \the [src]!"))
 
 			var/list/check = list(BP_L_FOOT, BP_R_FOOT)
 			while(check.len)
 				var/picked = pick(check)
-				var/obj/item/organ/external/affecting = H.get_organ(picked)
+				var/obj/item/organ/external/affecting = GET_EXTERNAL_ORGAN(H, picked)
 				if(affecting)
 					if(BP_IS_PROSTHETIC(affecting))
 						return
 					affecting.take_external_damage(5, 0)
 					H.updatehealth()
 					if(affecting.can_feel_pain())
-						H.Weaken(3)
+						SET_STATUS_MAX(H, STAT_WEAK, 3)
 					return
 				check -= picked
 			return
 
 // Preset types - left here for the code that uses them
-/obj/item/material/shard/phoron/Initialize(mapload, material_key)
-	. = ..(loc, MAT_BOROSILICATE_GLASS)
+/obj/item/shard/borosilicate
+	material = /decl/material/solid/glass/borosilicate
 
-/obj/item/material/shard/shrapnel
+/obj/item/shard/shrapnel
 	name = "shrapnel"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	w_class = ITEM_SIZE_TINY	//it's real small
 
-/obj/item/material/shard/plastic
-	material = MAT_PLASTIC
+/obj/item/shard/plastic
+	material = /decl/material/solid/plastic
 	w_class = ITEM_SIZE_TINY

@@ -11,10 +11,10 @@
 
 /datum/fabricator_recipe/arms_ammo/flaregun
 	name = "flare gun"
-	path = /obj/item/weapon/gun/projectile/flare
+	path = /obj/item/gun/projectile/flare
 
 /datum/fabricator_recipe/arms_ammo/hidden
-	path = /obj/item/material/hatchet/machete/steel
+	path = /obj/item/hatchet/machete/steel
 	hidden = TRUE
 
 /datum/fabricator_recipe/arms_ammo/hidden/shotgun
@@ -48,6 +48,14 @@
 	name = "ammunition (holdout)"
 	path = /obj/item/ammo_magazine/pistol/small
 
+/datum/fabricator_recipe/arms_ammo/hidden/magazine_practice
+	name = "ammunition (pistol, practice)"
+	path = /obj/item/ammo_magazine/pistol/practice
+
+/datum/fabricator_recipe/arms_ammo/hidden/magazine_flass
+	name = "ammunition (pistol, flash)"
+	path = /obj/item/ammo_magazine/pistol/flash
+
 /datum/fabricator_recipe/arms_ammo/hidden/magazine_smg_topmounted
 	name = "ammunition (SMG, top mounted)"
 	path = /obj/item/ammo_magazine/smg
@@ -65,7 +73,7 @@
 	path = /obj/item/ammo_casing/shotgun/pellet
 
 /datum/fabricator_recipe/arms_ammo/hidden/tacknife
-	path = /obj/item/material/knife/combat
+	path = /obj/item/knife/combat
 
 /datum/fabricator_recipe/arms_ammo/hidden/stunshell
 	name = "ammunition (stun cartridge, shotgun)"
@@ -73,4 +81,4 @@
 
 /datum/fabricator_recipe/arms_ammo/hidden/speedloader_laser
 	name = "ammunition (speedloader, laserbulb)"
-	path = /obj/item/ammo_magazine/laser_revolver
+	path = /obj/item/ammo_magazine/speedloader/laser_revolver

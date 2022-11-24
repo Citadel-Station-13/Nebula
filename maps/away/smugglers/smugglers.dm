@@ -4,8 +4,6 @@
 	name = "asteroid station"
 	desc = "A small station built into an asteroid. No radio traffic detected."
 	icon_state = "object"
-	known = 0
-
 	initial_generic_waypoints = list(
 		"nav_smugglers",
 		"nav_smugglers_antag"
@@ -13,7 +11,6 @@
 
 /datum/map_template/ruin/away_site/smugglers
 	name = "Smugglers' Base"
-	id = "awaysite_smugglers"
 	description = "Yarr."
 	suffixes = list("smugglers/smugglers.dmm")
 	cost = 1
@@ -40,7 +37,7 @@
 
 /obj/item/paper/smug_2
 	name = "suspicious note"
-	info = "That vox fuckface will be curious about what we got from that mine storage last week."
+	info = "That scaly fuckface will be curious about what we got from that mine storage last week."
 
 /obj/item/paper/smug_3
 	name = "suspicious note"
@@ -72,7 +69,7 @@
 		new /datum/atom_creator/simple(/obj/item/chems/syringe, 50),
 		new /datum/atom_creator/simple(/obj/item/chems/syringe/steroid, 10),
 		new /datum/atom_creator/simple(/obj/item/chems/syringe/steroid, 10),
-		new /datum/atom_creator/weighted(list(/obj/item/chems/food/drinks/cans/cola, /obj/item/chems/food/drinks/cans/waterbottle, /obj/item/chems/food/drinks/cans/dr_gibb)),
+		new /datum/atom_creator/weighted(list(/obj/item/chems/drinks/cans/cola, /obj/item/chems/drinks/cans/waterbottle, /obj/item/chems/drinks/cans/dr_gibb)),
 		new /datum/atom_creator/simple(/obj/item/clothing/glasses/eyepatch, 30),
 		new /datum/atom_creator/simple(/obj/item/clothing/gloves/thick/duty, 80),
 		new /datum/atom_creator/simple(/obj/item/clothing/mask/balaclava/tactical, 30))
@@ -80,16 +77,11 @@
 /obj/random/ore
 	name = "random ore"
 	desc = "This is a random ore."
-	icon = 'icons/obj/clothing/obj_accessories.dmi'
-	icon_state = "horribletie"
+	icon_state = "lump"
+	icon = 'icons/obj/materials/ore.dmi'
 
 /obj/random/ore_smug/spawn_choices()
-	return list(
-		/obj/item/ore/uranium,
-		/obj/item/ore/gold,
-		/obj/item/ore/silver,
-		/obj/item/ore/slag,
-		/obj/item/ore/phoron)
+	return subtypesof(/obj/item/stack/material/ore)
 
 /obj/random/ammo_magazine_smug
 	name = "Random Ammo Magazine"
@@ -98,11 +90,13 @@
 	icon_state = "magnum"
 
 /obj/random/ammo_magazine_smug/spawn_choices()
-	return list(
+	var/static/list/spawnable_choices = list(
 		/obj/item/ammo_magazine/pistol,
 		/obj/item/ammo_magazine/speedloader,
 		/obj/item/ammo_magazine/rifle,
-		/obj/item/ammo_magazine/rifle)
+		/obj/item/ammo_magazine/rifle
+	)
+	return spawnable_choices
 
 /obj/structure/closet/crate/plastic_smug_ammo
 	name = "dirty plastic crate"

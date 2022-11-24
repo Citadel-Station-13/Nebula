@@ -1,9 +1,10 @@
 /obj/machinery/floorlayer
 
 	name = "automatic floor layer"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/pipe_dispenser.dmi'
 	icon_state = "pipe_d"
 	density = 1
+	interact_offline = TRUE
 	var/turf/old_turf
 	var/on = 0
 	var/obj/item/stack/tile/T
@@ -11,17 +12,17 @@
 
 /obj/machinery/floorlayer/Initialize()
 	. = ..()	
-	T = new/obj/item/stack/tile/floor(src)
+	T = new /obj/item/stack/tile/floor(src)
 
 /obj/machinery/floorlayer/Move(new_turf,M_Dir)
 	..()
 
 	if(on)
 		if(mode["dismantle"])
-			dismantleFloor(old_turf)
+			dismantle_floor(old_turf)
 
 		if(mode["laying"])
-			layFloor(old_turf)
+			lay_floor(old_turf)
 
 		if(mode["collect"])
 			CollectTiles(old_turf)
@@ -36,7 +37,7 @@
 
 /obj/machinery/floorlayer/attackby(var/obj/item/W, var/mob/user)
 
-	if(isWrench(W))
+	if(IS_WRENCH(W))
 		var/m = input("Choose work mode", "Mode") as null|anything in mode
 		mode[m] = !mode[m]
 		var/O = mode[m]
@@ -50,7 +51,7 @@
 		TakeTile(T)
 		return
 
-	if(isCrowbar(W))
+	if(IS_CROWBAR(W))
 		if(!length(contents))
 			to_chat(user, "<span class='notice'>\The [src] is empty.</span>")
 		else
@@ -61,7 +62,7 @@
 				T = null
 		return
 
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		T = input("Choose tile type.", "Tiles") as null|anything in contents
 		return
 	..()
@@ -77,7 +78,7 @@
 /obj/machinery/floorlayer/proc/reset()
 	on = 0
 
-/obj/machinery/floorlayer/proc/dismantleFloor(var/turf/new_turf)
+/obj/machinery/floorlayer/proc/dismantle_floor(var/turf/new_turf)
 	if(istype(new_turf, /turf/simulated/floor))
 		var/turf/simulated/floor/T = new_turf
 		if(!T.is_plating())
@@ -95,7 +96,7 @@
 		for(var/obj/item/stack/tile/tile2 in contents)
 			tile2.transfer_to(tile1)
 
-/obj/machinery/floorlayer/proc/layFloor(var/turf/w_turf)
+/obj/machinery/floorlayer/proc/lay_floor(var/turf/w_turf)
 	if(!T)
 		if(!TakeNewStack())
 			return 0

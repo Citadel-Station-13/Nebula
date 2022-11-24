@@ -29,11 +29,12 @@ Possible to do for anyone motivated enough:
 #define RANGE_BASED 4
 #define AREA_BASED 6
 
-var/const/HOLOPAD_MODE = RANGE_BASED
+var/global/const/HOLOPAD_MODE = RANGE_BASED
 
 /obj/machinery/hologram/holopad
 	name = "\improper holopad"
 	desc = "It's a floor-mounted device for projecting holographic images."
+	icon = 'icons/obj/machines/holopad.dmi'
 	icon_state = "holopad-B0"
 
 	layer = ABOVE_TILE_LAYER
@@ -55,10 +56,12 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 	var/base_icon = "holopad-B"
 
 	var/allow_ai = TRUE
+	var/static/list/reachable_overmaps = list(OVERMAP_ID_SPACE)
 
 /obj/machinery/hologram/holopad/Initialize()
 	. = ..()
-	desc = "It's a floor-mounted device for projecting holographic images. Its ID is '[loc.loc]'"
+	var/area/A = get_area(src)
+	desc = "It's a floor-mounted device for projecting holographic images. Its ID is '[A.proper_name]'"
 
 /obj/machinery/hologram/holopad/interface_interact(var/mob/living/carbon/human/user) //Carn: Hologram requests.
 	if(!CanInteract(user, DefaultTopicState()))
@@ -90,9 +93,11 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 				last_request = world.time
 				to_chat(user, "<span class='notice'>You request an AI's presence.</span>")
 				var/area/area = get_area(src)
-				for(var/mob/living/silicon/ai/AI in GLOB.living_mob_list_)
+				for(var/mob/living/silicon/ai/AI in global.living_mob_list_)
 					if(!AI.client)	continue
-					to_chat(AI, "<span class='info'>Your presence is requested at <a href='?src=\ref[AI];jumptoholopad=\ref[src]'>\the [area]</a>.</span>")
+					if (holopadType != HOLOPAD_LONG_RANGE && !AreConnectedZLevels(AI.z, src.z))
+						continue
+					to_chat(AI, "<span class='info'>Your presence is requested at <a href='?src=\ref[AI];jumptoholopad=\ref[src]'>\the [area.proper_name]</a>.</span>")
 			else
 				to_chat(user, "<span class='notice'>A request for AI presence was already sent recently.</span>")
 		if("Holocomms")
@@ -103,15 +108,20 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 				last_request = world.time
 				var/list/holopadlist = list()
 				var/zlevels = GetConnectedZlevels(z)
-				if(GLOB.using_map.use_overmap && holopadType == HOLOPAD_LONG_RANGE)
-					for(var/zlevel in map_sectors)
-						var/obj/effect/overmap/visitable/O = map_sectors["[zlevel]"]
-						if(!isnull(O))
-							zlevels |= O.map_z
+				var/zlevels_long = list()
+				if(holopadType == HOLOPAD_LONG_RANGE && length(reachable_overmaps))
+					for(var/zlevel in global.overmap_sectors)
+						var/obj/effect/overmap/visitable/O = global.overmap_sectors["[zlevel]"]
+						if(!isnull(O) && (O.overmap_id in reachable_overmaps))
+							zlevels_long |= O.map_z
 				for(var/obj/machinery/hologram/holopad/H in SSmachines.machinery)
-					if((H.z in zlevels) && H.operable())
-						holopadlist["[H.loc.loc.name]"] = H	//Define a list and fill it with the area of every holopad in the world
-				holopadlist = sortAssoc(holopadlist)
+					if (H.operable())
+						var/area/A = get_area(H)
+						if(H.z in zlevels)
+							holopadlist["[A.proper_name]"] = H	//Define a list and fill it with the area of every holopad in the world
+						if (H.holopadType == HOLOPAD_LONG_RANGE && (H.z in zlevels_long))
+							holopadlist["[A.proper_name]"] = H
+				holopadlist = sortTim(holopadlist, /proc/cmp_text_asc)
 				var/temppad = input(user, "Which holopad would you like to contact?", "holopad list") as null|anything in holopadlist
 				targetpad = holopadlist["[temppad]"]
 				if(targetpad==src)
@@ -133,8 +143,10 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 	targetpad.incoming_connection = 1
 	playsound(targetpad.loc, 'sound/machines/chime.ogg', 25, 5)
 	targetpad.icon_state = "[targetpad.base_icon]1"
-	targetpad.audible_message("<b>\The [src]</b> announces, \"Incoming communications request from [targetpad.sourcepad.loc.loc].\"")
-	to_chat(user, "<span class='notice'>Trying to establish a connection to the holopad in [targetpad.loc.loc]... Please await confirmation from recipient.</span>")
+	var/area/our_area = get_area(src)
+	var/area/target_area = get_area(targetpad)
+	targetpad.audible_message("<b>\The [src]</b> announces, \"Incoming communications request from [our_area.proper_name].\"")
+	to_chat(user, "<span class='notice'>Trying to establish a connection to the holopad in [target_area.proper_name]... Please await confirmation from recipient.</span>")
 
 
 /obj/machinery/hologram/holopad/proc/take_call(mob/living/carbon/user)
@@ -143,7 +155,9 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 	caller_id.reset_view(src)
 	if(!masters[caller_id])//If there is no hologram, possibly make one.
 		activate_holocall(caller_id)
-	log_admin("[key_name(caller_id)] just established a holopad connection from [sourcepad.loc.loc] to [src.loc.loc]")
+	var/area/source_area = get_area(sourcepad)
+	var/area/our_area = get_area(src)
+	log_admin("[key_name(caller_id)] just established a holopad connection from [source_area.proper_name] to [our_area.proper_name]")
 
 /obj/machinery/hologram/holopad/proc/end_call(mob/user)
 	if(!caller_id)
@@ -157,7 +171,7 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 	return 0
 
 /obj/machinery/hologram/holopad/attack_ai(mob/living/silicon/ai/user)
-	if (!istype(user))
+	if(!istype(user))
 		return
 	/*There are pretty much only three ways to interact here.
 	I don't need to check for client since they're clicking on an object.
@@ -166,6 +180,8 @@ var/const/HOLOPAD_MODE = RANGE_BASED
 		user.eyeobj.setLoc(get_turf(src))
 	else if (!allow_ai)
 		to_chat(user, SPAN_WARNING("Access denied."))
+	else if (holopadType != HOLOPAD_LONG_RANGE && !AreConnectedZLevels(user.z, src.z))
+		to_chat(user, SPAN_WARNING("Out of range."))
 	else if(!masters[user])//If there is no hologram, possibly make one.
 		activate_holo(user)
 	else//If there is a hologram, remove it.
@@ -200,7 +216,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 			var/ai_text = text
 			if(!master.say_understands(M, speaking))//The AI will be able to understand most mobs talking through the holopad.
 				if(speaking)
-					ai_text = speaking.scramble(text)
+					ai_text = speaking.scramble(M, text)
 				else
 					ai_text = stars(text)
 			if(isanimal(M) && !M.universal_speak)
@@ -208,7 +224,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 				ai_text = pick(SA.speak)
 			var/name_used = M.GetVoice()
 			//This communication is imperfect because the holopad "filters" voices and is only designed to connect to the master only.
-			var/short_links = master.get_preference_value(/datum/client_preference/ghost_follow_link_length) == GLOB.PREF_SHORT
+			var/short_links = master.get_preference_value(/datum/client_preference/ghost_follow_link_length) == PREF_SHORT
 			var/follow = short_links ? "\[F]" : "\[Follow]"
 			var/prefix = "<a href='byond://?src=\ref[master];trackname=[html_encode(name_used)];track=\ref[M]'>[follow]</a>"
 			master.show_message(get_hear_message(name_used, ai_text, verb, speaking, prefix), 2)
@@ -284,9 +300,9 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 		hologram.SetName("[A.name] (Hologram)") //If someone decides to right click.
 		A.holo = src
 		masters[A] = hologram
-	hologram.set_light(1, 0.1, 2)	//hologram lighting
+	hologram.set_light(2, 0.1) //hologram lighting
 	hologram.color = color //painted holopad gives coloured holograms
-	set_light(1, 0.1, 2)			//pad lighting
+	set_light(2, 0.1) //pad lighting
 	icon_state = "[base_icon]1"
 	return 1
 
@@ -370,11 +386,6 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 	active_power_usage = 100
 
 //Destruction procs.
-/obj/machinery/hologram/explosion_act(severity)
-	. = ..()
-	if(. && !QDELETED(src) && (severity == 1 || (severity == 2 && prob(50)) || (severity == 3 && prob(5))))
-		physically_destroyed(src)
-
 /obj/machinery/hologram/holopad/Destroy()
 	for (var/mob/living/master in masters)
 		clear_holo(master)
@@ -408,12 +419,12 @@ Holographic project of everything else.
 /obj/machinery/hologram/projector
 	name = "hologram projector"
 	desc = "It makes a hologram appear...with magnets or something..."
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/holopad.dmi'
 	icon_state = "hologram0"
 
 /obj/machinery/hologram/holopad/longrange
 	name = "long range holopad"
-	desc = "It's a floor-mounted device for projecting holographic images. This one utilizes bluespace transmitter to communicate with far away locations."
+	desc = "It's a floor-mounted device for projecting holographic images. This one utilizes micro-width wormholes to communicate with far away locations."
 	icon_state = "holopad-Y0"
 	power_per_hologram = 1000 //per usage per hologram
 	holopadType = HOLOPAD_LONG_RANGE

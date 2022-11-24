@@ -21,7 +21,6 @@ var/global/list/image/fluidtrack_cache=list()
 	var/basecolor=COLOR_BLOOD_HUMAN
 	var/wet=0
 	var/fresh=1
-	var/crusty=0
 	var/image/overlay
 
 /datum/fluidtrack/New(_direction,_color,_wet)
@@ -74,7 +73,7 @@ var/global/list/image/fluidtrack_cache=list()
 /obj/effect/decal/cleanable/blood/tracks/proc/AddTracks(var/list/DNA, var/comingdir, var/goingdir, var/bloodcolor=COLOR_BLOOD_HUMAN)
 	var/updated=0
 	// Shift our goingdir 4 spaces to the left so it's in the GOING bitblock.
-	var/realgoing=goingdir<<4
+	var/realgoing=BITSHIFT_LEFT(goingdir,4)
 
 	// Current bit
 	var/b=0
@@ -86,7 +85,7 @@ var/global/list/image/fluidtrack_cache=list()
 
 	// Process 4 bits
 	for(var/bi=0;bi<4;bi++)
-		b=1<<bi
+		b=BITFLAG(bi)
 		// COMING BIT
 		// If setting
 		if(comingdir&b)
@@ -105,7 +104,7 @@ var/global/list/image/fluidtrack_cache=list()
 			updated=1
 
 		// GOING BIT (shift up 4)
-		b=b<<4
+		b=BITSHIFT_LEFT(b,4)
 		if(realgoing&b)
 			// If not wet or not set
 			if(dirs&b)
@@ -139,7 +138,7 @@ var/global/list/image/fluidtrack_cache=list()
 		truedir=track.direction
 		if(truedir&240) // Check if we're in the GOING block
 			state=going_state
-			truedir=truedir>>4
+			truedir=BITSHIFT_RIGHT(truedir,4)
 
 		if(track.overlay)
 			track.overlay=null
@@ -165,8 +164,8 @@ var/global/list/image/fluidtrack_cache=list()
 	going_state = "human1"
 
 /obj/effect/decal/cleanable/blood/tracks/footprints/reversed/AddTracks(var/list/DNA, var/comingdir, var/goingdir, var/bloodcolor=COLOR_BLOOD_HUMAN)
-	comingdir = comingdir && GLOB.reverse_dir[comingdir]
-	goingdir = goingdir && GLOB.reverse_dir[goingdir]
+	comingdir = comingdir && global.reverse_dir[comingdir]
+	goingdir = goingdir && global.reverse_dir[goingdir]
 	..(DNA, comingdir, goingdir, bloodcolor)
 
 /obj/effect/decal/cleanable/blood/tracks/snake

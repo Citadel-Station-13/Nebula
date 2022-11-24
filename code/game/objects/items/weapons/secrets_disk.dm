@@ -1,18 +1,17 @@
 /obj/item/disk/secret_project
 	name = "'classified' project data disk"
 	desc = "A special disk for storing massive amounts of data. It is marked as classified, and has an ID card slot on top."
-	icon = 'icons/obj/cloning.dmi'
-	icon_state = "datadisk0"
-	item_state = "card-id"
-	w_class = ITEM_SIZE_SMALL
-	req_access = access_ce
+	color = COLOR_GRAY20
+	label = "label_warning"
+	req_access = list(access_ce)
 	var/subject = "some strange, incomprehensible design"
 	var/locked = 1
 
 /obj/item/disk/secret_project/science
+	color = COLOR_INDIGO
 	desc = "A special disk for storing massive amounts of data. It is marked as classified, and has an ID card slot on top. \
 	This one has a lengthy legal label on it denoting it the private, copyrighted property of the Expeditionary Corps Organisation."
-	req_access = access_rd
+	req_access = list(access_rd)
 
 /obj/item/disk/secret_project/Initialize()
 	. = ..()
@@ -21,15 +20,15 @@
 	name = "'[codename]' project data disk"
 	subject = pick("an experimental design for", "a blueprint to build",\
 	"a long set of theoretical formulas detailing the functioning of")
-	subject += " " + pick("a bluespace artillery cannon", "a supermatter engine", "a fusion engine", "an atmospheric scrubber",\
-	"a human cloning pod", "a microwave oven", "a bluespace drive", "a laser carbine", "an energy pistol",\
-	"a bluespace gateway", "a teleporter", "a huge mining drill", "a strange spacecraft", "a space station",\
+	subject += " " + pick("a superluminal artillery cannon", "a supermatter engine", "a fusion engine", "an atmospheric scrubber",\
+	"a human cloning pod", "a microwave oven", "a wormhole generator", "a laser carbine", "an energy pistol",\
+	"a wormhole", "a teleporter", "a huge mining drill", "a strange spacecraft", "a space station",\
 	"a sleek-looking fighter spacecraft", "a ballistic rifle", "an energy sword", "an inanimate carbon rod")
 	subject += " " + pick("that is extremely powerful", "which is highly efficient", "which is incredibly compact",\
 	"that runs off of an exotic form of matter", "that runs off of hydrogen gas", "created by aliens", "that just looks really cool")
 
 /obj/item/disk/secret_project/examine(mob/user)
-	..()
+	. = ..()
 	if(!locked)
 		to_chat(user, "With the disk's classified contents unlocked, \
 		you peer into its preview screen and see <span class='notice'>[subject]</span>.")
@@ -68,7 +67,9 @@
 /obj/item/storage/box/secret_project_disks
 	name = "box of classified data disks"
 	desc = "A box full of disks. Marked with a red 'Top Secret' label. Looks rather ominous."
-	startswith = list(/obj/item/disk/secret_project = 5)
 
-/obj/item/storage/box/secret_project_disks/science
-	startswith = list(/obj/item/disk/secret_project/science = 5)
+/obj/item/storage/box/secret_project_disks/WillContain()
+	return list(/obj/item/disk/secret_project = 5)
+
+/obj/item/storage/box/secret_project_disks/science/WillContain()
+	return list(/obj/item/disk/secret_project/science = 5)

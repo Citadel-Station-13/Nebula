@@ -27,6 +27,8 @@ var/global/list/image/splatter_cache=list()
 	var/dryname = "dried blood"
 	var/drydesc = "It's dry and crusty. Someone isn't doing their job."
 	var/blood_size = BLOOD_SIZE_MEDIUM // A relative size; larger-sized blood will not override smaller-sized blood, except maybe at mapload.
+	var/list/blood_data
+	var/chemical = /decl/material/liquid/blood
 
 /obj/effect/decal/cleanable/blood/reveal_blood()
 	if(!fluorescent)
@@ -41,7 +43,7 @@ var/global/list/image/splatter_cache=list()
 		amount = 0
 		STOP_PROCESSING(SSobj, src)
 		remove_extension(src, /datum/extension/scent)
-	..(ignore=1)
+	 . = ..(ignore = TRUE)
 
 /obj/effect/decal/cleanable/blood/hide()
 	return
@@ -79,7 +81,7 @@ var/global/list/image/splatter_cache=list()
 /obj/effect/decal/cleanable/blood/on_update_icon()
 	if(basecolor == "rainbow") basecolor = get_random_colour(1)
 	color = basecolor
-	if(basecolor == SYNTH_BLOOD_COLOUR)
+	if(basecolor == SYNTH_BLOOD_COLOR)
 		SetName("oil")
 		desc = "It's black and greasy."
 	else
@@ -92,34 +94,19 @@ var/global/list/image/splatter_cache=list()
 	if(amount < 1)
 		return
 
-	var/obj/item/organ/external/l_foot = perp.get_organ(BP_L_FOOT)
-	var/obj/item/organ/external/r_foot = perp.get_organ(BP_R_FOOT)
-	var/hasfeet = 1
-	if((!l_foot || l_foot.is_stump()) && (!r_foot || r_foot.is_stump()))
-		hasfeet = 0
-	if(perp.shoes && !perp.buckled)//Adding blood to shoes
-		var/obj/item/clothing/shoes/S = perp.shoes
-		if(istype(S))
-			S.blood_color = basecolor
-			S.track_blood = max(amount,S.track_blood)
-			if(!S.blood_overlay)
-				S.generate_blood_overlay()
-			if(!S.blood_DNA)
-				S.blood_DNA = list()
-				S.blood_overlay.color = basecolor
-				S.overlays += S.blood_overlay
-			if(S.blood_overlay && S.blood_overlay.color != basecolor)
-				S.blood_overlay.color = basecolor
-				S.overlays.Cut()
-				S.overlays += S.blood_overlay
-			S.blood_DNA |= blood_DNA.Copy()
+	var/obj/item/organ/external/l_foot = GET_EXTERNAL_ORGAN(perp, BP_L_FOOT)
+	var/obj/item/organ/external/r_foot = GET_EXTERNAL_ORGAN(perp, BP_R_FOOT)
+	var/hasfeet = l_foot && r_foot
 
+	var/transferred_data = blood_data ? blood_data[pick(blood_data)] : null
+	var/obj/item/clothing/shoes/shoes = perp.get_equipped_item(slot_shoes_str)
+	if(istype(shoes) && !perp.buckled)//Adding blood to shoes
+		shoes.add_coating(chemical, amount, transferred_data)
 	else if (hasfeet)//Or feet
-		perp.feet_blood_color = basecolor
-		perp.track_blood = max(amount,perp.track_blood)
-		if(!perp.feet_blood_DNA)
-			perp.feet_blood_DNA = list()
-		perp.feet_blood_DNA |= blood_DNA.Copy()
+		if(l_foot)
+			l_foot.add_coating(chemical, amount, transferred_data)
+		if(r_foot)
+			r_foot.add_coating(chemical, amount, transferred_data)
 	else if (perp.buckled && istype(perp.buckled, /obj/structure/bed/chair/wheelchair))
 		var/obj/structure/bed/chair/wheelchair/W = perp.buckled
 		W.bloodiness = 4
@@ -132,23 +119,21 @@ var/global/list/image/splatter_cache=list()
 	desc = drydesc
 	color = adjust_brightness(color, -50)
 	amount = 0
+	blood_data = null
 	remove_extension(src, /datum/extension/scent)
 	STOP_PROCESSING(SSobj, src)
 
-/obj/effect/decal/cleanable/blood/attack_hand(mob/living/carbon/human/user)
+/obj/effect/decal/cleanable/blood/attack_hand(mob/user)
 	..()
-	if (amount && istype(user))
-		if (user.gloves)
+	if (amount && length(blood_data) && ishuman(user))
+		var/mob/living/carbon/human/H = user
+		if(H.get_equipped_item(slot_gloves_str))
 			return
 		var/taken = rand(1,amount)
 		amount -= taken
-		to_chat(user, "<span class='notice'>You get some of \the [src] on your hands.</span>")
-		if (!user.blood_DNA)
-			user.blood_DNA = list()
-		user.blood_DNA |= blood_DNA.Copy()
-		user.bloody_hands = taken
-		user.hand_blood_color = basecolor
-		user.update_inv_gloves(1)
+		to_chat(user, SPAN_NOTICE("You get some of \the [src] on your hands."))
+		for(var/bloodthing in blood_data)
+			user.add_blood(null, max(1, amount/length(blood_data)), blood_data[bloodthing])
 		user.verbs += /mob/living/carbon/human/proc/bloody_doodle
 
 /obj/effect/decal/cleanable/blood/splatter

@@ -126,7 +126,7 @@
 
 	var/list/names = null
 	if(!assoc)
-		names = sortList(L)
+		names = sortTim(L, /proc/cmp_text_asc)
 
 	var/variable
 	var/assoc_key
@@ -170,7 +170,7 @@
 
 	else if(isicon(variable))
 		to_chat(usr, "Variable appears to be <b>ICON</b>.")
-		variable = "\icon[variable]"
+		variable = "[html_icon(variable)]"
 		default = "icon"
 
 	else if(istype(variable,/atom) || istype(variable,/datum))
@@ -316,7 +316,7 @@
 	var/var_value
 
 	if(param_var_name)
-		if(!(param_var_name in O.get_variables()))
+		if(!(param_var_name in O.VV_get_variables()))
 			to_chat(src, "A variable with this name ([param_var_name]) doesn't exist in this atom ([O])")
 			return
 
@@ -347,7 +347,7 @@
 
 			else if(isicon(var_value))
 				to_chat(usr, "Variable appears to be <b>ICON</b>.")
-				var_value = "\icon[var_value]"
+				var_value = "[html_icon(var_value)]"
 				class = "icon"
 
 			else if(istype(var_value,/atom) || istype(var_value,/datum))
@@ -372,7 +372,7 @@
 		for (var/V in O.vars)
 			names += V
 
-		names = sortList(names)
+		names = sortTim(names, /proc/cmp_text_asc)
 
 		variable = input("Which var?","Var") as null|anything in names
 		if(!variable)	return
@@ -402,7 +402,7 @@
 
 		else if(isicon(var_value))
 			to_chat(usr, "Variable appears to be <b>ICON</b>.")
-			var_value = "\icon[var_value]"
+			var_value = "[html_icon(var_value)]"
 			default = "icon"
 
 		else if(istype(var_value,/atom) || istype(var_value,/datum))
@@ -529,14 +529,10 @@
 	to_world_log("### VarEdit by [src]: [O.type] [variable]=[html_encode("[new_value]")]")
 	log_and_message_admins("modified [original_name]'s [variable] from '[old_value]' to '[new_value]'")
 
-/client
-	var/static/vv_set_handlers
-
 /client/proc/special_set_vv_var(var/datum/O, variable, var_value, client)
-	if(!vv_set_handlers)
-		vv_set_handlers = init_subtypes(/decl/vv_set_handler)
+	var/list/vv_set_handlers = decls_repository.get_decls_of_subtype(/decl/vv_set_handler)
 	for(var/vv_handler in vv_set_handlers)
-		var/decl/vv_set_handler/sh = vv_handler
+		var/decl/vv_set_handler/sh = vv_set_handlers[vv_handler]
 		if(sh.can_handle_set_var(O, variable, var_value, client))
 			sh.handle_set_var(O, variable, var_value, client)
 			return TRUE

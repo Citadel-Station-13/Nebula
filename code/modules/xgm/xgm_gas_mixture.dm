@@ -51,7 +51,7 @@
 
 	if(moles > 0 && abs(temperature - temp) > MINIMUM_TEMPERATURE_DELTA_TO_CONSIDER)
 		var/self_heat_capacity = heat_capacity()
-		var/decl/material/mat = decls_repository.get_decl(gasid)
+		var/decl/material/mat = GET_DECL(gasid)
 		var/giver_heat_capacity = mat.gas_specific_heat * moles
 		var/combined_heat_capacity = giver_heat_capacity + self_heat_capacity
 		if(combined_heat_capacity != 0)
@@ -138,9 +138,9 @@
 /datum/gas_mixture/proc/heat_capacity()
 	. = 0
 	for(var/g in gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
+		var/decl/material/mat = GET_DECL(g)
 		. += mat.gas_specific_heat * gas[g]
-	. *= group_multiplier
+	. *= max(1, group_multiplier)
 
 
 //Adds or removes thermal energy. Returns the actual thermal energy change, as in the case of removing energy we can't go below TCMB.
@@ -150,6 +150,9 @@
 		return 0
 
 	var/heat_capacity = heat_capacity()
+	if(heat_capacity <= 0)
+		return 0
+
 	if (thermal_energy < 0)
 		if (temperature < TCMB)
 			return 0
@@ -194,8 +197,8 @@
 		return SPECIFIC_ENTROPY_VACUUM	//that gas isn't here
 
 	//group_multiplier gets divided out in volume/gas[gasid] - also, V/(m*T) = R/(partial pressure)
-	var/decl/material/mat = decls_repository.get_decl(gasid)
-	var/molar_mass = mat.gas_molar_mass
+	var/decl/material/mat = GET_DECL(gasid)
+	var/molar_mass = mat.molar_mass
 	var/specific_heat = mat.gas_specific_heat
 	var/safe_temp = max(temperature, TCMB) // We're about to divide by this.
 	return R_IDEAL_GAS_EQUATION * ( log( (IDEAL_GAS_ENTROPY_CONSTANT*volume/(gas[gasid] * safe_temp)) * (molar_mass*specific_heat*safe_temp)**(2/3) + 1 ) +  15 )
@@ -245,7 +248,7 @@
 /datum/gas_mixture/proc/remove_ratio(ratio, out_group_multiplier = 1)
 	if(ratio <= 0)
 		return null
-	out_group_multiplier = between(1, out_group_multiplier, group_multiplier)
+	out_group_multiplier = clamp(1, out_group_multiplier, group_multiplier)
 
 	ratio = min(ratio, 1)
 
@@ -278,13 +281,13 @@
 
 	var/sum = 0
 	for(var/g in gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
+		var/decl/material/mat = GET_DECL(g)
 		var/list/check = mat_flag ? mat.flags : mat.gas_flags
 		if(check & flag)
 			sum += gas[g]
 
 	for(var/g in gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
+		var/decl/material/mat = GET_DECL(g)
 		var/list/check = mat_flag ? mat.flags : mat.gas_flags
 		if(check & flag)
 			removed.gas[g] = QUANTIZE((gas[g] / sum) * amount)
@@ -300,19 +303,17 @@
 /datum/gas_mixture/proc/get_by_flag(flag)
 	. = 0
 	for(var/g in gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
+		var/decl/material/mat = GET_DECL(g)
 		if(mat.gas_flags & flag)
 			. += gas[g]
 
 //Copies gas and temperature from another gas_mixture.
 /datum/gas_mixture/proc/copy_from(const/datum/gas_mixture/sample)
 	gas = sample.gas.Copy()
+	graphic = sample.graphic.Copy()
 	temperature = sample.temperature
-
 	update_values()
-
 	return 1
-
 
 //Checks if we are within acceptable range of another gas_mixture to suspend processing or merge.
 /datum/gas_mixture/proc/compare(const/datum/gas_mixture/sample, var/vacuum_exception = 0)
@@ -359,10 +360,10 @@
 			LAZYADD(graphic_remove, O)
 	for(var/g in gas)
 		//Overlay isn't applied for this gas, check if it's valid and needs to be added.
-		var/decl/material/mat = decls_repository.get_decl(g)
+		var/decl/material/mat = GET_DECL(g)
 		if(!isnull(mat.gas_overlay_limit) && gas[g] > mat.gas_overlay_limit)
 			if(!LAZYACCESS(tile_overlay_cache, g))
-				LAZYSET(tile_overlay_cache, g, new/obj/effect/gas_overlay(null, g))
+				LAZYSET(tile_overlay_cache, g, new /obj/effect/gas_overlay(null, g))
 			var/tile_overlay = tile_overlay_cache[g]
 			if(!(tile_overlay in graphic))
 				LAZYADD(graphic_add, tile_overlay)
@@ -375,9 +376,9 @@
 		graphic -= graphic_remove
 		. = 1
 	if(graphic.len)
-		var/pressure_mod = Clamp(return_pressure() / ONE_ATMOSPHERE, 0, 2)
+		var/pressure_mod = clamp(return_pressure() / ONE_ATMOSPHERE, 0, 2)
 		for(var/obj/effect/gas_overlay/O in graphic)
-			var/concentration_mod = Clamp(gas[O.material.type] / total_moles, 0.1, 1)
+			var/concentration_mod = clamp(gas[O.material.type] / total_moles, 0.1, 1)
 			var/new_alpha = min(230, round(pressure_mod * concentration_mod * 180, 5))
 			if(new_alpha != O.alpha)
 				O.update_alpha_animation(new_alpha)
@@ -511,8 +512,8 @@
 
 /datum/gas_mixture/proc/get_mass()
 	for(var/g in gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
-		. += gas[g] * mat.gas_molar_mass * group_multiplier
+		var/decl/material/mat = GET_DECL(g)
+		. += gas[g] * mat.molar_mass * group_multiplier
 
 /datum/gas_mixture/proc/specific_mass()
 	var/M = get_total_moles()

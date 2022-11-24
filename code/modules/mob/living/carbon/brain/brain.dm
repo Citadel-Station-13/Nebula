@@ -8,6 +8,7 @@
 	use_me = 0 //Can't use the me verb, it's a freaking immobile brain
 	icon = 'icons/obj/surgery.dmi'
 	icon_state = "brain1"
+	mob_sort_value = 7
 
 /mob/living/carbon/brain/Initialize()
 	create_reagents(1000)
@@ -20,27 +21,8 @@
 		ghostize()		//Ghostize checks for key so nothing else is necessary.
 	. = ..()
 
-/mob/living/carbon/brain/say_understands(var/other)//Goddamn is this hackish, but this say code is so odd
-	if (istype(other, /mob/living/silicon/ai))
-		if(!(container && istype(container, /obj/item/mmi)))
-			return 0
-		else
-			return 1
-	if (istype(other, /mob/living/silicon/pai))
-		if(!(container && istype(container, /obj/item/mmi)))
-			return 0
-		else
-			return 1
-	if (istype(other, /mob/living/silicon/robot))
-		if(!(container && istype(container, /obj/item/mmi)))
-			return 0
-		else
-			return 1
-	if (istype(other, /mob/living/carbon/human))
-		return 1
-	if (istype(other, /mob/living/carbon/slime))
-		return 1
-	return ..()
+/mob/living/carbon/brain/say_understands(mob/speaker, decl/language/speaking)
+	return (issilicon(speaker) && istype(container, /obj/item/mmi)) || ishuman(speaker) || ..()
 
 /mob/living/carbon/brain/UpdateLyingBuckledAndVerbStatus()
 	if(istype(loc, /obj/item/mmi))

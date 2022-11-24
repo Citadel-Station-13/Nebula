@@ -40,20 +40,15 @@
 	breather = null
 	return ..()
 
-/obj/machinery/oxygen_pump/MouseDrop(var/mob/living/carbon/human/target, src_location, over_location)
-	..()
-	if(istype(target) && CanMouseDrop(target))
-		if(!can_apply_to_target(target, usr)) // There is no point in attempting to apply a mask if it's impossible.
-			return
-		usr.visible_message("\The [usr] begins placing the mask onto [target]..")
-		if(do_mob(usr, target, 25))
-			if(!can_apply_to_target(target, usr))
-				return
-			// place mask and add fingerprints
-			usr.visible_message("\The [usr] has placed \the mask on [target]'s mouth.")
-			attach_mask(target)
-			src.add_fingerprint(usr)
-
+/obj/machinery/oxygen_pump/handle_mouse_drop(var/atom/over, var/mob/user)
+	if(ishuman(over) && can_apply_to_target(over, user))
+		user.visible_message(SPAN_NOTICE("\The [user] begins placing the mask onto \the [over].."))
+		if(do_mob(user, over, 25) && can_apply_to_target(over, user))
+			user.visible_message(SPAN_NOTICE("\The [user] has placed \the [src] over \the [over]'s face."))
+			attach_mask(over)
+			add_fingerprint(user)
+		return TRUE
+	. = ..()
 
 /obj/machinery/oxygen_pump/physical_attack_hand(mob/user)
 	if((stat & MAINT) && tank)
@@ -74,7 +69,7 @@
 /obj/machinery/oxygen_pump/proc/attach_mask(var/mob/living/carbon/C)
 	if(C && istype(C))
 		contained.dropInto(C.loc)
-		C.equip_to_slot(contained, slot_wear_mask)
+		C.equip_to_slot(contained, slot_wear_mask_str)
 		if(tank)
 			tank.forceMove(C)
 		breather = C
@@ -102,17 +97,20 @@
 	if(!user)
 		user = target
 	// Check target validity
-	if(!target.organs_by_name[BP_HEAD])
+	if(!GET_EXTERNAL_ORGAN(target, BP_HEAD))
 		to_chat(user, "<span class='warning'>\The [target] doesn't have a head.</span>")
 		return
 	if(!target.check_has_mouth())
 		to_chat(user, "<span class='warning'>\The [target] doesn't have a mouth.</span>")
 		return
-	if(target.wear_mask && target != breather)
+
+	var/obj/item/mask = target.get_equipped_item(slot_wear_mask_str)
+	if(mask && target != breather)
 		to_chat(user, "<span class='warning'>\The [target] is already wearing a mask.</span>")
 		return
-	if(target.head && (target.head.body_parts_covered & FACE))
-		to_chat(user, "<span class='warning'>Remove their [target.head] first.</span>")
+	var/obj/item/head = target.get_equipped_item(slot_head_str)
+	if(head && (head.body_parts_covered & SLOT_FACE))
+		to_chat(user, "<span class='warning'>Remove their [head] first.</span>")
 		return
 	if(!tank)
 		to_chat(user, "<span class='warning'>There is no tank in \the [src].</span>")
@@ -128,13 +126,14 @@
 		to_chat(user, "<span class='warning'>\The pump is already in use.</span>")
 		return
 	//Checking if breather is still valid
-	if(target == breather && target.wear_mask != contained)
+	mask = target.get_equipped_item(slot_wear_mask_str)
+	if(target == breather && (!mask || mask != contained))
 		to_chat(user, "<span class='warning'>\The [target] is not using the supplied mask.</span>")
 		return
 	return 1
 
 /obj/machinery/oxygen_pump/attackby(obj/item/W, mob/user)
-	if(isScrewdriver(W))
+	if(IS_SCREWDRIVER(W))
 		stat ^= MAINT
 		user.visible_message("<span class='notice'>\The [user] [stat & MAINT ? "opens" : "closes"] \the [src].</span>", "<span class='notice'>You [stat & MAINT ? "open" : "close"] \the [src].</span>")
 		if(stat & MAINT)
@@ -157,7 +156,7 @@
 /obj/machinery/oxygen_pump/examine(mob/user)
 	. = ..()
 	if(tank)
-		to_chat(user, "The meter shows [round(tank.air_contents.return_pressure())]")
+		to_chat(user, "The meter shows [round(tank.air_contents.return_pressure())].")
 	else
 		to_chat(user, "<span class='warning'>It is missing a tank!</span>")
 

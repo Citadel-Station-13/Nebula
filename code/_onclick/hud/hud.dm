@@ -14,19 +14,18 @@
 	if(hud_type)
 		hud_used = new hud_type(src)
 	else
-		hud_used = new /datum/hud
+		hud_used = new /datum/hud(src)
 
 /datum/hud
 	var/mob/mymob
 
-	var/hud_shown = 1			//Used for the HUD toggle (F12)
-	var/inventory_shown = 1		//the inventory
-	var/show_intent_icons = 0
-	var/hotkey_ui_hidden = 0	//This is to hide the buttons that can be used via hotkeys. (hotkeybuttons list of buttons)
+	var/hud_shown           = 1         //Used for the HUD toggle (F12)
+	var/inventory_shown     = TRUE      //the inventory
+	var/show_intent_icons   = FALSE
+	var/hotkey_ui_hidden    = FALSE     //This is to hide the buttons that can be used via hotkeys. (hotkeybuttons list of buttons)
 
 	var/obj/screen/lingchemdisplay
-	var/obj/screen/r_hand_hud_object
-	var/obj/screen/l_hand_hud_object
+	var/list/hand_hud_objects
 	var/obj/screen/action_intent
 	var/obj/screen/move_intent
 	var/obj/screen/stamina/stamina_bar
@@ -35,8 +34,8 @@
 	var/list/other
 	var/list/obj/screen/hotkeybuttons
 
-	var/obj/screen/movable/action_button/hide_toggle/hide_actions_toggle
-	var/action_buttons_hidden = 0
+	var/obj/screen/action_button/hide_toggle/hide_actions_toggle
+	var/action_buttons_hidden = FALSE
 
 /datum/hud/New(mob/owner)
 	mymob = owner
@@ -47,14 +46,13 @@
 	. = ..()
 	stamina_bar = null
 	lingchemdisplay = null
-	r_hand_hud_object = null
-	l_hand_hud_object = null
 	action_intent = null
 	move_intent = null
 	adding = null
 	other = null
 	hotkeybuttons = null
 	mymob = null
+	QDEL_NULL_LIST(hand_hud_objects)
 
 /datum/hud/proc/update_stamina()
 	if(mymob && stamina_bar)
@@ -62,93 +60,50 @@
 		var/stamina = mymob.get_stamina()
 		if(stamina < 100)
 			stamina_bar.invisibility = 0
-			stamina_bar.icon_state = "prog_bar_[Floor(stamina/5)*5][(stamina >= 5) && (stamina <= 25) ? "_fail" : null]"
+			stamina_bar.icon_state = "prog_bar_[FLOOR(stamina/5)*5][(stamina >= 5) && (stamina <= 25) ? "_fail" : null]"
+
+/datum/hud/proc/hide_inventory()
+	inventory_shown = FALSE
+	hidden_inventory_update()
+	persistant_inventory_update()
+
+/datum/hud/proc/show_inventory()
+	inventory_shown = TRUE
+	hidden_inventory_update()
+	persistant_inventory_update()
 
 /datum/hud/proc/hidden_inventory_update()
-	if(!mymob) return
-	if(ishuman(mymob))
-		var/mob/living/carbon/human/H = mymob
-		for(var/gear_slot in H.species.hud.gear)
-			var/list/hud_data = H.species.hud.gear[gear_slot]
-			if(inventory_shown && hud_shown)
-				switch(hud_data["slot"])
-					if(slot_head)
-						if(H.head)      H.head.screen_loc =      hud_data["loc"]
-					if(slot_shoes)
-						if(H.shoes)     H.shoes.screen_loc =     hud_data["loc"]
-					if(slot_l_ear)
-						if(H.l_ear)     H.l_ear.screen_loc =     hud_data["loc"]
-					if(slot_r_ear)
-						if(H.r_ear)     H.r_ear.screen_loc =     hud_data["loc"]
-					if(slot_gloves)
-						if(H.gloves)    H.gloves.screen_loc =    hud_data["loc"]
-					if(slot_glasses)
-						if(H.glasses)   H.glasses.screen_loc =   hud_data["loc"]
-					if(slot_w_uniform)
-						if(H.w_uniform) H.w_uniform.screen_loc = hud_data["loc"]
-					if(slot_wear_suit)
-						if(H.wear_suit) H.wear_suit.screen_loc = hud_data["loc"]
-					if(slot_wear_mask)
-						if(H.wear_mask) H.wear_mask.screen_loc = hud_data["loc"]
-			else
-				switch(hud_data["slot"])
-					if(slot_head)
-						if(H.head)      H.head.screen_loc =      null
-					if(slot_shoes)
-						if(H.shoes)     H.shoes.screen_loc =     null
-					if(slot_l_ear)
-						if(H.l_ear)     H.l_ear.screen_loc =     null
-					if(slot_r_ear)
-						if(H.r_ear)     H.r_ear.screen_loc =     null
-					if(slot_gloves)
-						if(H.gloves)    H.gloves.screen_loc =    null
-					if(slot_glasses)
-						if(H.glasses)   H.glasses.screen_loc =   null
-					if(slot_w_uniform)
-						if(H.w_uniform) H.w_uniform.screen_loc = null
-					if(slot_wear_suit)
-						if(H.wear_suit) H.wear_suit.screen_loc = null
-					if(slot_wear_mask)
-						if(H.wear_mask) H.wear_mask.screen_loc = null
-
+	var/decl/species/species = mymob?.get_species()
+	if(species?.hud)
+		refresh_inventory_slots(species.hud.hidden_slots, (inventory_shown && hud_shown))
 
 /datum/hud/proc/persistant_inventory_update()
-	if(!mymob)
-		return
+	var/decl/species/species = mymob?.get_species()
+	if(species?.hud)
+		refresh_inventory_slots(species.hud.persistent_slots, hud_shown)
 
-	if(ishuman(mymob))
-		var/mob/living/carbon/human/H = mymob
-		for(var/gear_slot in H.species.hud.gear)
-			var/list/hud_data = H.species.hud.gear[gear_slot]
-			if(hud_shown)
-				switch(hud_data["slot"])
-					if(slot_s_store)
-						if(H.s_store) H.s_store.screen_loc = hud_data["loc"]
-					if(slot_wear_id)
-						if(H.wear_id) H.wear_id.screen_loc = hud_data["loc"]
-					if(slot_belt)
-						if(H.belt)    H.belt.screen_loc =    hud_data["loc"]
-					if(slot_back)
-						if(H.back)    H.back.screen_loc =    hud_data["loc"]
-					if(slot_l_store)
-						if(H.l_store) H.l_store.screen_loc = hud_data["loc"]
-					if(slot_r_store)
-						if(H.r_store) H.r_store.screen_loc = hud_data["loc"]
-			else
-				switch(hud_data["slot"])
-					if(slot_s_store)
-						if(H.s_store) H.s_store.screen_loc = null
-					if(slot_wear_id)
-						if(H.wear_id) H.wear_id.screen_loc = null
-					if(slot_belt)
-						if(H.belt)    H.belt.screen_loc =    null
-					if(slot_back)
-						if(H.back)    H.back.screen_loc =    null
-					if(slot_l_store)
-						if(H.l_store) H.l_store.screen_loc = null
-					if(slot_r_store)
-						if(H.r_store) H.r_store.screen_loc = null
+/datum/hud/proc/refresh_inventory_slots(var/list/checking_slots, var/show_hud)
 
+	var/decl/species/species = mymob?.get_species()
+	for(var/hud_slot in checking_slots)
+
+		// Check if we're even wearing anything in that slot.
+		var/obj/item/gear = mymob.get_equipped_item(checking_slots[hud_slot])
+		if(!istype(gear))
+			continue
+
+		// We're not showing anything, hide it.
+		if(!show_hud)
+			gear.screen_loc = null
+			continue
+
+		var/list/hud_data = species.hud.gear[hud_slot]
+		if(!("loc" in hud_data))
+			gear.screen_loc = null
+			continue
+
+		// Set the loc.
+		gear.screen_loc = hud_data["loc"]
 
 /datum/hud/proc/instantiate()
 	if(!ismob(mymob)) return 0
@@ -156,17 +111,69 @@
 	var/ui_style = ui_style2icon(mymob.client.prefs.UI_style)
 	var/ui_color = mymob.client.prefs.UI_style_color
 	var/ui_alpha = mymob.client.prefs.UI_style_alpha
-
-
 	FinalizeInstantiation(ui_style, ui_color, ui_alpha)
 
 /datum/hud/proc/FinalizeInstantiation(var/ui_style, var/ui_color, var/ui_alpha)
 	return
 
-//Triggered when F12 is pressed (Unless someone changed something in the DMF)
-/mob/verb/button_pressed_F12(var/full = 0 as null)
-	set name = "F12"
-	set hidden = 1
+/datum/hud/proc/rebuild_hands(list/adding, list/removing, skip_client_update = FALSE)
+
+	if(isnull(removing))
+		if(!skip_client_update)
+			mymob?.client?.screen -= hand_hud_objects
+		QDEL_NULL_LIST(hand_hud_objects)
+	else
+		for(var/bp in removing)
+			for(var/obj/screen/inventory/inv_box in hand_hud_objects)
+				if(inv_box.slot_id == bp)
+					if(mymob.client)
+						mymob.client.screen -= inv_box
+					hand_hud_objects -= inv_box
+					qdel(inv_box)
+
+	var/mob/living/target = mymob
+	if(!istype(target))
+		return
+
+	if(isnull(adding))
+		adding = target.held_item_slots
+
+	var/ui_style = ui_style2icon(mymob.client?.prefs.UI_style)
+	var/ui_color = mymob.client?.prefs?.UI_style_color
+	var/ui_alpha = mymob.client?.prefs?.UI_style_alpha || 255
+	for(var/bp in adding)
+		var/obj/screen/inventory/inv_box
+		for(var/obj/screen/inventory/existing_box in hand_hud_objects)
+			if(existing_box.slot_id == bp)
+				inv_box = existing_box
+				break
+		if(!inv_box)
+			inv_box = new /obj/screen/inventory()
+		var/datum/inventory_slot/inv_slot = target.held_item_slots[bp]
+		inv_box.SetName(bp)
+		inv_box.icon = ui_style
+		inv_box.icon_state = "hand_base"
+
+		inv_box.cut_overlays()
+		inv_box.add_overlay("hand_[bp]")
+		inv_box.add_overlay("hand_[inv_slot.ui_label]")
+		if(target.get_active_held_item_slot() == bp)
+			inv_box.add_overlay("hand_selected")
+		inv_box.compile_overlays()
+
+		inv_box.screen_loc = inv_slot.ui_loc
+		inv_box.slot_id = bp
+		inv_box.color = ui_color
+		inv_box.alpha = ui_alpha
+		inv_box.appearance_flags |= KEEP_TOGETHER
+
+		LAZYADD(hand_hud_objects, inv_box)
+		if(!skip_client_update)
+			mymob.client?.screen |= inv_box
+
+/mob/verb/minimize_hud(full = FALSE as null)
+	set name = "Minimize Hud"
+	set hidden = TRUE
 
 	if(!hud_used)
 		to_chat(usr, "<span class='warning'>This mob type does not use a HUD.</span>")
@@ -191,8 +198,7 @@
 		//Due to some poor coding some things need special treatment:
 		//These ones are a part of 'adding', 'other' or 'hotkeybuttons' but we want them to stay
 		if(!full)
-			src.client.screen += src.hud_used.l_hand_hud_object	//we want the hands to be visible
-			src.client.screen += src.hud_used.r_hand_hud_object	//we want the hands to be visible
+			src.client.screen += src.hud_used.hand_hud_objects	//we want the hands to be visible
 			src.client.screen += src.hud_used.action_intent		//we want the intent swticher visible
 			src.hud_used.action_intent.screen_loc = ui_acti_alt	//move this to the alternative position, where zone_select usually is.
 		else
@@ -225,7 +231,7 @@
 	hud_used.persistant_inventory_update()
 	update_action_buttons()
 
-//Similar to button_pressed_F12() but keeps zone_sel, gun_setting_icon, and healths.
+//Similar to minimize_hud() but keeps zone_sel, gun_setting_icon, and healths.
 /mob/proc/toggle_zoom_hud()
 	if(!hud_used)
 		return
@@ -262,8 +268,22 @@
 	hud_used.persistant_inventory_update()
 	update_action_buttons()
 
+/client/proc/reset_click_catchers()
+
+	var/xmin = -(round(last_view_x_dim*0.5))
+	var/xmax = last_view_x_dim - abs(xmin)
+	var/ymin = -(round(last_view_y_dim*0.5))
+	var/ymax = last_view_y_dim - abs(ymin)
+
+	var/list/click_catchers = get_click_catchers()
+	for(var/obj/screen/click_catcher/catcher in click_catchers)
+		if(catcher.x_offset <= xmin || catcher.x_offset >= xmax || catcher.y_offset <= ymin || catcher.y_offset >= ymax)
+			screen -= catcher
+		else
+			screen |= catcher
+
 /mob/proc/add_click_catcher()
-	client.screen |= GLOB.click_catchers
+	client.reset_click_catchers()
 
 /mob/new_player/add_click_catcher()
 	return

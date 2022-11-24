@@ -1,5 +1,5 @@
-var/list/all_conveyors = list()
-var/list/all_conveyor_switches = list()
+var/global/list/all_conveyors = list()
+var/global/list/all_conveyor_switches = list()
 
 //conveyor2 is pretty much like the original, except it supports corners, but not diverters.
 //note that corner pieces transfer stuff clockwise when running forward, and anti-clockwise backwards.
@@ -86,7 +86,7 @@ var/list/all_conveyor_switches = list()
 		var/obj/item/grab/G = I
 		step(G.affecting, get_dir(G.affecting.loc, src))
 		return
-	if(isCrowbar(I))
+	if(IS_CROWBAR(I))
 		if(!(stat & BROKEN))
 			var/obj/item/conveyor_construct/C = new/obj/item/conveyor_construct(src.loc)
 			C.id_tag = id_tag
@@ -94,7 +94,7 @@ var/list/all_conveyor_switches = list()
 		to_chat(user, "<span class='notice'>You remove the conveyor belt.</span>")
 		qdel(src)
 		return
-	user.unequip_item(get_turf(src))
+	user.unEquip(I, get_turf(src))
 
 // make the conveyor broken
 // also propagate inoperability to any connected conveyor with the same id_tag
@@ -206,7 +206,7 @@ var/list/all_conveyor_switches = list()
 		position = 0
 
 /obj/machinery/conveyor_switch/attackby(obj/item/I, mob/user, params)
-	if(isCrowbar(I))
+	if(IS_CROWBAR(I))
 		var/obj/item/conveyor_switch_construct/C = new/obj/item/conveyor_switch_construct(src.loc)
 		C.id_tag = id_tag
 		transfer_fingerprints_to(C)
@@ -233,8 +233,8 @@ var/list/all_conveyor_switches = list()
 	name = "conveyor belt assembly"
 	desc = "A conveyor belt assembly. Must be linked to a conveyor control switch assembly before placement."
 	w_class = ITEM_SIZE_HUGE
-	material = MAT_STEEL
-	matter = list(MAT_PLASTIC = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/plastic = MATTER_AMOUNT_REINFORCEMENT)
 	var/id_tag
 
 /obj/item/conveyor_construct/attackby(obj/item/I, mob/user, params)
@@ -245,10 +245,13 @@ var/list/all_conveyor_switches = list()
 		id_tag = C.id_tag
 
 /obj/item/conveyor_construct/afterattack(atom/A, mob/user, proximity)
-	if(!proximity || !istype(A, /turf/simulated/floor) || istype(A, /area/shuttle) || user.incapacitated())
+	if(!proximity || !istype(A, /turf/simulated/floor) || user.incapacitated())
 		return
+	var/area/area = get_area(A)
+	if(!istype(area) || (area.area_flags & AREA_FLAG_SHUTTLE))
+		return FALSE
 	var/cdir = get_dir(A, user)
-	if(!(cdir in GLOB.cardinal) || A == user.loc)
+	if(!(cdir in global.cardinal) || A == user.loc)
 		return
 	for(var/obj/machinery/conveyor/CB in A)
 		if(CB.dir == cdir || CB.dir == turn(cdir,180))
@@ -261,12 +264,12 @@ var/list/all_conveyor_switches = list()
 	qdel(src)
 
 /obj/item/conveyor_switch_construct
-	name = "conveyor switch assembly"
+	name = "two-way conveyor switch assembly"
 	desc = "A conveyor control switch assembly."
 	icon = 'icons/obj/recycling.dmi'
 	icon_state = "switch-off"
 	w_class = ITEM_SIZE_HUGE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	var/id_tag
 
 /obj/item/conveyor_switch_construct/Initialize()
@@ -274,15 +277,18 @@ var/list/all_conveyor_switches = list()
 	id_tag = sequential_id("conveyor_switch_construct")
 
 /obj/item/conveyor_switch_construct/afterattack(atom/A, mob/user, proximity)
-	if(!proximity || !istype(A, /turf/simulated/floor) || istype(A, /area/shuttle) || user.incapacitated())
+	if(!proximity || !istype(A, /turf/simulated/floor) || user.incapacitated())
 		return
+	var/area/area = get_area(A)
+	if(!istype(area) || (area.area_flags & AREA_FLAG_SHUTTLE))
+		return FALSE
 	var/found = 0
 	for(var/obj/machinery/conveyor/C in view())
 		if(C.id_tag == src.id_tag)
 			found = 1
 			break
 	if(!found)
-		to_chat(user, "\icon[src]<span class=notice>The conveyor switch did not detect any linked conveyor belts in range.</span>")
+		to_chat(user, "[html_icon(src)]<span class=notice>The conveyor switch did not detect any linked conveyor belts in range.</span>")
 		return
 	var/obj/machinery/conveyor_switch/NC = new /obj/machinery/conveyor_switch(A, id_tag)
 	transfer_fingerprints_to(NC)
@@ -293,15 +299,18 @@ var/list/all_conveyor_switches = list()
 	desc = "An one-way conveyor control switch assembly."
 
 /obj/item/conveyor_switch_construct/oneway/afterattack(atom/A, mob/user, proximity)
-	if(!proximity || !istype(A, /turf/simulated/floor) || istype(A, /area/shuttle) || user.incapacitated())
+	if(!proximity || !istype(A, /turf/simulated/floor) || user.incapacitated())
 		return
+	var/area/area = get_area(A)
+	if(!istype(area) || (area.area_flags & AREA_FLAG_SHUTTLE))
+		return FALSE
 	var/found = 0
 	for(var/obj/machinery/conveyor/C in view())
 		if(C.id_tag == src.id_tag)
 			found = 1
 			break
 	if(!found)
-		to_chat(user, "\icon[src]<span class=notice>The conveyor switch did not detect any linked conveyor belts in range.</span>")
+		to_chat(user, "[html_icon(src)]<span class=notice>The conveyor switch did not detect any linked conveyor belts in range.</span>")
 		return
 	var/obj/machinery/conveyor_switch/oneway/NC = new /obj/machinery/conveyor_switch/oneway(A, id_tag)
 	transfer_fingerprints_to(NC)

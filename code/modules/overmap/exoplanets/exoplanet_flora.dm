@@ -1,8 +1,8 @@
 //Generates initial generic alien plants
-/obj/effect/overmap/visitable/sector/exoplanet/proc/generate_flora()
+/obj/effect/overmap/visitable/sector/exoplanet/proc/generate_flora(var/temperature)
 	for(var/i = 1 to flora_diversity)
 		var/datum/seed/S = new()
-		S.randomize()
+		S.randomize(temperature)
 		var/planticon = "alien[rand(1,4)]"
 		S.set_trait(TRAIT_PRODUCT_ICON,planticon)
 		S.set_trait(TRAIT_PLANT_ICON,planticon)
@@ -22,7 +22,7 @@
 		var/tree_diversity = max(1,flora_diversity/2)
 		for(var/i = 1 to tree_diversity)
 			var/datum/seed/S = new()
-			S.randomize()
+			S.randomize(temperature)
 			S.set_trait(TRAIT_PRODUCT_ICON,"alien[rand(1,5)]")
 			S.set_trait(TRAIT_PLANT_ICON,"tree")
 			S.set_trait(TRAIT_SPREAD,0)
@@ -44,11 +44,11 @@
 	S.set_trait(TRAIT_HIGHKPA_TOLERANCE,   atmosphere.return_pressure() + rand(5,50),500,110)
 	if(S.exude_gasses)
 		S.exude_gasses -= badgas
-	if(atmosphere)
+	if(atmosphere && length(atmosphere.gas))
 		if(S.consume_gasses)
 			S.consume_gasses = list(pick(atmosphere.gas)) // ensure that if the plant consumes a gas, the atmosphere will have it
 		for(var/g in atmosphere.gas)
-			var/decl/material/mat = decls_repository.get_decl(g)
+			var/decl/material/mat = GET_DECL(g)
 			if(mat.gas_flags & XGM_GAS_CONTAMINANT)
 				S.set_trait(TRAIT_TOXINS_TOLERANCE, rand(10,15))
 	if(prob(50))
@@ -60,16 +60,16 @@
 			S.chems[chem_type] = list(rand(1,10),rand(10,20))
 
 // Landmarks placed by random map generator
-/obj/effect/landmark/exoplanet_spawn/plant
+/obj/abstract/landmark/exoplanet_spawn/plant
 	name = "spawn exoplanet plant"
 
-/obj/effect/landmark/exoplanet_spawn/plant/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
+/obj/abstract/landmark/exoplanet_spawn/plant/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
 	if(LAZYLEN(planet.small_flora_types))
-		new /obj/machinery/portable_atmospherics/hydroponics/soil/invisible(get_turf(src), pick(planet.small_flora_types), 1)
+		new /obj/structure/flora/plant(get_turf(src), null, null, pick(planet.small_flora_types))
 
-/obj/effect/landmark/exoplanet_spawn/large_plant
+/obj/abstract/landmark/exoplanet_spawn/large_plant
 	name = "spawn exoplanet large plant"
 
-/obj/effect/landmark/exoplanet_spawn/large_plant/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
+/obj/abstract/landmark/exoplanet_spawn/large_plant/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
 	if(LAZYLEN(planet.big_flora_types))
-		new /obj/machinery/portable_atmospherics/hydroponics/soil/invisible(get_turf(src), pick(planet.big_flora_types), 1)
+		new /obj/structure/flora/plant(get_turf(src), null, null, pick(planet.big_flora_types))

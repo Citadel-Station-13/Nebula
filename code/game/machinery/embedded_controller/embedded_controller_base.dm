@@ -50,6 +50,7 @@
 	power_channel = ENVIRON
 	density = 0
 	unacidable = 1
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
 	var/frequency = EXTERNAL_AIR_FREQ
 	var/datum/radio_frequency/radio_connection
 
@@ -64,10 +65,10 @@
 	set_frequency(frequency)
 	set_extension(src, /datum/extension/interactive/multitool/embedded_controller)
 
-obj/machinery/embedded_controller/radio/Destroy()
+/obj/machinery/embedded_controller/radio/Destroy()
 	if(radio_controller)
 		radio_controller.remove_object(src,frequency)
-	..()
+	return ..()
 
 /obj/machinery/embedded_controller/radio/on_update_icon()
 	overlays.Cut()
@@ -79,7 +80,7 @@ obj/machinery/embedded_controller/radio/Destroy()
 	else
 		overlays += image(icon, "indicator_active")
 	var/datum/computer/file/embedded_program/docking/airlock/docking_program = program
-	var/datum/computer/file/embedded_program/airlock/docking/airlock_program = program
+	var/datum/computer/file/embedded_program/airlock/airlock_program = program
 	if(istype(docking_program))
 		if(docking_program.override_enabled)
 			overlays += image(icon, "indicator_forced")

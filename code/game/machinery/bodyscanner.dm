@@ -12,6 +12,8 @@
 	construct_state = /decl/machine_construction/default/panel_closed
 	uncreated_component_parts = null
 	stat_immune = 0
+	var/open_sound = 'sound/machines/podopen.ogg'
+	var/close_sound = 'sound/machines/podclose.ogg'
 
 /obj/machinery/bodyscanner/examine(mob/user)
 	. = ..()
@@ -56,8 +58,9 @@
 	src.occupant.dropInto(loc)
 	src.occupant = null
 	update_use_power(POWER_USE_IDLE)
-	update_icon()
 	SetName(initial(name))
+	if(open_sound)
+		playsound(src, open_sound, 40)
 
 /obj/machinery/bodyscanner/state_transition(var/decl/machine_construction/default/new_state)
 	. = ..()
@@ -74,7 +77,7 @@
 	return ..()
 
 /obj/machinery/bodyscanner/proc/user_can_move_target_inside(var/mob/target, var/mob/user)
-	if(!istype(user) || !istype(target))
+	if(!istype(user) || !istype(target) || target.anchored)
 		return FALSE
 	if(occupant)
 		to_chat(user, "<span class='warning'>The scanner is already occupied!</span>")
@@ -90,11 +93,12 @@
 	src.occupant = target
 
 	update_use_power(POWER_USE_ACTIVE)
-	update_icon()
 	drop_contents()
 	SetName("[name] ([occupant])")
 
 	src.add_fingerprint(user)
+	if(close_sound)
+		playsound(src, close_sound, 40)
 	return TRUE
 
 /obj/machinery/bodyscanner/on_update_icon()
@@ -106,19 +110,18 @@
 		icon_state = "body_scanner_2"
 
 //Like grap-put, but for mouse-drop.
-/obj/machinery/bodyscanner/MouseDrop_T(var/mob/target, var/mob/user)
-	if(!CanMouseDrop(target, user) || !istype(target))
-		return FALSE
-	user.visible_message("<span class='notice'>\The [user] begins placing \the [target] into \the [src].</span>", "<span class='notice'>You start placing \the [target] into \the [src].</span>")
-	if(!do_after(user, 30, src))
-		return
-	if(!user_can_move_target_inside(target, user))
-		return
-
-/obj/machinery/bodyscanner/explosion_act(severity)
+/obj/machinery/bodyscanner/receive_mouse_drop(var/atom/dropping, var/mob/user)
 	. = ..()
-	if(. && !QDELETED(src) && prob(severity == 1 ? 100 : (100 - (25 * severity))))
-		physically_destroyed(src)
+	if(!. && isliving(dropping))
+		var/mob/living/M = dropping
+		if(M.anchored)
+			return FALSE
+		user.visible_message( \
+			SPAN_NOTICE("\The [user] begins placing \the [dropping] into \the [src]."), \
+			SPAN_NOTICE("You start placing \the [dropping] into \the [src]."))
+		if(do_after(user, 30, src))
+			user_can_move_target_inside(dropping, user)
+		return TRUE
 
 /obj/machinery/bodyscanner/Destroy()
 	if(occupant)

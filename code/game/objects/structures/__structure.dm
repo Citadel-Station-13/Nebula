@@ -2,13 +2,14 @@
 	icon = 'icons/obj/structures/barricade.dmi'
 	w_class = ITEM_SIZE_STRUCTURE
 	layer = STRUCTURE_LAYER
+	abstract_type = /obj/structure
 
 	var/last_damage_message
 	var/health = 0
-	var/maxhealth = -1
+	var/maxhealth = 50
 	var/hitsound = 'sound/weapons/smash.ogg'
-	var/breakable
 	var/parts_type
+	var/parts_amount
 	var/footstep_type
 	var/mob_offset
 
@@ -27,15 +28,15 @@
 	if(ispath(_mat, /decl/material))
 		material = _mat
 	if(ispath(material, /decl/material))
-		material = decls_repository.get_decl(material)
+		material = GET_DECL(material)
 	if(ispath(_reinf_mat, /decl/material))
 		reinf_material = _reinf_mat
 	if(ispath(reinf_material, /decl/material))
-		reinf_material = decls_repository.get_decl(reinf_material)
+		reinf_material = GET_DECL(reinf_material)
 	. = ..()
 	update_materials()
 	if(!CanFluidPass())
-		fluid_update()
+		fluid_update(TRUE)
 
 /obj/structure/proc/show_examined_damage(mob/user, var/perc)
 	if(maxhealth == -1)
@@ -51,7 +52,7 @@
 	else
 		to_chat(user, SPAN_DANGER("It looks heavily damaged."))
 
-/obj/structure/examine(mob/user, var/distance)
+/obj/structure/examine(mob/user, distance, infix, suffix)
 	. = ..()
 	if(distance <= 3)
 
@@ -109,8 +110,8 @@
 			damage *= STRUCTURE_BRITTLE_MATERIAL_DAMAGE_MULTIPLIER
 
 	playsound(loc, hitsound, 75, 1)
-	health = Clamp(health - damage, 0, maxhealth)
-	
+	health = clamp(health - damage, 0, maxhealth)
+
 	show_damage_message(health/maxhealth)
 
 	if(health == 0)
@@ -129,65 +130,68 @@
 		visible_message(SPAN_WARNING("\The [src] is showing some damage!"))
 		last_damage_message = 0.75
 
-/obj/structure/physically_destroyed()
-	. = ..() && dismantle()
+/obj/structure/physically_destroyed(var/skip_qdel)
+	if(..(TRUE))
+		return dismantle()
 
 /obj/structure/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume)
 	. = ..()
 	var/dmg = 100
-	if(material)
+	if(istype(material))
 		dmg = round(dmg * material.combustion_effect(get_turf(src),temperature, 0.3))
 	if(dmg)
 		take_damage(dmg)
 
 /obj/structure/Destroy()
-	reset_mobs_offset()
 	var/turf/T = get_turf(src)
+	. = ..()
 	if(T)
 		T.fluid_update()
+		for(var/atom/movable/AM in T)
+			AM.reset_offsets()
+			AM.reset_plane_and_layer()
+
+/obj/structure/Crossed(O)
 	. = ..()
+	if(ismob(O))
+		var/mob/M = O
+		M.reset_offsets()
+		M.reset_plane_and_layer()
 
-/obj/structure/Crossed(mob/living/M)
-	if(istype(M))
-		M.on_structure_offset(mob_offset)
-	..()
-
-/obj/structure/proc/reset_mobs_offset()
-	for(var/mob/living/M in loc)
-		M.on_structure_offset(0)
+/obj/structure/Uncrossed(O)
+	. = ..()
+	if(ismob(O))
+		var/mob/M = O
+		M.reset_offsets()
+		M.reset_plane_and_layer()
 
 /obj/structure/Move()
+	var/turf/T = get_turf(src)
 	. = ..()
 	if(. && !CanFluidPass())
 		fluid_update()
-
-/obj/structure/attack_hand(mob/user)
-	..()
-	if(breakable)
-		if(MUTATION_HULK in user.mutations)
-			user.say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ))
-			attack_generic(user,1,"smashes")
-		else if(istype(user,/mob/living/carbon/human))
-			var/mob/living/carbon/human/H = user
-			if(H.species.can_shred(user))
-				attack_generic(user,1,"slices")
-	return ..()
+		if(T)
+			T.fluid_update()
+			for(var/atom/movable/AM in T)
+				AM.reset_offsets()
+				AM.reset_plane_and_layer()
 
 /obj/structure/grab_attack(var/obj/item/grab/G)
 	if (!G.force_danger())
 		to_chat(G.assailant, SPAN_WARNING("You need a better grip to do that!"))
 		return TRUE
-	var/mob/affecting_mob = G.get_affecting_mob()
-	if (G.assailant.a_intent == I_HURT)
+	var/mob/living/affecting_mob = G.get_affecting_mob()
+	if(G.assailant.a_intent == I_HURT)
 
-		if(!affecting_mob)
+		if(!istype(affecting_mob))
 			to_chat(G.assailant, SPAN_WARNING("You need to be grabbing a living creature to do that!"))
 			return TRUE
 
 		// Slam their face against the table.
 		var/blocked = affecting_mob.get_blocked_ratio(BP_HEAD, BRUTE, damage = 8)
 		if (prob(30 * (1 - blocked)))
-			affecting_mob.Weaken(5)
+			SET_STATUS_MAX(affecting_mob, STAT_WEAK, 5)
+
 		affecting_mob.apply_damage(8, BRUTE, BP_HEAD)
 		visible_message(SPAN_DANGER("[G.assailant] slams [affecting_mob]'s face against \the [src]!"))
 		if (material)
@@ -195,7 +199,7 @@
 		else
 			playsound(loc, 'sound/weapons/tablehit1.ogg', 50, 1)
 		var/list/L = take_damage(rand(1,5))
-		for(var/obj/item/material/shard/S in L)
+		for(var/obj/item/shard/S in L)
 			if(S.sharp && prob(50))
 				affecting_mob.visible_message(SPAN_DANGER("\The [S] slices into [affecting_mob]'s face!"), SPAN_DANGER("\The [S] slices into your face!"))
 				affecting_mob.standard_weapon_hit_effects(S, G.assailant, S.force*2, BP_HEAD)
@@ -207,14 +211,14 @@
 			return TRUE
 		G.affecting.forceMove(src.loc)
 		if(affecting_mob)
-			affecting_mob.Weaken(rand(2,5))
+			SET_STATUS_MAX(affecting_mob, STAT_WEAK, rand(2,5))
 		visible_message(SPAN_DANGER("[G.assailant] puts [G.affecting] on \the [src]."))
 		qdel(G)
 		return TRUE
 
 /obj/structure/explosion_act(severity)
 	..()
-	if(QDELETED(src))
+	if(!QDELETED(src))
 		if(severity == 1)
 			physically_destroyed()
 		else if(severity == 2)
@@ -229,4 +233,37 @@
 	return TRUE
 
 /obj/structure/bullet_act(var/obj/item/projectile/Proj)
-	take_damage(Proj.get_structure_damage())
+	if(take_damage(Proj.get_structure_damage()))
+		return PROJECTILE_CONTINUE
+
+/*
+Automatic alignment of items to an invisible grid, defined by CELLS and CELLSIZE, defined in code/__defines/misc.dm.
+Since the grid will be shifted to own a cell that is perfectly centered on the turf, we end up with two 'cell halves'
+on edges of each row/column.
+Each item defines a center_of_mass, which is the pixel of a sprite where its projected center of mass toward a turf
+surface can be assumed. For a piece of paper, this will be in its center. For a bottle, it will be (near) the bottom
+of the sprite.
+auto_align() will then place the sprite so the defined center_of_mass is at the bottom left corner of the grid cell
+closest to where the cursor has clicked on.
+Note: This proc can be overwritten to allow for different types of auto-alignment.
+*/
+/obj/structure/proc/auto_align(obj/item/W, click_params)
+	if (!W.center_of_mass) // Clothing, material stacks, generally items with large sprites where exact placement would be unhandy.
+		W.pixel_x = rand(-W.randpixel, W.randpixel)
+		W.pixel_y = rand(-W.randpixel, W.randpixel)
+		W.pixel_z = 0
+		return
+	if (!click_params)
+		return
+	var/list/click_data = params2list(click_params)
+	if (!click_data["icon-x"] || !click_data["icon-y"])
+		return
+	// Calculation to apply new pixelshift.
+	var/mouse_x = text2num(click_data["icon-x"])-1 // Ranging from 0 to 31
+	var/mouse_y = text2num(click_data["icon-y"])-1
+	var/cell_x = clamp(round(mouse_x/CELLSIZE), 0, CELLS-1) // Ranging from 0 to CELLS-1
+	var/cell_y = clamp(round(mouse_y/CELLSIZE), 0, CELLS-1)
+	var/list/center = cached_json_decode(W.center_of_mass)
+	W.pixel_x = (CELLSIZE * (cell_x + 0.5)) - center["x"]
+	W.pixel_y = (CELLSIZE * (cell_y + 0.5)) - center["y"]
+	W.pixel_z = 0

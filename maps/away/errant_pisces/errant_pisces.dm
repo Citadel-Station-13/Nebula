@@ -1,3 +1,4 @@
+#include "../../../mods/content/corporate/_corporate.dme"
 #include "errant_pisces_areas.dm"
 
 /obj/effect/overmap/visitable/ship/errant_pisces
@@ -11,7 +12,6 @@
 
 /datum/map_template/ruin/away_site/errant_pisces
 	name = "Errant Pisces"
-	id = "awaysite_errant_pisces"
 	description = "Carp trawler"
 	suffixes = list("errant_pisces/errant_pisces.dmm")
 	cost = 1
@@ -20,13 +20,9 @@
 /mob/living/simple_animal/hostile/carp/shark // generally stronger version of a carp that doesn't die from a mean look. Fance new sprites included, credits to F-Tang Steve
 	name = "cosmoshark"
 	desc = "Enormous creature that resembles a shark with magenta glowing lines along its body and set of long deep-purple teeth."
-	icon = 'maps/away/errant_pisces/errant_pisces_sprites.dmi'
-	icon_state = "shark"
-	icon_living = "shark"
-	icon_dead = "shark_dead"
-	icon_gib = "shark_dead"
+	icon = 'maps/away/errant_pisces/icons/cosmoshark.dmi'
 	turns_per_move = 5
-	meat_type = /obj/item/chems/food/snacks/sharkmeat
+	meat_type = /obj/item/chems/food/sharkmeat
 	speed = 2
 	maxHealth = 100
 	health = 100
@@ -37,17 +33,14 @@
 /mob/living/simple_animal/hostile/carp/shark/carp_randomify()
 	return
 
-/mob/living/simple_animal/hostile/carp/shark/on_update_icon()
-	return
-
 /mob/living/simple_animal/hostile/carp/shark/death()
 	..()
 	var/datum/gas_mixture/environment = loc.return_air()
 	if (environment)
-		var/datum/gas_mixture/sharkmaw_phoron = new
-		sharkmaw_phoron.adjust_gas(MAT_PHORON,  10)
-		environment.merge(sharkmaw_phoron)
-		visible_message("<span class='warning'>\The [src]'s body releases some gas from the gills with a quiet fizz!</span>")
+		var/datum/gas_mixture/sharkmaw_chlorine = new
+		sharkmaw_chlorine.adjust_gas(/decl/material/gas/chlorine, 10)
+		environment.merge(sharkmaw_chlorine)
+		visible_message(SPAN_WARNING("\The [src]'s body releases some gas from the gills with a quiet fizz!"))
 
 /mob/living/simple_animal/hostile/carp/shark/AttackingTarget()
 	set waitfor = 0//to deal with sleep() possibly stalling other procs
@@ -59,32 +52,31 @@
 			var/tackle_length = rand(3,5)
 			for (var/i = 1 to tackle_length)
 				var/turf/T = get_step(L.loc, dir)//on a first step of tackling standing mob would block movement so let's check if there's something behind it. Works for consequent moves too
-				if (T.density || LinkBlocked(L.loc, T) || TurfBlockedNonWindow(T) || DirBlocked(T, GLOB.flip_dir[dir]))
+				if (T.density || LinkBlocked(L.loc, T) || TurfBlockedNonWindow(T) || DirBlocked(T, global.flip_dir[dir]))
 					break
 				sleep(2)
 				forceMove(T)//maybe there's better manner then just forceMove() them
 				L.forceMove(T)
 			visible_message("<span class='danger'>\The [src] releases [L].</span>")
 
-/obj/item/chems/food/snacks/sharkmeat
+/obj/item/chems/food/sharkmeat
 	name = "cosmoshark fillet"
 	desc = "A fillet of cosmoshark meat."
 	icon_state = "fishfillet"
 	filling_color = "#cecece"
 	center_of_mass = @"{'x':17,'y':13}"
+	bitesize = 8
 
-/obj/item/chems/food/snacks/sharkmeat/Initialize()
+/obj/item/chems/food/sharkmeat/populate_reagents()
 	. = ..()
 	reagents.add_reagent(/decl/material/liquid/nutriment/protein, 5)
-	reagents.add_reagent(/decl/material/liquid/psychoactives, 1)
-	reagents.add_reagent(/decl/material/solid/phoron, 1)
-	src.bitesize = 8
-
+	reagents.add_reagent(/decl/material/liquid/psychoactives,     1)
+	reagents.add_reagent(/decl/material/gas/chlorine,             1)
 
 /obj/structure/net//if you want to have fun, make them to be draggable as a whole unless at least one piece is attached to a non-space turf or anchored object
 	name = "industrial net"
 	desc = "A sturdy industrial net of synthetic belts reinforced with plasteel threads."
-	icon = 'maps/away/errant_pisces/errant_pisces_sprites.dmi'
+	icon = 'maps/away/errant_pisces/icons/net.dmi'
 	icon_state = "net_f"
 	anchored = 1
 	layer = CATWALK_LAYER//probably? Should cover cables, pipes and the rest of objects that are secured on the floor
@@ -114,8 +106,8 @@
 		to_chat(user, SPAN_NOTICE("A few strands of \the [src] have been severed."))
 
 /obj/structure/net/attackby(obj/item/W, mob/user)
-	if (istype(W, /obj/item/material)) //sharp objects can cut thorugh
-		var/obj/item/material/SH = W
+	if(W.sharp || W.edge)
+		var/obj/item/SH = W
 		if (!(SH.sharp) || (SH.sharp && SH.force < 10))//is not sharp enough or at all
 			to_chat(user,"<span class='warning'>You can't cut throught \the [src] with \the [W], it's too dull.</span>")
 			return
@@ -127,8 +119,10 @@
 			take_damage(20 * (1 + (SH.force-10)/10)) //the sharper the faster, every point of force above 10 adds 10 % to damage
 		new /obj/item/stack/net(src.loc)
 		qdel(src)
+		return TRUE
+	. = ..()
 
-/obj/structure/net/physically_destroyed()
+/obj/structure/net/physically_destroyed(var/skip_qdel)
 	SHOULD_CALL_PARENT(FALSE)
 	visible_message("<span class='warning'>\The [src] is torn apart!</span>")
 	qdel(src)
@@ -145,7 +139,7 @@
 	overlays.Cut()
 	var/turf/T = get_turf(src)
 	for (var/turf/AT in T.CardinalTurfs(FALSE))
-		if ( (locate(/obj/structure/net) in AT) || (!istype(AT, /turf/simulated/open) && !istype(AT, /turf/space)) || (locate(/obj/structure/lattice) in AT) )//connects to another net objects or walls/floors or lattices
+		if((locate(/obj/structure/net) in AT) || (locate(/obj/structure/lattice) in AT))//connects to another net objects or walls/floors or lattices
 			var/image/I = image(icon,"[icon_state]_ol_[get_dir(src,AT)]")
 			overlays += I
 
@@ -175,12 +169,11 @@
 /obj/item/stack/net
 	name = "industrial net roll"
 	desc = "Sturdy industrial net reinforced with plasteel threads."
-	singular_name = "industrial net"
-	icon = 'maps/away/errant_pisces/errant_pisces_sprites.dmi'
+	icon = 'maps/away/errant_pisces/icons/net_roll.dmi'
 	icon_state = "net_roll"
 	w_class = ITEM_SIZE_LARGE
 	force = 3.0
-	throwforce = 5.0
+	throwforce = 5
 	throw_speed = 5
 	throw_range = 10
 	matter = list("cloth" = 1875, "plasteel" = 350)
@@ -197,6 +190,7 @@
 	amount = 30
 
 /obj/item/stack/net/on_update_icon()
+	. = ..()
 	if(amount == 1)
 		icon_state = "net"
 	else
@@ -230,14 +224,12 @@
 	if (amount < 1)
 		qdel(src)
 
-/obj/item/clothing/under/carp//as far as I know sprites are taken from /tg/
+/obj/item/clothing/under/carp //as far as I know sprites are taken from /tg/
 	name = "space carp suit"
 	desc = "A suit in a shape of a space carp. Usually worn by corporate interns who are sent to entertain children during HQ excursions."
-	icon_state = "carp_suit"
-	icon = 'maps/away/errant_pisces/errant_pisces_sprites.dmi'
-	item_icons = list(slot_w_uniform_str = 'maps/away/errant_pisces/errant_pisces_sprites.dmi')
+	icon = 'maps/away/errant_pisces/icons/carpsuit.dmi'
 
-/obj/effect/landmark/corpse/carp_fisher
+/obj/abstract/landmark/corpse/carp_fisher
 	name = "carp fisher"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/carp_fisher)
 
@@ -245,6 +237,6 @@
 	name = "Dead carp fisher"
 	uniform = /obj/item/clothing/under/color/green
 	suit = /obj/item/clothing/suit/apron/overalls
-	belt = /obj/item/material/knife/combat
+	belt = /obj/item/knife/combat
 	shoes = /obj/item/clothing/shoes/jackboots
 	head = /obj/item/clothing/head/hardhat/dblue

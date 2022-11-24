@@ -17,6 +17,7 @@
 	name = "statuette"
 	icon_state = "statuette"
 	icon = 'icons/obj/xenoarchaeology.dmi'
+	material = /decl/material/solid/stone/cult
 	var/charges = 0
 	var/list/nearby_mobs = list()
 	var/last_bloodcall = 0
@@ -29,11 +30,11 @@
 /obj/item/vampiric/Initialize()
 	. = ..()
 	START_PROCESSING(SSobj, src)
-	GLOB.listening_objects += src
+	global.listening_objects += src
 
 /obj/item/vampiric/Destroy()
 	STOP_PROCESSING(SSobj, src)
-	GLOB.listening_objects -= src
+	global.listening_objects -= src
 	return ..()
 
 /obj/item/vampiric/Process()
@@ -77,7 +78,7 @@
 
 	if(charges >= 0.1)
 		if(prob(5))
-			src.visible_message("<span class='warning'>\icon[src] [src]'s eyes glow ruby red for a moment!</span>")
+			src.visible_message("<span class='warning'>[html_icon(src)] [src]'s eyes glow ruby red for a moment!</span>")
 			charges -= 0.1
 
 	//check on our shadow wights
@@ -105,9 +106,9 @@
 		playsound(src.loc, pick('sound/hallucinations/wail.ogg','sound/hallucinations/veryfar_noise.ogg','sound/hallucinations/far_noise.ogg'), 50, 1, -3)
 		nearby_mobs.Add(M)
 
-		var/target = pick(M.organs_by_name)
-		M.apply_damage(rand(5, 10), BRUTE, target)
-		to_chat(M, "<span class='warning'>The skin on your [parse_zone(target)] feels like it's ripping apart, and a stream of blood flies out.</span>")
+		var/obj/item/organ/external/target = pick(M.get_external_organs())
+		M.apply_damage(rand(5, 10), BRUTE, target.organ_tag)
+		to_chat(M, "<span class='warning'>The skin on your [parse_zone(target.organ_tag)] feels like it's ripping apart, and a stream of blood flies out.</span>")
 		var/obj/effect/decal/cleanable/blood/splatter/animated/B = new(M.loc)
 		B.target_turf = pick(range(1, src))
 		B.blood_DNA = list()
@@ -181,7 +182,7 @@
 			'sound/hallucinations/turn_around1.ogg',\
 			'sound/hallucinations/turn_around2.ogg',\
 			), 50, 1, -3)
-			M.sleeping = max(M.sleeping,rand(5,10))
+			SET_STATUS_MAX(M, STAT_ASLEEP, rand(5,10))
 			qdel(src)
 	else
 		STOP_PROCESSING(SSobj, src)

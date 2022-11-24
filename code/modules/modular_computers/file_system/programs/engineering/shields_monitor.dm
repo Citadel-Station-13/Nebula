@@ -8,18 +8,20 @@
 	extended_desc = "This program connects to shield generators and monitors their statuses."
 	ui_header = "shield.gif"
 	network_destination = "shields monitoring system"
+	requires_network = 1
+	requires_network_feature = NET_FEATURE_SYSTEMCONTROL
 	size = 10
 	category = PROG_ENG
 
 /datum/nano_module/program/shields_monitor
 	name = "Shields monitor"
-	var/obj/machinery/power/shield_generator/active = null
+	var/obj/machinery/shield_generator/active = null
 
 /datum/nano_module/program/shields_monitor/Destroy()
 	. = ..()
 	deselect_shield()
 
-/datum/nano_module/program/shields_monitor/proc/can_connect_to_shield(obj/machinery/power/shield_generator/S)
+/datum/nano_module/program/shields_monitor/proc/can_connect_to_shield(obj/machinery/shield_generator/S)
 	var/datum/computer_network/network = get_network()
 	if(!network)
 		return FALSE
@@ -27,7 +29,7 @@
 
 /datum/nano_module/program/shields_monitor/proc/get_shields()
 	var/list/shields = list()
-	for(var/obj/machinery/power/shield_generator/S in SSmachines.machinery)
+	for(var/obj/machinery/shield_generator/S in SSmachines.machinery)
 		if(!can_connect_to_shield(S))
 			continue
 		shields.Add(S)
@@ -36,7 +38,7 @@
 		deselect_shield()
 	return shields
 
-/datum/nano_module/program/shields_monitor/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
+/datum/nano_module/program/shields_monitor/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
 	var/list/data = host.initial_data()
 	if(!can_connect_to_shield(active))
 		deselect_shield()
@@ -71,12 +73,12 @@
 		data["active"] = null
 		var/list/shields = get_shields()
 		var/list/shields_info = list()
-		for(var/obj/machinery/power/shield_generator/S in shields)
+		for(var/obj/machinery/shield_generator/S in shields)
 			var/area/A = get_area(S)
 			var/list/temp = list(list(
 				"shield_status" = S.running,
 				"shield_ref" = any2ref(S),
-				"area" = A.name))
+				"area" = A.proper_name))
 			shields_info.Add(temp)
 		data["shields"] = shields_info
 
@@ -100,17 +102,17 @@
 		return 1
 	if( href_list["ref"] )
 		var/list/shields = get_shields()
-		var/obj/machinery/power/shield_generator/S = locate(href_list["ref"]) in shields
+		var/obj/machinery/shield_generator/S = locate(href_list["ref"]) in shields
 		if(S)
 			deselect_shield()
-			GLOB.destroyed_event.register(S, src, /datum/nano_module/program/shields_monitor/proc/deselect_shield)
+			events_repository.register(/decl/observ/destroyed, S, src, /datum/nano_module/program/shields_monitor/proc/deselect_shield)
 			active = S
 		return 1
 
 /datum/nano_module/program/shields_monitor/proc/deselect_shield(var/source)
 	if(!active)
 		return
-	GLOB.destroyed_event.unregister(active, src)
+	events_repository.unregister(/decl/observ/destroyed, active, src)
 	active = null
 	if(source) // source is only set if called by the shield destroyed event, which is the only time we want to update the UI
 		SSnano.update_uis(src)

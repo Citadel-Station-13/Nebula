@@ -4,6 +4,8 @@
 	icon_state = "empty"
 	appearance_flags = 0
 	anchored = 1
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'EAST':{'x':-32}, 'WEST':{'x':32}}"
 	var/cult = 0
 
 /obj/structure/sign/double/barsign/proc/get_valid_states(initial=1)
@@ -24,7 +26,7 @@
 		if("on", "empty")
 			to_chat(user, "The lights are on, but there's no picture.")
 		else
-			to_chat(user, "It says '[icon_state]'")
+			to_chat(user, "It says '[icon_state]'.")
 
 /obj/structure/sign/double/barsign/Initialize()
 	. = ..()

@@ -2,7 +2,7 @@
 
 // Recruiting observers to play as pAIs
 
-var/datum/paiController/paiController			// Global handler for pAI candidates
+var/global/datum/paiController/paiController			// Global handler for pAI candidates
 
 /datum/paiCandidate
 	var/name
@@ -11,6 +11,8 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 	var/role
 	var/comments
 	var/ready = 0
+	var/chassis = "Drone"
+	var/say_verb = "Robotic"
 
 
 /hook/startup/proc/paiControllerSetup()
@@ -34,11 +36,17 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 		if(istype(card,/obj/item/paicard) && istype(candidate,/datum/paiCandidate))
 			var/mob/living/silicon/pai/pai = new(card)
 			if(!candidate.name)
-				pai.SetName(pick(GLOB.ninja_names))
+				pai.SetName(pick(global.ninja_names))
 			else
 				pai.SetName(candidate.name)
 			pai.real_name = pai.name
 			pai.key = candidate.key
+			pai.chassis = candidate.chassis
+			pai.icon = global.possible_chassis[candidate.chassis]
+			var/list/sayverbs = global.possible_say_verbs[candidate.say_verb]
+			pai.speak_statement = sayverbs[1]
+			pai.speak_exclamation = sayverbs[(sayverbs.len>1 ? 2 : sayverbs.len)]
+			pai.speak_query = sayverbs[(sayverbs.len>2 ? 3 : sayverbs.len)]
 
 			card.setPersonality(pai)
 			card.looking_for_personality = 0
@@ -57,7 +65,7 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 
 		switch(option)
 			if("name")
-				t = sanitizeSafe(input("Enter a name for your pAI", "pAI Name", candidate.name) as text, MAX_NAME_LEN)
+				t = sanitize_safe(input("Enter a name for your pAI", "pAI Name", candidate.name) as text, MAX_NAME_LEN)
 				if(t)
 					candidate.name = t
 			if("desc")
@@ -72,24 +80,36 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 				t = input("Enter any OOC comments", "pAI OOC Comments", candidate.comments) as message
 				if(t)
 					candidate.comments = sanitize(t)
+			if("chassis")
+				t = input(usr,"What would you like to use for your mobile chassis icon?") as null|anything in global.possible_chassis
+				if(t)
+					candidate.chassis = t
+			if("say")
+				t = input(usr,"What theme would you like to use for your speech verbs?") as null|anything in global.possible_say_verbs
+				if(t)
+					candidate.say_verb = t
 			if("save")
 				candidate.savefile_save(usr)
 			if("load")
 				candidate.savefile_load(usr)
 				//In case people have saved unsanitized stuff.
 				if(candidate.name)
-					candidate.name = sanitizeSafe(candidate.name, MAX_NAME_LEN)
+					candidate.name = sanitize_safe(candidate.name, MAX_NAME_LEN)
 				if(candidate.description)
 					candidate.description = sanitize(candidate.description)
 				if(candidate.role)
 					candidate.role = sanitize(candidate.role)
 				if(candidate.comments)
 					candidate.comments = sanitize(candidate.comments)
+				if(!candidate.chassis) //default to drone
+					candidate.chassis = "Drone"
+				if(!candidate.say_verb)//default to Robotic
+					candidate.say_verb = "Robotic"
 
 			if("submit")
 				if(candidate)
 					candidate.ready = 1
-					for(var/obj/item/paicard/p in world)
+					for(var/obj/item/paicard/p in global.pai_cards)
 						if(p.looking_for_personality == 1)
 							p.alertUpdate()
 				close_browser(usr, "window=paiRecruit")
@@ -118,7 +138,7 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 					color:white;
 					font-size:13px;
 					background-image:url('uiBackground.png');
-					background-repeat:repeat-x;
+					background-repeat:repeat;
 					background-color:#272727;
 					background-position:center top;
 				}
@@ -202,6 +222,17 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 			<tr class="d1">
 				<td>Anything you'd like to address specifically to the player reading this in an OOC manner. \"I prefer more serious RP.\", \"I'm still learning the interface!\", etc. Feel free to leave this blank if you want.</td>
 			</tr>
+			<tr class="d0">
+				<th rowspan="2"><a href='byond://?src=\ref[src];option=chassis;new=1;allow_submit=[allowSubmit];candidate=\ref[candidate]'>Chassis Type</a>:</th>
+				<td class="desc">[candidate.chassis]&nbsp;</td>
+			</tr>
+			<tr class="d1">
+				<td>Open up the Character Setup in the OOC tab to view the different models!</td>
+			</tr>
+			<tr class="d0">
+				<th rowspan="2"><a href='byond://?src=\ref[src];option=say;new=1;allow_submit=[allowSubmit];candidate=\ref[candidate]'>Say Verb</a>:</th>
+				<td class="desc">[candidate.say_verb]&nbsp;</td>
+			</tr>
 		</table>
 		<br>
 		<table>
@@ -227,7 +258,7 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 	<body>
 	"}
 
-	show_browser(M, dat, "window=paiRecruit;size=580x580;")
+	show_browser(M, dat, "window=paiRecruit;size=580x620;")
 
 /datum/paiController/proc/findPAI(var/obj/item/paicard/p, var/mob/user)
 	requestRecruits(user)
@@ -235,7 +266,7 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 	for(var/datum/paiCandidate/c in paiController.pai_candidates)
 		if(c.ready)
 			var/found = 0
-			for(var/mob/observer/ghost/o in GLOB.player_list)
+			for(var/mob/observer/ghost/o in global.player_list)
 				if(o.key == c.key && o.MayRespawn())
 					found = 1
 			if(found)
@@ -253,7 +284,7 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 						color:white;
 						font-size:13px;
 						background-image:url('uiBackground.png');
-						background-repeat:repeat-x;
+						background-repeat:repeat;
 						background-color:#272727;
 						background-position:center top;
 					}
@@ -348,7 +379,7 @@ var/datum/paiController/paiController			// Global handler for pAI candidates
 
 /datum/paiController/proc/requestRecruits(var/mob/user)
 	inquirer = user
-	for(var/mob/observer/ghost/O in GLOB.player_list)
+	for(var/mob/observer/ghost/O in global.player_list)
 		if(!O.MayRespawn())
 			continue
 		if(jobban_isbanned(O, "pAI"))

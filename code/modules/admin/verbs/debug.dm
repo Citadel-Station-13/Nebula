@@ -24,7 +24,7 @@
 		return
 	var/turf/T = mob.loc
 
-	if (!( istype(T, /turf) ))
+	if (!( isturf(T) ))
 		return
 
 	var/datum/gas_mixture/env = T.return_air()
@@ -92,7 +92,7 @@
 			return 0
 	var/obj/item/paicard/card = new(T)
 	var/mob/living/silicon/pai/pai = new(card)
-	pai.SetName(sanitizeSafe(input(choice, "Enter your pAI name:", "pAI Name", "Personal AI") as text))
+	pai.SetName(sanitize_safe(input(choice, "Enter your pAI name:", "pAI Name", "Personal AI") as text))
 	pai.real_name = pai.name
 	pai.key = choice.key
 	card.setPersonality(pai)
@@ -100,22 +100,6 @@
 		if(candidate.key == choice.key)
 			paiController.pai_candidates.Remove(candidate)
 	SSstatistics.add_field_details("admin_verb","MPAI") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
-
-/client/proc/cmd_admin_slimeize(var/mob/M in SSmobs.mob_list)
-	set category = "Fun"
-	set name = "Make slime"
-
-	if(GAME_STATE < RUNLEVEL_GAME)
-		alert("Wait until the game starts")
-		return
-	if(ishuman(M))
-		log_admin("[key_name(src)] has slimeized [M.key].")
-		spawn(10)
-			M:slimeize()
-			SSstatistics.add_field_details("admin_verb","MKMET") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
-		log_and_message_admins("made [key_name(M)] into a slime.")
-	else
-		alert("Invalid mob")
 
 //TODO: merge the vievars version into this or something maybe mayhaps
 /client/proc/cmd_debug_del_all()
@@ -170,7 +154,7 @@
 			id.registered_name = H.real_name
 			id.assignment = "Captain"
 			id.SetName("[id.registered_name]'s ID Card ([id.assignment])")
-			H.equip_to_slot_or_del(id, slot_wear_id)
+			H.equip_to_slot_or_del(id, slot_wear_id_str)
 			H.update_inv_wear_id()
 	else
 		alert("Invalid mob")
@@ -214,41 +198,41 @@
 	var/list/areas_with_intercom = list()
 	var/list/areas_with_camera = list()
 
-	for(var/area/A in world)
+	for(var/area/A in global.areas)
 		if(!(A.type in areas_all))
 			areas_all.Add(A.type)
 
-	for(var/obj/machinery/power/apc/APC in world)
+	for(var/obj/machinery/power/apc/APC in SSmachines.machinery)
 		var/area/A = get_area(APC)
 		if(!(A.type in areas_with_APC))
 			areas_with_APC.Add(A.type)
 
-	for(var/obj/machinery/alarm/alarm in world)
+	for(var/obj/machinery/alarm/alarm in SSmachines.machinery)
 		var/area/A = get_area(alarm)
 		if(!(A.type in areas_with_air_alarm))
 			areas_with_air_alarm.Add(A.type)
 
-	for(var/obj/machinery/requests_console/RC in world)
+	for(var/obj/machinery/network/requests_console/RC in SSmachines.machinery)
 		var/area/A = get_area(RC)
 		if(!(A.type in areas_with_RC))
 			areas_with_RC.Add(A.type)
 
-	for(var/obj/machinery/light/L in world)
+	for(var/obj/machinery/light/L in SSmachines.machinery)
 		var/area/A = get_area(L)
 		if(!(A.type in areas_with_light))
 			areas_with_light.Add(A.type)
 
-	for(var/obj/machinery/light_switch/LS in world)
+	for(var/obj/machinery/light_switch/LS in SSmachines.machinery)
 		var/area/A = get_area(LS)
 		if(!(A.type in areas_with_LS))
 			areas_with_LS.Add(A.type)
 
-	for(var/obj/item/radio/intercom/I in world)
+	for(var/obj/item/radio/intercom/I in SSmachines.machinery)
 		var/area/A = get_area(I)
 		if(!(A.type in areas_with_intercom))
 			areas_with_intercom.Add(A.type)
 
-	for(var/obj/machinery/camera/C in world)
+	for(var/obj/machinery/camera/C in SSmachines.machinery)
 		var/area/A = get_area(C)
 		if(!(A.type in areas_with_camera))
 			areas_with_camera.Add(A.type)
@@ -296,7 +280,7 @@
 	if(!check_rights(R_FUN))
 		return
 
-	var/mob/living/carbon/human/H = input("Select mob.", "Select equipment.") as null|anything in GLOB.human_mob_list
+	var/mob/living/carbon/human/H = input("Select mob.", "Select equipment.") as null|anything in global.human_mob_list
 	if(!H)
 		return
 
@@ -327,15 +311,15 @@
 	if(alert("Are you sure? This will start up the engine. Should only be used during debug!",,"Yes","No") != "Yes")
 		return
 
-	for(var/obj/machinery/power/emitter/E in world)
+	for(var/obj/machinery/emitter/E in SSmachines.machinery)
 		if(E.anchored)
 			E.active = 1
 
-	for(var/obj/machinery/field_generator/F in world)
+	for(var/obj/machinery/field_generator/F in SSmachines.machinery)
 		if(F.anchored)
 			F.Varedit_start = 1
 	spawn(30)
-		for(var/obj/machinery/the_singularitygen/G in world)
+		for(var/obj/machinery/the_singularitygen/G in SSmachines.machinery)
 			if(G.anchored)
 				var/obj/singularity/S = new /obj/singularity(get_turf(G), 50)
 				spawn(0)
@@ -353,19 +337,16 @@
 				//S.dissipate_track = 0
 				//S.dissipate_strength = 10
 
-	for(var/obj/machinery/power/rad_collector/Rad in world)
+	for(var/obj/machinery/rad_collector/Rad in SSmachines.machinery)
 		if(Rad.anchored)
-			if(!Rad.P)
-				var/obj/item/tank/phoron/Phoron = new/obj/item/tank/phoron(Rad)
-				Phoron.air_contents.gas[MAT_PHORON] = 70
+			if(!Rad.loaded_tank)
+				Rad.loaded_tank = new /obj/item/tank/hydrogen(Rad)
+				Rad.loaded_tank.air_contents.gas[/decl/material/gas/hydrogen] = 70
 				Rad.drainratio = 0
-				Rad.P = Phoron
-				Phoron.forceMove(Rad)
-
 			if(!Rad.active)
 				Rad.toggle_power()
 
-	for(var/obj/machinery/power/smes/SMES in world)
+	for(var/obj/machinery/power/smes/SMES in SSmachines.machinery)
 		if(SMES.anchored)
 			SMES.input_attempt = 1
 
@@ -376,19 +357,19 @@
 
 	switch(input("Which list?") in list("Players","Admins","Mobs","Living Mobs","Dead Mobs", "Ghost Mobs", "Clients"))
 		if("Players")
-			to_chat(usr, jointext(GLOB.player_list,","))
+			to_chat(usr, jointext(global.player_list,","))
 		if("Admins")
-			to_chat(usr, jointext(GLOB.admins,","))
+			to_chat(usr, jointext(global.admins,","))
 		if("Mobs")
 			to_chat(usr, jointext(SSmobs.mob_list,","))
 		if("Living Mobs")
-			to_chat(usr, jointext(GLOB.living_mob_list_,","))
+			to_chat(usr, jointext(global.living_mob_list_,","))
 		if("Dead Mobs")
-			to_chat(usr, jointext(GLOB.dead_mob_list_,","))
+			to_chat(usr, jointext(global.dead_mob_list_,","))
 		if("Ghost Mobs")
-			to_chat(usr, jointext(GLOB.ghost_mob_list,","))
+			to_chat(usr, jointext(global.ghost_mob_list,","))
 		if("Clients")
-			to_chat(usr, jointext(GLOB.clients,","))
+			to_chat(usr, jointext(global.clients,","))
 
 // DNA2 - Admin Hax
 /client/proc/cmd_admin_toggle_block(var/mob/M,var/block)
@@ -414,14 +395,14 @@
 	if(!check_rights(R_DEBUG))
 		return
 
-	GLOB.error_cache.show_to(usr.client)
+	global.error_cache.show_to(usr.client)
 
 /client/proc/cmd_analyse_health_panel()
 	set category = "Debug"
 	set name = "Analyse Health"
 	set desc = "Get an advanced health reading on a human mob."
 
-	var/mob/living/carbon/human/H = input("Select mob.", "Analyse Health") as null|anything in GLOB.human_mob_list
+	var/mob/living/carbon/human/H = input("Select mob.", "Analyse Health") as null|anything in global.human_mob_list
 	if(!H)	return
 
 	cmd_analyse_health(H)
@@ -438,7 +419,7 @@
 	dat += text("<BR><A href='?src=\ref[];mach_close=scanconsole'>Close</A>", usr)
 	show_browser(usr, dat, "window=scanconsole;size=430x600")
 
-/client/proc/cmd_analyse_health_context(mob/living/carbon/human/H as mob in GLOB.human_mob_list)
+/client/proc/cmd_analyse_health_context(mob/living/carbon/human/H as mob in global.human_mob_list)
 	set category = null
 	set name = "Analyse Human Health"
 
@@ -450,7 +431,7 @@
 
 /obj/effect/debugmarker
 	icon = 'icons/effects/lighting_overlay.dmi'
-	icon_state = "transparent"
+	icon_state = "blank"
 	layer = HOLOMAP_LAYER
 	alpha = 127
 
@@ -466,7 +447,7 @@
 	for(var/datum/powernet/PN in SSmachines.powernets)
 		var/netcolor = rgb(rand(100,255),rand(100,255),rand(100,255))
 		for(var/obj/structure/cable/C in PN.cables)
-			var/image/I = image('icons/effects/lighting_overlay.dmi', get_turf(C), "transparent")
+			var/image/I = image('icons/effects/lighting_overlay.dmi', get_turf(C), "blank")
 			I.plane = DEFAULT_PLANE
 			I.layer = EXPOSED_WIRE_LAYER
 			I.alpha = 127
@@ -490,5 +471,83 @@
 	var/material = input("Select material to spawn") as null|anything in SSmaterials.materials_by_name
 	if(!material)
 		return
-	var/decl/material/M = decls_repository.get_decl(material)
-	new M.stack_type(get_turf(mob), 50, M)
+	var/decl/material/M = SSmaterials.materials_by_name[material]
+	M.create_object(get_turf(mob), 50)
+
+/client/proc/force_ghost_trap_trigger()
+	set category = "Debug"
+	set name = "Force Ghost Trap Trigger"
+	if(!check_rights(R_DEBUG)) return
+	var/decl/ghosttrap/trap = input("Select a ghost trap.", "Force Ghost Trap Trigger") as null|anything in decls_repository.get_decl_paths_of_type(/decl/ghosttrap)
+	if(!trap)
+		return
+	trap = GET_DECL(trap)
+	trap.forced(mob)
+
+/client/proc/spawn_exoplanet(exoplanet_type as anything in subtypesof(/obj/effect/overmap/visitable/sector/exoplanet))
+	set category = "Debug"
+	set name = "Create Exoplanet"
+
+	var/budget = input("Ruins budget. Default is 5, a budget of 0 will not spawn any ruins, 5 will spawn around 3-5 ruins:", "Ruins Budget", 5) as num | null
+
+	if (isnull(budget) || budget < 0)
+		budget = 5
+
+	var/theme = input("Choose a theme:", "Theme") as null|anything in typesof(/datum/exoplanet_theme) | null
+
+	if (!theme)
+		theme = /datum/exoplanet_theme
+
+	var/daycycle = alert("Should the planet have a day-night cycle?","Day Night Cycle", "Yes", "No")
+
+	if (daycycle == "Yes")
+		daycycle = TRUE
+	else
+		daycycle = FALSE
+
+	var/last_chance = alert("Spawn exoplanet?", "Final Confirmation", "Yes", "Cancel")
+
+	if (last_chance == "Cancel")
+		return
+
+	var/obj/effect/overmap/visitable/sector/exoplanet/new_planet = new exoplanet_type(null, world.maxx, world.maxy)
+	new_planet.features_budget = budget
+	new_planet.themes = list(new theme)
+	new_planet.daycycle = daycycle
+
+	new_planet.update_daynight()
+	new_planet.build_level()
+
+/client/proc/display_del_log()
+	set category = "Debug"
+	set name = "Display del() Log"
+	set desc = "Display del's log of everything that's passed through it."
+
+	if(!check_rights(R_DEBUG))
+		return
+
+	. = list("<B>List of things that have gone through qdel this round</B><BR><BR><ol>")
+	sortTim(SSgarbage.items, cmp = /proc/cmp_qdel_item_time, associative = TRUE)
+	for(var/path in SSgarbage.items)
+		var/datum/qdel_item/I = SSgarbage.items[path]
+		. += "<li><u>[path]</u><ul>"
+		if(I.failures)
+			. += "<li>Failures: [I.failures]</li>"
+		. += "<li>qdel() Count: [I.qdels]</li>"
+		if(I.early_destroy)
+			. += "<li>Early destroy count: [I.early_destroy]</li>"
+		. += "<li>Destroy() Cost: [I.destroy_time]ms</li>"
+		if(I.hard_deletes)
+			. += "<li>Total Hard Deletes [I.hard_deletes]</li>"
+			. += "<li>Time Spent Hard Deleting: [I.hard_delete_time]ms</li>"
+		if(I.slept_destroy)
+			. += "<li>Sleeps: [I.slept_destroy]</li>"
+		if(I.no_respect_force)
+			. += "<li>Ignored force: [I.no_respect_force]</li>"
+		if(I.no_hint)
+			. += "<li>No hint: [I.no_hint]</li>"
+		. += "</ul></li>"
+
+	. += "</ol>"
+
+	show_browser(usr, JOINTEXT(.), "window=dellog")

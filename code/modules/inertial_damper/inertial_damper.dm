@@ -1,5 +1,5 @@
 #define WARNING_DELAY 80			//seconds between warnings.
-var/list/ship_inertial_dampers = list()
+var/global/list/ship_inertial_dampers = list()
 
 /datum/ship_inertial_damper
 	var/name = "ship inertial damper"
@@ -73,9 +73,9 @@ var/list/ship_inertial_dampers = list()
 	update_nearby_tiles(locs)
 	controller = new(src)
 
-	for(var/obj/effect/overmap/visitable/ship/S in SSshuttle.ships)
-		if(S.check_ownership(src))
-			S.inertial_dampers |= controller
+	var/obj/effect/overmap/visitable/ship/S = get_owning_overmap_object()
+	if(istype(S))
+		S.inertial_dampers |= controller
 
 	src.overlays += "activated"
 
@@ -90,7 +90,8 @@ var/list/ship_inertial_dampers = list()
 		if(!warned && damping_strength < 0.3*initial(damping_strength) && target_strength < damping_strength && lastwarning - world.timeofday >= WARNING_DELAY)
 			warned = TRUE
 			lastwarning = world.timeofday
-			GLOB.global_announcer.autosay("WARNING: Inertial dampening level dangerously low! All crew must be secured before firing thrusters!", "inertial damper Monitor")
+			var/obj/item/radio/announcer = get_global_announcer()
+			announcer.autosay("WARNING: Inertial dampening level dangerously low! All crew must be secured before firing thrusters!", "inertial damper Monitor")
 	else
 		delta = initial(delta) * 5 // rate of dampening strength decay is higher if we have no power
 		target_strength = 0
@@ -180,7 +181,7 @@ var/list/ship_inertial_dampers = list()
 			return TOPIC_NOACTION
 
 		warned = FALSE
-		target_strength = Clamp(new_strength, 0, max_strength)
+		target_strength = clamp(new_strength, 0, max_strength)
 		return TOPIC_REFRESH
 
 	return TOPIC_NOACTION

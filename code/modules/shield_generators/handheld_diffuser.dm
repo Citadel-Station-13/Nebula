@@ -4,17 +4,18 @@
 	icon = 'icons/obj/machines/shielding.dmi'
 	icon_state = "hdiffuser_off"
 	origin_tech = "{'magnets':5,'powerstorage':5,'esoteric':2}"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GOLD = MATTER_AMOUNT_TRACE,
-		MAT_SILVER = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE
 	)
 
 	var/obj/item/cell/device/cell
 	var/enabled = 0
 
 /obj/item/shield_diffuser/on_update_icon()
+	. = ..()
 	if(enabled)
 		icon_state = "hdiffuser_on"
 	else
@@ -37,7 +38,7 @@
 	if(!enabled)
 		return
 
-	for(var/direction in GLOB.cardinal)
+	for(var/direction in global.cardinal)
 		var/turf/simulated/shielded_tile = get_step(get_turf(src), direction)
 		for(var/obj/effect/shield/S in shielded_tile)
 			// 10kJ per pulse, but gap in the shield lasts for longer than regular diffusers.

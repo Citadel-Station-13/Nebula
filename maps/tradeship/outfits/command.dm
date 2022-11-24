@@ -1,14 +1,14 @@
 /decl/hierarchy/outfit/job/tradeship/captain
-	name = TRADESHIP_OUTFIT_JOB_NAME("Captain")
-	uniform = /obj/item/clothing/under/casual_pants/classicjeans
+	name = "Tradeship - Job - Tradehouse Captain"
+	uniform = /obj/item/clothing/pants/baggy/casual/classicjeans
 	shoes = /obj/item/clothing/shoes/color/black
-	pda_type = /obj/item/modular_computer/pda/captain
+	pda_type = /obj/item/modular_computer/pda/heads/captain
 	r_pocket = /obj/item/radio
-	id_type = /obj/item/card/id/gold/tradeship_captain
+	id_type = /obj/item/card/id/gold
 
 /decl/hierarchy/outfit/job/tradeship/captain/post_equip(var/mob/living/carbon/human/H)
 	..()
-	var/obj/item/clothing/uniform = H.w_uniform
+	var/obj/item/clothing/uniform = H.get_equipped_item(slot_w_uniform_str)
 	if(uniform)
 		var/obj/item/clothing/accessory/toggleable/hawaii/random/eyegore = new()
 		if(uniform.can_attach_accessory(eyegore))
@@ -17,18 +17,11 @@
 			qdel(eyegore)
 
 /decl/hierarchy/outfit/job/tradeship/mate
-	name = TRADESHIP_OUTFIT_JOB_NAME("First Mate")
+	name = "Tradeship - Job - Tradehouse First Mate"
 	uniform = /obj/item/clothing/under/suit_jacket/checkered
 	shoes = /obj/item/clothing/shoes/dress
 	glasses = /obj/item/clothing/glasses/sunglasses/big
 	pda_type = /obj/item/modular_computer/pda/cargo
-	l_hand = /obj/item/material/clipboard
-	id_type = /obj/item/card/id/silver/tradeship_first_mate
+	hands = list(/obj/item/clipboard)
+	id_type = /obj/item/card/id/silver
 	pda_type = /obj/item/modular_computer/pda/heads/hop
-
-//id cards
-/obj/item/card/id/gold/tradeship_captain
-	job_access_type = /datum/job/tradeship_captain
-
-/obj/item/card/id/silver/tradeship_first_mate
-	job_access_type = /datum/job/tradeship_first_mate

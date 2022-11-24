@@ -89,8 +89,8 @@
 					yo.data = round(yo.data, 1)
 
 				var/turf/T = get_turf(assembly)
-				var/target_x = Clamp(T.x + xo.data, 0, world.maxx)
-				var/target_y = Clamp(T.y + yo.data, 0, world.maxy)
+				var/target_x = clamp(T.x + xo.data, 0, world.maxx)
+				var/target_y = clamp(T.y + yo.data, 0, world.maxy)
 
 				assembly.visible_message("<span class='danger'>[assembly] fires [installed_gun]!</span>")
 				shootAt(locate(target_x, target_y, T.z))
@@ -204,7 +204,7 @@
 		var/datum/integrated_io/detonation_time = inputs[1]
 		var/dt
 		if(isnum(detonation_time.data) && detonation_time.data > 0)
-			dt = Clamp(detonation_time.data, 1, 12)*10
+			dt = clamp(detonation_time.data, 1, 12)*10
 		else
 			dt = 15
 		addtimer(CALLBACK(attached_grenade, /obj/item/grenade.proc/activate), dt)
@@ -312,7 +312,7 @@
 
 /obj/item/integrated_circuit/manipulation/seed_extractor/do_work()
 	..()
-	var/obj/item/chems/food/snacks/grown/O = get_pin_data_as_type(IC_INPUT, 1, /obj/item/chems/food/snacks/grown)
+	var/obj/item/chems/food/grown/O = get_pin_data_as_type(IC_INPUT, 1, /obj/item/chems/food/grown)
 	if(!check_target(O))
 		push_data()
 		activate_pin(2)
@@ -351,7 +351,7 @@
 	var/atom/movable/acting_object = get_object()
 	var/turf/T = get_turf(acting_object)
 	var/obj/item/AM = get_pin_data_as_type(IC_INPUT, 1, /obj/item)
-	if(!QDELETED(AM) && !istype(AM, /obj/item/electronic_assembly) && !istype(AM, /obj/item/transfer_valve) && !istype(AM, /obj/item/material/twohanded) && !istype(assembly.loc, /obj/item/implant))
+	if(!QDELETED(AM) && !istype(AM, /obj/item/electronic_assembly) && !istype(AM, /obj/item/transfer_valve) && !istype(AM, /obj/item/twohanded) && !istype(assembly.loc, /obj/item/implant))
 		var/mode = get_pin_data(IC_INPUT, 2)
 		if(mode == 1)
 			if(check_target(AM))
@@ -420,9 +420,9 @@
 					set_pin_data(IC_OUTPUT, 1, TRUE)
 					pulling = to_pull
 					acting_object.visible_message("\The [acting_object] starts pulling \the [to_pull] around.")
-					GLOB.moved_event.register(to_pull, src, .proc/check_pull) //Whenever the target moves, make sure we can still pull it!
-					GLOB.destroyed_event.register(to_pull, src, .proc/stop_pulling) //Stop pulling if it gets destroyed
-					GLOB.moved_event.register(acting_object, src, .proc/pull) //Make sure we actually pull it.
+					events_repository.register(/decl/observ/moved, to_pull, src, .proc/check_pull) //Whenever the target moves, make sure we can still pull it!
+					events_repository.register(/decl/observ/destroyed, to_pull, src, .proc/stop_pulling) //Stop pulling if it gets destroyed
+					events_repository.register(/decl/observ/moved, acting_object, src, .proc/pull) //Make sure we actually pull it.
 			push_data()
 		if(3)
 			if(pulling)
@@ -445,7 +445,7 @@
 
 /obj/item/integrated_circuit/manipulation/claw/proc/pull()
 	var/obj/acting_object = get_object()
-	if(istype(acting_object.loc, /turf))
+	if(isturf(acting_object.loc))
 		step_towards(pulling,src)
 	else
 		stop_pulling()
@@ -456,10 +456,10 @@
 
 /obj/item/integrated_circuit/manipulation/claw/proc/stop_pulling()
 	var/atom/movable/AM = get_object()
-	GLOB.moved_event.unregister(pulling, src)
-	GLOB.moved_event.unregister(AM, src)
-	AM.visible_message("\The [AM] stops pulling \the [pulling]")
-	GLOB.destroyed_event.unregister(pulling, src)
+	events_repository.unregister(/decl/observ/moved, pulling, src)
+	events_repository.unregister(/decl/observ/moved, AM, src)
+	AM.visible_message("\The [AM] stops pulling \the [pulling].")
+	events_repository.unregister(/decl/observ/destroyed, pulling, src)
 	pulling = null
 	set_pin_data(IC_OUTPUT, 1, FALSE)
 	activate_pin(3)
@@ -495,7 +495,7 @@
 	var/target_y_rel = round(get_pin_data(IC_INPUT, 2))
 	var/obj/item/A = get_pin_data_as_type(IC_INPUT, 3, /obj/item)
 
-	if(!A || A.anchored || A.throwing || A == assembly || istype(A, /obj/item/material/twohanded) || istype(A, /obj/item/transfer_valve))
+	if(!A || A.anchored || A.throwing || A == assembly || istype(A, /obj/item/twohanded) || istype(A, /obj/item/transfer_valve))
 		return
 
 	if (istype(assembly.loc, /obj/item/implant/compressed)) //Prevents the more abusive form of chestgun.
@@ -524,9 +524,9 @@
 	// If the item is in a grabber circuit we'll update the grabber's outputs after we've thrown it.
 	var/obj/item/integrated_circuit/manipulation/grabber/G = A.loc
 
-	var/x_abs = Clamp(T.x + target_x_rel, 0, world.maxx)
-	var/y_abs = Clamp(T.y + target_y_rel, 0, world.maxy)
-	var/range = round(Clamp(sqrt(target_x_rel*target_x_rel+target_y_rel*target_y_rel),0,8),1)
+	var/x_abs = clamp(T.x + target_x_rel, 0, world.maxx)
+	var/y_abs = clamp(T.y + target_y_rel, 0, world.maxy)
+	var/range = round(clamp(sqrt(target_x_rel*target_x_rel+target_y_rel*target_y_rel),0,8),1)
 
 	assembly.visible_message("<span class='danger'>[assembly] has thrown [A]!</span>")
 	log_attack("[assembly] \ref[assembly] has thrown [A].")
@@ -537,9 +537,9 @@
 	if(istype(G))
 		G.update_outputs()
 
-/obj/item/integrated_circuit/manipulation/bluespace_rift
-	name = "bluespace rift generator"
-	desc = "This powerful circuit can open rifts to another realspace location through bluespace."
+/obj/item/integrated_circuit/manipulation/wormhole
+	name = "wormhole generator"
+	desc = "This powerful circuit can open micro-length wormholes between two points in space."
 	extended_desc = "If a valid teleporter console is supplied as input then its selected teleporter beacon will be used as destination point, \
 					and if not an undefined destination point is selected. \
 					Rift direction is a cardinal value determening in which direction the rift will be opened, relative the local north. \
@@ -555,14 +555,14 @@
 	spawn_flags = IC_SPAWN_RESEARCH
 	action_flags = IC_ACTION_LONG_RANGE
 
-	origin_tech = "{'magnets':1,'bluespace':3}"
-	material = MAT_STEEL
+	origin_tech = "{'magnets':1,'wormholes':3}"
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_SILVER = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GOLD = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_TRACE
 	)
 
-/obj/item/integrated_circuit/manipulation/bluespace_rift/do_work()
+/obj/item/integrated_circuit/manipulation/wormhole/do_work()
 	var/obj/machinery/computer/teleporter/tporter = get_pin_data_as_type(IC_INPUT, 1, /obj/machinery/computer/teleporter)
 	var/step_dir = get_pin_data(IC_INPUT, 2)
 
@@ -574,7 +574,7 @@
 		playsound(src, 'sound/effects/sparks2.ogg', 50, 1)
 		return
 
-	if(isnum(step_dir) && (!step_dir || (step_dir in GLOB.cardinal)))
+	if(isnum(step_dir) && (!step_dir || (step_dir in global.cardinal)))
 		rift_location = get_step(rift_location, step_dir) || rift_location
 	else
 		var/obj/item/electronic_assembly/assembly = get_object()
@@ -636,7 +636,7 @@
 		controlling = L
 		card.dropInto(src)
 		aicard = card
-		user.visible_message("\The [user] loads \the [card] into \the [src]'s device slot")
+		user.visible_message("\The [user] loads \the [card] into \the [src]'s device slot.")
 		to_chat(L, "<span class='notice'>### IICC FIRMWARE LOADED ###</span>")
 
 /obj/item/integrated_circuit/manipulation/ai/proc/unload_ai()

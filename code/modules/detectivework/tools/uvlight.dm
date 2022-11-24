@@ -2,18 +2,16 @@
 	name = "\improper UV light"
 	desc = "A small handheld black light."
 	icon = 'icons/obj/items/device/ultraviolet.dmi'
-	icon_state = "uv_off"
-	slot_flags = SLOT_BELT
+	icon_state = ICON_STATE_WORLD
+	slot_flags = SLOT_LOWER_BODY
 	w_class = ITEM_SIZE_SMALL
-	item_state = "electronic"
 	action_button_name = "Toggle UV light"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	origin_tech = "{'magnets':1,'engineering':1}"
-
+	z_flags = ZMM_MANGLE_PLANES
 	var/list/scanned = list()
 	var/list/stored_alpha = list()
 	var/list/reset_objects = list()
-
 	var/range = 3
 	var/on = 0
 	var/step_alpha = 50
@@ -21,14 +19,31 @@
 /obj/item/uv_light/attack_self(var/mob/user)
 	on = !on
 	if(on)
-		set_light(0.5, 0.1, range, 2, "#007fff")
+		set_light(range, 2, "#007fff")
 		START_PROCESSING(SSobj, src)
-		icon_state = "uv_on"
 	else
 		set_light(0)
 		clear_last_scan()
 		STOP_PROCESSING(SSobj, src)
-		icon_state = "uv_off"
+	update_icon()
+
+/obj/item/uv_light/dropped(mob/user)
+	. = ..()
+	if(on)
+		update_icon()
+
+/obj/item/uv_light/equipped(mob/user, slot)
+	. = ..()
+	if(on)
+		update_icon()
+
+/obj/item/uv_light/on_update_icon()
+	. = ..()
+	if(on)
+		if(plane == HUD_PLANE)
+			add_overlay("[icon_state]-on")
+		else
+			add_overlay(emissive_overlay(icon, "[icon_state]-on"))
 
 /obj/item/uv_light/proc/clear_last_scan()
 	if(scanned.len)

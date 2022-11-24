@@ -11,9 +11,6 @@
 /datum/fabricator_recipe/protolathe/tool/brace_jack
 	path = /obj/item/crowbar/brace_jack
 
-/datum/fabricator_recipe/protolathe/tool/clamp
-	path = /obj/item/clamp
-
 /datum/fabricator_recipe/protolathe/tool/inducer
 	path = /obj/item/inducer
 
@@ -33,24 +30,24 @@
 	path = /obj/item/oxycandle
 
 /datum/fabricator_recipe/protolathe/tool/scalpel_laser1
-	path = /obj/item/scalpel/laser1
+	path = /obj/item/scalpel/laser
 
 /datum/fabricator_recipe/protolathe/tool/scalpel_laser2
-	path = /obj/item/scalpel/laser2
+	path = /obj/item/scalpel/laser/upgraded
 
 /datum/fabricator_recipe/protolathe/tool/scalpel_laser3
-	path = /obj/item/scalpel/laser3
+	path = /obj/item/scalpel/laser/advanced
 
 /datum/fabricator_recipe/protolathe/tool/scalpel_manager
-	path = /obj/item/scalpel/manager
+	path = /obj/item/incision_manager
 
 /datum/fabricator_recipe/protolathe/tool/noreactsyringe
 	path = /obj/item/chems/syringe/noreact
 
-/datum/fabricator_recipe/protolathe/tool/bluespacesyringe
-	path = /obj/item/chems/syringe/bluespace
+/datum/fabricator_recipe/protolathe/tool/advancedsyringe
+	path = /obj/item/chems/syringe/advanced
 
-/datum/fabricator_recipe/protolathe/tool/slime_scanner
+/datum/fabricator_recipe/protolathe/tool/xenoscanner
 	path = /obj/item/scanner/xenobio
 
 /datum/fabricator_recipe/protolathe/tool/robot_scanner
@@ -100,5 +97,5 @@
 /datum/fabricator_recipe/protolathe/tool/rped
 	path = /obj/item/storage/part_replacer
 
-/datum/fabricator_recipe/protolathe/tool/rped_bluespace
-	path = /obj/item/storage/part_replacer/bluespace
+/datum/fabricator_recipe/protolathe/tool/rped_advanced
+	path = /obj/item/storage/part_replacer/advanced

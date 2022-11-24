@@ -1,4 +1,4 @@
-/datum/species/starlight/shadow
+/decl/species/starlight/shadow
 	name = "Shadow"
 	name_plural = "shadows"
 	description = "A being of pure darkness, hates the light and all that comes with it."
@@ -11,7 +11,6 @@
 
 	unarmed_attacks = list(/decl/natural_attack/claws/strong, /decl/natural_attack/bite/sharp)
 	darksight_range = 8
-	darksight_tint = DARKTINT_GOOD
 	siemens_coefficient = 0
 
 	blood_color = COLOR_GRAY80
@@ -22,7 +21,7 @@
 
 	species_flags = SPECIES_FLAG_NO_SCAN | SPECIES_FLAG_NO_SLIP | SPECIES_FLAG_NO_POISON | SPECIES_FLAG_NO_EMBED
 
-/datum/species/starlight/shadow/handle_environment_special(var/mob/living/carbon/human/H)
+/decl/species/starlight/shadow/handle_environment_special(var/mob/living/carbon/human/H)
 	if(H.InStasis() || H.stat == DEAD || H.isSynthetic())
 		return
 	var/light_amount = 0

@@ -1,6 +1,6 @@
 
 //This is a list of words which are ignored by the parser when comparing message contents for names. MUST BE IN LOWER CASE!
-var/list/adminhelp_ignored_words = list("unknown","the","a","an","of","monkey","alien","as")
+var/global/list/adminhelp_ignored_words = list("unknown","the","a","an","of","monkey","alien","as")
 
 /proc/generate_ahelp_key_words(var/mob/mob, var/msg)
 	var/list/surnames = list()
@@ -68,7 +68,7 @@ var/list/adminhelp_ignored_words = list("unknown","the","a","an","of","monkey","
 
 	//handle muting and automuting
 	if(prefs.muted & MUTE_ADMINHELP)
-		to_chat(src, "<font color='red'>Error: Admin-PM: You cannot send adminhelps (Muted).</font>")
+		to_chat(src, SPAN_WARNING("Error: Admin-PM: You cannot send adminhelps (Muted)."))
 		return
 
 	adminhelped = 1 //Determines if they get the message to reply by clicking the name.
@@ -110,6 +110,10 @@ var/list/adminhelp_ignored_words = list("unknown","the","a","an","of","monkey","
 	ticket.msgs += new /datum/ticket_msg(src.ckey, null, original_msg)
 	update_ticket_panels()
 
+	if(establish_db_connection())
+		var/sql_text = "HELP [src.ckey]: [sanitize_sql(original_msg)]\n"
+		var/DBQuery/ticket_text = dbcon.NewQuery("UPDATE `erro_admin_tickets` SET `text` = '[sql_text]' WHERE `round` = '[game_id]' AND `inround_id` = '[ticket.id]';")
+		ticket_text.Execute()
 
 	//Options bar:  mob, details ( admin = 2, dev = 3, character name (0 = just ckey, 1 = ckey and character name), link? (0 no don't make it a link, 1 do so),
 	//		highlight special roles (0 = everyone has same looking name, 1 = antags / special roles get a golden name)
@@ -118,17 +122,17 @@ var/list/adminhelp_ignored_words = list("unknown","the","a","an","of","monkey","
 
 	var/admin_number_afk = 0
 
-	for(var/client/X in GLOB.admins)
+	for(var/client/X in global.admins)
 		if((R_ADMIN|R_MOD) & X.holder.rights)
 			if(X.is_afk())
 				admin_number_afk++
-			if(X.get_preference_value(/datum/client_preference/staff/play_adminhelp_ping) == GLOB.PREF_HEAR)
+			if(X.get_preference_value(/datum/client_preference/staff/play_adminhelp_ping) == PREF_HEAR)
 				sound_to(X, 'sound/effects/adminhelp.ogg')
 			to_chat(X, msg)
 			window_flash(X)
 	//show it to the person adminhelping too
-	to_chat(src, "<font color='blue'>PM to-<b>Staff</b> (<a href='?src=\ref[usr];close_ticket=\ref[ticket]'>CLOSE</a>): [original_msg]</font>")
-	var/admin_number_present = GLOB.admins.len - admin_number_afk
+	to_chat(src, SPAN_BLUE("PM to-<b>Staff</b> (<a href='?src=\ref[usr];close_ticket=\ref[ticket]'>CLOSE</a>): [original_msg]"))
+	var/admin_number_present = global.admins.len - admin_number_afk
 	log_admin("HELP: [key_name(src)]: [original_msg] - heard by [admin_number_present] non-AFK admins.")
 	if(admin_number_present <= 0)
 		adminmsg2adminirc(src, null, "[html_decode(original_msg)] - !![admin_number_afk ? "All admins AFK ([admin_number_afk])" : "No admins online"]!!")
@@ -136,5 +140,8 @@ var/list/adminhelp_ignored_words = list("unknown","the","a","an","of","monkey","
 		adminmsg2adminirc(src, null, "[html_decode(original_msg)]")
 
 	SSstatistics.add_field_details("admin_verb","AH") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+	SSwebhooks.send(WEBHOOK_AHELP_SENT, list("name" = "Ticket ([ticket.id]) (Game ID: [game_id]) Ticket Opened", "body" = "[ticket.owner.key_name(0)] has opened a ticket. Subject: [original_msg]"))
+
 	return
 

@@ -1,16 +1,25 @@
-/mob/living/carbon/human/add_grab(var/obj/item/grab/grab)
-	. = put_in_active_hand(grab)
+/mob/living/carbon/human/add_grab(var/obj/item/grab/grab, var/defer_hand = FALSE)
+	if(defer_hand)
+		. = put_in_hands(grab)
+	else
+		. = put_in_active_hand(grab)
 
-/mob/living/carbon/human/can_be_grabbed(var/mob/grabber, var/target_zone)
+/mob/living/carbon/human/can_be_grabbed(var/mob/grabber, var/target_zone, var/defer_hand = FALSE)
 	. = ..()
 	if(.)
-		var/obj/item/organ/organ = target_zone && organs_by_name[target_zone]
+		var/obj/item/organ/external/organ = GET_EXTERNAL_ORGAN(src, check_zone(target_zone, src))
 		if(!istype(organ))
 			to_chat(grabber, SPAN_WARNING("\The [src] is missing that body part!"))
 			return FALSE
 		if(grabber == src)
-			var/list/bad_parts = hand ? list(BP_L_ARM, BP_L_HAND) : list(BP_R_ARM, BP_R_HAND)
-			if(organ && (organ.organ_tag in bad_parts))
+			var/using_slot = defer_hand ? get_empty_hand_slot() : get_active_held_item_slot()
+			if(!using_slot)
+				to_chat(src, SPAN_WARNING("You cannot grab yourself without a usable hand!"))
+				return FALSE
+			var/list/bad_parts = list(organ.organ_tag) | organ.parent_organ
+			for(var/obj/item/organ/external/child in organ.children)
+				bad_parts |= child.organ_tag
+			if(using_slot in bad_parts)
 				to_chat(src, SPAN_WARNING("You can't grab your own [organ.name] with itself!"))
 				return FALSE
 		if(pull_damage())

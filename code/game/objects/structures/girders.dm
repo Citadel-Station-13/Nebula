@@ -5,9 +5,13 @@
 	anchored = FALSE
 	density =  TRUE
 	layer =    BELOW_OBJ_LAYER
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
 	material_alteration =    MAT_FLAG_ALTERATION_NAME | MAT_FLAG_ALTERATION_COLOR
 	tool_interaction_flags = (TOOL_INTERACTION_ANCHOR | TOOL_INTERACTION_DECONSTRUCT)
 	maxhealth = 100
+	parts_amount = 2
+	parts_type = /obj/item/stack/material/strut
+
 	var/cover = 50
 	var/prepped_for_fakewall
 
@@ -17,11 +21,10 @@
 
 /obj/structure/girder/can_unanchor(var/mob/user)
 	. = ..()
-	if(!anchored && .)
-		var/turf/simulated/open/T = loc
-		if(istype(T))
-			to_chat(user, SPAN_WARNING("You can only secure \the [src] to solid ground."))
-			return FALSE
+	var/turf/T = loc
+	if(!anchored && . && (!istype(T) || T.is_open()))
+		to_chat(user, SPAN_WARNING("You can only secure \the [src] to solid ground."))
+		return FALSE
 
 /obj/structure/girder/handle_default_screwdriver_attackby(var/mob/user, var/obj/item/screwdriver)
 
@@ -44,7 +47,7 @@
 	return TRUE
 
 /obj/structure/girder/on_update_icon()
-	. = ..()
+	..()
 	if(!anchored)
 		icon_state = "displaced"
 	else if(reinf_material)
@@ -57,13 +60,13 @@
 	anchored = prob(50)
 
 /obj/structure/girder/bullet_act(var/obj/item/projectile/Proj)
-	
+
 	var/effective_cover = cover
 	if(reinf_material)
 		effective_cover *= 2
-	if(!anchored) 
+	if(!anchored)
 		effective_cover *= 0.5
-	effective_cover = Clamp(Floor(effective_cover), 0, 100)
+	effective_cover = clamp(FLOOR(effective_cover), 0, 100)
 	if(Proj.original != src && !prob(effective_cover))
 		return PROJECTILE_CONTINUE
 	var/damage = Proj.get_structure_damage()
@@ -72,7 +75,7 @@
 	if(!istype(Proj, /obj/item/projectile/beam))
 		damage *= 0.4
 	if(reinf_material)
-		damage = Floor(damage * 0.75)
+		damage = FLOOR(damage * 0.75)
 	..()
 	if(damage)
 		take_damage(damage)
@@ -93,41 +96,36 @@
 	. = ..()
 
 /obj/structure/girder/attackby(var/obj/item/W, var/mob/user)
-	. = ..()
-	if(!.)
-
-		// Other methods of quickly destroying a girder.
-		if(W.is_special_cutting_tool(TRUE))
-			if(istype(W, /obj/item/gun/energy/plasmacutter))
-				var/obj/item/gun/energy/plasmacutter/cutter = W
-				if(!cutter.slice(user))
-					return
-			playsound(src.loc, 'sound/items/Welder.ogg', 100, 1)
-			visible_message(SPAN_NOTICE("\The [user] begins slicing apart \the [src] with \the [W]."))
-			if(do_after(user,reinf_material ? 40: 20,src))
-				visible_message(SPAN_NOTICE("\The [user] slices apart \the [src] with \the [W]."))
-				dismantle()
-			return TRUE
-		if(istype(W, /obj/item/pickaxe/diamonddrill))
-			playsound(src.loc, 'sound/weapons/Genhit.ogg', 100, 1)
-			visible_message(SPAN_NOTICE("\The [user] begins drilling through \the [src] with \the [W]."))
-			if(do_after(user,reinf_material ? 60 : 40,src))
-				visible_message(SPAN_NOTICE("\The [user] drills through \the [src] with \the [W]."))
-				dismantle()
-			return TRUE
-		// Reinforcing a girder, or turning it into a wall.
-		if(istype(W, /obj/item/stack/material))
-			if(anchored)
-				return construct_wall(W, user)
-			else
-				if(reinf_material)
-					to_chat(user, SPAN_WARNING("\The [src] is already reinforced with [reinf_material.solid_name]."))
-				else
-					return reinforce_with_material(W, user)
-			return TRUE
-		// Other objects.
-		take_damage(W.force)
+	// Other methods of quickly destroying a girder.
+	if(W.is_special_cutting_tool(TRUE))
+		if(istype(W, /obj/item/gun/energy/plasmacutter))
+			var/obj/item/gun/energy/plasmacutter/cutter = W
+			if(!cutter.slice(user))
+				return
+		playsound(src.loc, 'sound/items/Welder.ogg', 100, 1)
+		visible_message(SPAN_NOTICE("\The [user] begins slicing apart \the [src] with \the [W]."))
+		if(do_after(user,reinf_material ? 40: 20,src))
+			visible_message(SPAN_NOTICE("\The [user] slices apart \the [src] with \the [W]."))
+			dismantle()
 		return TRUE
+	if(istype(W, /obj/item/pickaxe/diamonddrill))
+		playsound(src.loc, 'sound/weapons/Genhit.ogg', 100, 1)
+		visible_message(SPAN_NOTICE("\The [user] begins drilling through \the [src] with \the [W]."))
+		if(do_after(user,reinf_material ? 60 : 40,src))
+			visible_message(SPAN_NOTICE("\The [user] drills through \the [src] with \the [W]."))
+			dismantle()
+		return TRUE
+	// Reinforcing a girder, or turning it into a wall.
+	if(istype(W, /obj/item/stack/material))
+		if(anchored)
+			return construct_wall(W, user)
+		else
+			if(reinf_material)
+				to_chat(user, SPAN_WARNING("\The [src] is already reinforced with [reinf_material.solid_name]."))
+			else
+				return reinforce_with_material(W, user)
+		return TRUE
+	. = ..()
 
 /obj/structure/girder/proc/construct_wall(obj/item/stack/material/S, mob/user)
 	if(S.get_amount() < 2)
@@ -190,14 +188,6 @@
 	update_icon()
 	return 1
 
-/obj/structure/girder/attack_hand(mob/user)
-	if (MUTATION_HULK in user.mutations)
-		visible_message(SPAN_DANGER("\The [user] smashes \the [src] apart!"))
-		dismantle()
-		return
-	return ..()
-
-
 /obj/structure/girder/explosion_act(severity)
 	..()
 	if(severity == 1 || (severity == 2 && prob(30)) || (severity == 3 && prob(5)))
@@ -216,10 +206,10 @@
 	. = ..()
 
 /obj/structure/girder/wood
-	material = MAT_MAHOGANY
+	material = /decl/material/solid/wood/mahogany
 
 /obj/structure/grille/wood
-	material = MAT_MAHOGANY
+	material = /decl/material/solid/wood/mahogany
 
 /obj/structure/lattice/wood
-	material = MAT_MAHOGANY
+	material = /decl/material/solid/wood/mahogany

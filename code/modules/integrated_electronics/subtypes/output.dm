@@ -48,7 +48,7 @@
 	var/list/nearby_things = range(0, get_turf(src))
 	for(var/mob/M in nearby_things)
 		var/obj/O = assembly ? assembly : src
-		to_chat(M, "<span class='notice'>\icon[O] [stuff_to_display]</span>")
+		to_chat(M, "<span class='notice'>[html_icon(O)] [stuff_to_display]</span>")
 
 /obj/item/integrated_circuit/output/screen/large
 	name = "large screen"
@@ -60,7 +60,7 @@
 /obj/item/integrated_circuit/output/screen/large/do_work()
 	..()
 	var/obj/O = assembly ? get_turf(assembly) : loc
-	O.visible_message("<span class='notice'>\icon[O]  [stuff_to_display]</span>")
+	O.visible_message("<span class='notice'>[html_icon(O)]  [stuff_to_display]</span>")
 
 /obj/item/integrated_circuit/output/light
 	name = "light"
@@ -75,6 +75,7 @@
 	var/light_brightness = 1
 	var/light_rgb = "#ffffff"
 	power_draw_idle = 0 // Adjusted based on brightness.
+	light_wedge = LIGHT_WIDE
 
 /obj/item/integrated_circuit/output/light/do_work()
 	light_toggled = !light_toggled
@@ -83,7 +84,7 @@
 /obj/item/integrated_circuit/output/light/proc/update_lighting()
 	if(light_toggled)
 		if(assembly)
-			assembly.set_light(light_brightness, 1, 4, 2, light_rgb)
+			assembly.set_light(4, light_brightness, light_rgb, light_wedge)
 	else
 		if(assembly)
 			assembly.set_light(0)
@@ -113,7 +114,7 @@
 	var/brightness = get_pin_data(IC_INPUT, 2)
 
 	if(new_color && isnum(brightness))
-		brightness = Clamp(brightness, 0, 1)
+		brightness = clamp(brightness, 0, 1)
 		light_rgb = new_color
 		light_brightness = brightness
 
@@ -152,7 +153,7 @@
 		var/selected_sound = sounds[ID]
 		if(!selected_sound)
 			return
-		vol = Clamp(vol ,0 , 100)
+		vol = clamp(vol ,0 , 100)
 		playsound(get_turf(src), selected_sound, vol, freq, -1)
 
 /obj/item/integrated_circuit/output/sound/on_data_written()
@@ -228,39 +229,41 @@
 	spawn_flags = IC_SPAWN_DEFAULT|IC_SPAWN_RESEARCH
 	action_flags = IC_ACTION_LONG_RANGE
 	power_draw_idle = 0 // Raises to 20 when on.
-	var/obj/machinery/camera/network/research/camera
-	var/updating = FALSE
+	var/camera_name = "Video Camera Circuit"
 
 /obj/item/integrated_circuit/output/video_camera/Initialize()
 	. = ..()
-	camera = new(src)
-	camera.replace_networks(list(NETWORK_THUNDER))
+	set_extension(src, /datum/extension/network_device/camera/circuit, null, null, null, TRUE, list(CAMERA_CHANNEL_RESEARCH), camera_name, FALSE, TRUE)
+
 	on_data_written()
 
-/obj/item/integrated_circuit/output/video_camera/Destroy()
-	QDEL_NULL(camera)
-	return ..()
-
-/obj/item/integrated_circuit/output/video_camera/proc/set_camera_status(var/status)
-	if(camera)
-		camera.set_status(status)
-		power_draw_idle = camera.status ? 20 : 0
-		if(camera.status) // Ensure that there's actually power.
-			if(!draw_idle_power())
-				power_fail()
+/obj/item/integrated_circuit/output/video_camera/attack_self(mob/user)
+	var/datum/extension/network_device/camera/circuit/D = get_extension(src, /datum/extension/network_device)
+	if(D)
+		D.ui_interact(user)
+		return
+	. = ..()
 
 /obj/item/integrated_circuit/output/video_camera/on_data_written()
-	if(camera)
-		var/cam_name = get_pin_data(IC_INPUT, 1)
-		var/cam_active = get_pin_data(IC_INPUT, 2)
-		if(!isnull(cam_name))
-			camera.c_tag = cam_name
-		set_camera_status(cam_active)
+	var/cam_name = get_pin_data(IC_INPUT, 1)
+	var/cam_active = get_pin_data(IC_INPUT, 2)
+	var/datum/extension/network_device/camera/circuit/D = get_extension(src, /datum/extension/network_device)
+	if(D)
+		D.display_name = cam_name
+	if(cam_active)
+		power_draw_idle = 20
 
 /obj/item/integrated_circuit/output/video_camera/power_fail()
-	if(camera)
-		set_camera_status(0)
-		set_pin_data(IC_INPUT, 2, FALSE)
+	power_draw_idle = 0
+	set_pin_data(IC_INPUT, 2, FALSE)
+
+/datum/extension/network_device/camera/circuit
+	expected_type = /obj/item/integrated_circuit/output/video_camera
+
+/datum/extension/network_device/camera/circuit/is_functional()
+	var/obj/item/integrated_circuit/output/video_camera/camera = holder
+	if(camera.power_draw_idle)
+		return TRUE
 
 /obj/item/integrated_circuit/output/led
 	name = "light-emitting diode"

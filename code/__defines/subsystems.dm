@@ -20,22 +20,25 @@
 // Subsystems shutdown in the reverse of the order they initialize in
 // The numbers just define the ordering, they are meaningless otherwise.
 
-#define SS_INIT_EARLY            19
-#define SS_INIT_GARBAGE          18
-#define SS_INIT_MATERIALS        17
-#define SS_INIT_PLANTS           16
-#define SS_INIT_ANTAGS           15
+#define SS_INIT_INPUT            22
+#define SS_INIT_EARLY            21
+#define SS_INIT_WEBHOOKS         20
+#define SS_INIT_MODPACKS         19
+#define SS_INIT_SECRETS          18
+#define SS_INIT_GARBAGE          17
+#define SS_INIT_MATERIALS        16
+#define SS_INIT_PLANTS           15
 #define SS_INIT_LORE             14
 #define SS_INIT_MISC             13
 #define SS_INIT_SKYBOX           12
 #define SS_INIT_MAPPING          11
-#define SS_INIT_DEPARTMENTS      10
-#define SS_INIT_JOBS             9
-#define SS_INIT_CHAR_SETUP       8
-#define SS_INIT_CIRCUIT          7
-#define SS_INIT_GRAPH            6
-#define SS_INIT_OPEN_SPACE       5
-#define SS_INIT_ATOMS            4
+#define SS_INIT_JOBS             10
+#define SS_INIT_CIRCUIT          9
+#define SS_INIT_GRAPH            8
+#define SS_INIT_OPEN_SPACE       7
+#define SS_INIT_ATOMS            6
+#define SS_INIT_PRE_CHAR_SETUP   5
+#define SS_INIT_CHAR_SETUP       4
 #define SS_INIT_MACHINES         3
 #define SS_INIT_ICON_UPDATE      2
 #define SS_INIT_OVERLAY          1
@@ -47,9 +50,9 @@
 #define SS_INIT_SHUTTLE         -5
 #define SS_INIT_GOALS           -5
 #define SS_INIT_LIGHTING        -6
-#define SS_INIT_ZCOPY           -7
+#define SS_INIT_WEATHER         -7
+#define SS_INIT_ZCOPY           -8
 #define SS_INIT_XENOARCH        -10
-#define SS_INIT_BAY_LEGACY      -12
 #define SS_INIT_TICKER          -20
 #define SS_INIT_UNIT_TESTS      -100
 
@@ -60,5 +63,4 @@
 #define RUNLEVEL_SETUP 2
 #define RUNLEVEL_GAME 4
 #define RUNLEVEL_POSTGAME 8
-
 #define RUNLEVELS_DEFAULT (RUNLEVEL_SETUP | RUNLEVEL_GAME | RUNLEVEL_POSTGAME)

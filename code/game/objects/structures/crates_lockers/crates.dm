@@ -49,7 +49,7 @@
 				return
 			to_chat(user, "<span class='notice'>You attach [W] to [src].</span>")
 			return
-	else if(isWirecutter(W))
+	else if(IS_WIRECUTTER(W))
 		if(rigged)
 			to_chat(user, "<span class='notice'>You cut away the wiring.</span>")
 			playsound(loc, 'sound/items/Wirecutter.ogg', 100, 1)
@@ -152,7 +152,7 @@
 	desc = "A crate of emergency rations."
 
 /obj/structure/closet/crate/freezer/rations/WillContain()
-	return list(/obj/random/mre = 6, /obj/item/chems/food/drinks/cans/waterbottle = 12)
+	return list(/obj/random/mre = 6, /obj/item/chems/drinks/cans/waterbottle = 12)
 
 /obj/structure/closet/crate/freezer/meat
 	name = "meat crate"
@@ -160,9 +160,9 @@
 
 /obj/structure/closet/crate/freezer/meat/WillContain()
 	return list(
-		/obj/item/chems/food/snacks/meat/beef = 4,
-		/obj/item/chems/food/snacks/meat/syntiflesh = 4,
-		/obj/item/chems/food/snacks/fish = 4
+		/obj/item/chems/food/meat/beef = 4,
+		/obj/item/chems/food/meat/syntiflesh = 4,
+		/obj/item/chems/food/fish = 4
 	)
 
 /obj/structure/closet/crate/bin
@@ -187,9 +187,9 @@
 	desc = "A secure weapons crate."
 	closet_appearance = /decl/closet_appearance/crate/secure/weapon
 
-/obj/structure/closet/crate/secure/phoron
-	name = "phoron crate"
-	desc = "A secure phoron crate."
+/obj/structure/closet/crate/secure/explosives
+	name = "explosives crate"
+	desc = "A secure exploxives crate."
 	closet_appearance = /decl/closet_appearance/crate/secure/hazard
 
 /obj/structure/closet/crate/secure/shuttle
@@ -226,7 +226,7 @@
 	storage_capacity = 2 * MOB_SIZE_LARGE
 	storage_types = CLOSET_STORAGE_ITEMS|CLOSET_STORAGE_STRUCTURES
 
-/obj/structure/closet/crate/secure/large/phoron
+/obj/structure/closet/crate/secure/large/supermatter
 	closet_appearance = /decl/closet_appearance/large_crate/secure/hazard
 
 //fluff variant
@@ -241,9 +241,9 @@
 /obj/structure/closet/crate/hydroponics/prespawned/WillContain()
 	return list(
 		/obj/item/chems/spray/plantbgone = 2,
-		/obj/item/material/minihoe = 2,
+		/obj/item/minihoe = 2,
 		/obj/item/storage/plants = 2,
-		/obj/item/material/hatchet = 2,
+		/obj/item/hatchet = 2,
 		/obj/item/wirecutters/clippers = 2,
 		/obj/item/scanner/plant = 2
 	)
@@ -257,6 +257,7 @@
 	closet_appearance = /decl/closet_appearance/cart/biohazard
 	storage_capacity = 2 * MOB_SIZE_LARGE
 	storage_types = CLOSET_STORAGE_ITEMS|CLOSET_STORAGE_MOBS|CLOSET_STORAGE_STRUCTURES
+	movable_flags = MOVABLE_FLAG_WHEELED
 
 /obj/structure/closet/crate/secure/biohazard/blanks/WillContain()
 	return list(/obj/structure/closet/body_bag/cryobag/blank)
@@ -272,6 +273,7 @@
 	desc = "A heavy cart used for organ disposal with markings indicating the things inside are probably gross."
 	req_access = list(access_surgery)
 	closet_appearance = /decl/closet_appearance/cart/biohazard/alt
+	movable_flags = MOVABLE_FLAG_WHEELED
 
 /obj/structure/closet/crate/paper_refill
 	name = "paper refill crate"
@@ -286,4 +288,4 @@
 	closet_appearance = /decl/closet_appearance/crate/radiation
 
 /obj/structure/closet/crate/uranium/WillContain()
-	return list(/obj/item/stack/material/uranium/ten = 5)
+	return list(/obj/item/stack/material/puck/mapped/uranium/ten = 5)

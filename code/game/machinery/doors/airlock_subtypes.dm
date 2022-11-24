@@ -139,16 +139,17 @@
 	emag_file = 'icons/obj/doors/external/emag.dmi'
 	frame_type = /obj/structure/door_assembly/door_assembly_ext
 	door_color = COLOR_NT_RED
-	paintable = AIRLOCK_PAINTABLE
+	paintable = PAINT_PAINTABLE
 	stock_part_presets = list(
 		/decl/stock_part_preset/radio/receiver/airlock/external_air = 1,
 		/decl/stock_part_preset/radio/event_transmitter/airlock/external_air = 1
 	)
 
-/obj/machinery/door/airlock/external/inherit_access_from_area()
-	..()
-	if(is_station_area(get_area(src)))
-		add_access_requirement(req_access, access_external_airlocks)
+/obj/machinery/door/airlock/external/get_auto_access()
+	. = ..()
+	var/area/A = get_area(src)
+	if(A && is_station_area(A))
+		LAZYADD(., access_external_airlocks)
 
 /obj/machinery/door/airlock/external/escapepod
 	name = "Escape Pod"
@@ -156,7 +157,7 @@
 
 /obj/machinery/door/airlock/external/escapepod/attackby(obj/item/C, mob/user)
 	if(panel_open && !arePowerSystemsOn())
-		if(isWrench(C))
+		if(IS_WRENCH(C))
 			playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 			user.visible_message(SPAN_WARNING("[user.name] starts frantically pumping the bolt override mechanism!"), SPAN_WARNING("You start frantically pumping the bolt override mechanism!"))
 			if(do_after(user, 160) && locked)
@@ -204,7 +205,7 @@
 	name = "\improper Airlock"
 	icon = 'icons/obj/doors/centcomm/door.dmi'
 	fill_file = 'icons/obj/doors/centcomm/fill_steel.dmi'
-	paintable = AIRLOCK_PAINTABLE|AIRLOCK_STRIPABLE
+	paintable = PAINT_PAINTABLE|PAINT_STRIPABLE
 
 /obj/machinery/door/airlock/highsecurity
 	airlock_type = "secure"
@@ -235,7 +236,7 @@
 	explosion_resistance = 20
 	opacity = TRUE
 	frame_type = /obj/structure/door_assembly/door_assembly_hatch
-	paintable = AIRLOCK_STRIPABLE
+	paintable = PAINT_STRIPABLE
 
 /obj/machinery/door/airlock/hatch/maintenance
 	name = "Maintenance Hatch"
@@ -253,7 +254,7 @@
 	opacity = TRUE
 	secured_wires = TRUE
 	frame_type = /obj/structure/door_assembly/door_assembly_highsecurity //Until somebody makes better sprites.
-	paintable = AIRLOCK_PAINTABLE|AIRLOCK_STRIPABLE
+	paintable = PAINT_PAINTABLE|PAINT_STRIPABLE
 
 /obj/machinery/door/airlock/vault/bolted
 	locked = TRUE

@@ -4,11 +4,9 @@
 	name = "unusual asteroid"
 	desc = "Sensors error: ERROR #E0x003141592: recursive stack overflow for CALCULATE_APPROXIMATE_SIZE()."
 	icon_state = "object"
-	known = 0
 
 /datum/map_template/ruin/away_site/mobius_rift
 	name = "Mobius rift"
-	id = "awaysite_mobius_rift"
 	description = "Non-euclidian mess."
 	suffixes = list("mobius_rift/mobius_rift.dmm")
 	cost = 1
@@ -19,9 +17,6 @@
 
 /obj/effect/step_trigger/mobius_rift/seamless_portal
 	var/obj/effect/step_trigger/mobius_rift/seamless_portal/dest
-	//NORTH or EAST cases
-	//var/obj/effect/step_trigger/mobius_rift/seamless_portal/dest2//SOUTH or WEST cases
-	var/directed//NS or WE
 	var/x_shift = 0
 	var/y_shift = 0
 

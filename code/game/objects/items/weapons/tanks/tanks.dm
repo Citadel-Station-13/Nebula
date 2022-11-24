@@ -1,10 +1,29 @@
 #define TANK_IDEAL_PRESSURE 1015 //Arbitrary.
 
-var/list/global/tank_gauge_cache = list()
+var/global/tank_bomb_severity = 1
+#define TANK_BOMB_DVSTN_FACTOR (0.15 * global.tank_bomb_severity)
+#define TANK_BOMB_HEAVY_FACTOR (0.35 * global.tank_bomb_severity)
+#define TANK_BOMB_LIGHT_FACTOR (0.80 * global.tank_bomb_severity)
+#define TANK_BOMB_FLASH_FACTOR (1.25 * global.tank_bomb_severity)
+#define MAX_TANK_BOMB_SEVERITY 20
+
+/client/proc/verb_adjust_tank_bomb_severity()
+	set name = "Adjust Tank Bomb Severity"
+	set category = "Debug"
+
+	if(check_rights(R_DEBUG))
+		var/next_input = input("Enter a new bomb severity between 1 and [MAX_TANK_BOMB_SEVERITY].", "Tank Bomb Severity", global.tank_bomb_severity) as num|null
+		if(isnum(next_input))
+			global.tank_bomb_severity = clamp(next_input, 0, MAX_TANK_BOMB_SEVERITY)
+			log_and_message_admins("[key_name_admin(mob)] has set the tank bomb severity value to [global.tank_bomb_severity].", mob)
+
+var/global/list/global/tank_gauge_cache = list()
 
 /obj/item/tank
 	name = "tank"
-	icon = 'icons/obj/tank.dmi'
+	icon = 'icons/obj/items/tanks/tank_blue.dmi'
+	icon_state = ICON_STATE_WORLD
+	material = /decl/material/solid/metal/steel
 
 	var/gauge_icon = "indicator_tank"
 	var/gauge_cap = 6
@@ -20,6 +39,7 @@ var/list/global/tank_gauge_cache = list()
 	throwforce = 10.0
 	throw_speed = 1
 	throw_range = 4
+	material = /decl/material/solid/metal/steel
 
 	var/datum/gas_mixture/air_contents = null
 	var/distribute_pressure = ONE_ATMOSPHERE
@@ -62,6 +82,13 @@ var/list/global/tank_gauge_cache = list()
 			qdel(TTV)
 
 	. = ..()
+
+/obj/item/tank/get_single_monetary_worth()
+	. = ..()
+	for(var/gas in air_contents?.gas)
+		var/decl/material/gas_data = GET_DECL(gas)
+		. += gas_data.get_value() * air_contents.gas[gas] * GAS_WORTH_MULTIPLIER
+	. = max(1, round(.))
 
 /obj/item/tank/examine(mob/user)
 	. = ..()
@@ -106,14 +133,14 @@ var/list/global/tank_gauge_cache = list()
 		LB.blow(src)
 		add_fingerprint(user)
 
-	if(isCoil(W))
+	if(IS_COIL(W))
 		var/obj/item/stack/cable_coil/C = W
 		if(C.use(1))
 			wired = 1
 			to_chat(user, "<span class='notice'>You attach the wires to the tank.</span>")
 			update_icon(TRUE)
 
-	if(isWirecutter(W))
+	if(IS_WIRECUTTER(W))
 		if(wired && proxyassembly.assembly)
 
 			to_chat(user, "<span class='notice'>You carefully begin clipping the wires that attach to the tank.</span>")
@@ -154,7 +181,7 @@ var/list/global/tank_gauge_cache = list()
 			to_chat(user, "<span class='notice'>You begin attaching the assembly to \the [src].</span>")
 			if(do_after(user, 50, src))
 				to_chat(user, "<span class='notice'>You finish attaching the assembly to \the [src].</span>")
-				GLOB.bombers += "[key_name(user)] attached an assembly to a wired [src]. Temp: [air_contents.temperature-T0C]"
+				global.bombers += "[key_name(user)] attached an assembly to a wired [src]. Temp: [air_contents.temperature-T0C]"
 				log_and_message_admins("attached an assembly to a wired [src]. Temp: [air_contents.temperature-T0C]", user)
 				assemble_bomb(W,user)
 			else
@@ -162,9 +189,9 @@ var/list/global/tank_gauge_cache = list()
 		else
 			to_chat(user, "<span class='notice'>You need to wire the device up first.</span>")
 
-	if(isWelder(W))
+	if(IS_WELDER(W))
 		var/obj/item/weldingtool/WT = W
-		if(WT.remove_fuel(1,user))
+		if(WT.weld(1,user))
 			if(!valve_welded)
 				to_chat(user, "<span class='notice'>You begin welding the \the [src] emergency pressure relief valve.</span>")
 				if(do_after(user, 40,src))
@@ -172,7 +199,7 @@ var/list/global/tank_gauge_cache = list()
 					valve_welded = 1
 					leaking = 0
 				else
-					GLOB.bombers += "[key_name(user)] attempted to weld a [src]. [air_contents.temperature-T0C]"
+					global.bombers += "[key_name(user)] attempted to weld a [src]. [air_contents.temperature-T0C]"
 					log_and_message_admins("attempted to weld a [src]. [air_contents.temperature-T0C]", user)
 					if(WT.welding)
 						to_chat(user, "<span class='danger'>You accidentally rake \the [W] across \the [src]!</span>")
@@ -185,8 +212,9 @@ var/list/global/tank_gauge_cache = list()
 
 	if(istype(W, /obj/item/flamethrower))
 		var/obj/item/flamethrower/F = W
-		if(!F.status || F.tank || !user.unEquip(src, F))
+		if(!F.secured || F.tank || !user.unEquip(src, F))
 			return
+
 		master = F
 		F.tank = src
 
@@ -201,13 +229,7 @@ var/list/global/tank_gauge_cache = list()
 		proxyassembly.assembly.attack_self(user)
 
 /obj/item/tank/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1)
-	var/mob/living/carbon/location = null
-
-	if(istype(loc, /obj/item/rig))		// check for tanks in rigs
-		if(istype(loc.loc, /mob/living/carbon))
-			location = loc.loc
-	else if(istype(loc, /mob/living/carbon))
-		location = loc
+	var/mob/living/carbon/location = get_recursive_loc_of_type(/mob/living/carbon)
 
 	var/using_internal
 	if(istype(location))
@@ -236,11 +258,13 @@ var/list/global/tank_gauge_cache = list()
 				mask_check = 1
 
 		if(mask_check)
-			if(location.wear_mask && (location.wear_mask.item_flags & ITEM_FLAG_AIRTIGHT))
+			var/obj/item/mask = location.get_equipped_item(slot_wear_mask_str)
+			if(mask && (mask.item_flags & ITEM_FLAG_AIRTIGHT))
 				data["maskConnected"] = 1
 			else if(istype(location, /mob/living/carbon/human))
 				var/mob/living/carbon/human/H = location
-				if(H.head && (H.head.item_flags & ITEM_FLAG_AIRTIGHT))
+				var/obj/item/head = H.get_equipped_item(slot_head_str)
+				if(head && (head.item_flags & ITEM_FLAG_AIRTIGHT))
 					data["maskConnected"] = 1
 
 	// update the ui if it exists, returns null if no ui is passed/found
@@ -256,7 +280,7 @@ var/list/global/tank_gauge_cache = list()
 		// auto update every Master Controller tick
 		ui.set_auto_update(1)
 
-/obj/item/tank/Topic(user, href_list, state = GLOB.inventory_state)
+/obj/item/tank/Topic(user, href_list, state = global.inventory_topic_state)
 	..()
 
 /obj/item/tank/OnTopic(user, href_list)
@@ -292,11 +316,13 @@ var/list/global/tank_gauge_cache = list()
 		location.set_internals(null)
 	else
 		var/can_open_valve
-		if(location.wear_mask && (location.wear_mask.item_flags & ITEM_FLAG_AIRTIGHT))
+		var/obj/item/mask = location.get_equipped_item(slot_wear_mask_str)
+		if(mask && (mask.item_flags & ITEM_FLAG_AIRTIGHT))
 			can_open_valve = 1
 		else if(istype(location,/mob/living/carbon/human))
 			var/mob/living/carbon/human/H = location
-			if(H.head && (H.head.item_flags & ITEM_FLAG_AIRTIGHT))
+			var/obj/item/head = H.get_equipped_item(slot_head_str)
+			if(head && (head.item_flags & ITEM_FLAG_AIRTIGHT))
 				can_open_valve = 1
 
 		if(can_open_valve)
@@ -347,18 +373,17 @@ var/list/global/tank_gauge_cache = list()
 	return removed
 
 /obj/item/tank/Process()
-	//Allow for reactions
-	air_contents.react() //cooking up air tanks - add phoron and oxygen, then heat above FLAMMABLE_GAS_MINIMUM_BURN_TEMPERATURE
+	air_contents.react()
 	check_status()
 
 /obj/item/tank/on_update_icon(var/override)
-
+	. = ..()
 	var/list/overlays_to_add
 	if(override && (proxyassembly.assembly || wired))
-		LAZYADD(overlays_to_add, image(icon,"bomb_assembly"))
+		LAZYADD(overlays_to_add, overlay_image('icons/obj/items/tanks/tank_components.dmi', "bomb_assembly"))
 		if(proxyassembly.assembly)
-			var/image/bombthing = image(proxyassembly.assembly.icon, proxyassembly.assembly.icon_state)
-			bombthing.overlays |= proxyassembly.assembly.overlays
+			var/mutable_appearance/bombthing = new(proxyassembly.assembly)
+			bombthing.appearance_flags = RESET_COLOR
 			bombthing.pixel_y = -1
 			bombthing.pixel_x = -3
 			LAZYADD(overlays_to_add, bombthing)
@@ -374,11 +399,10 @@ var/list/global/tank_gauge_cache = list()
 		if(override || (previous_gauge_pressure != gauge_pressure))
 			var/indicator = "[gauge_icon][(gauge_pressure == -1) ? "overload" : gauge_pressure]"
 			if(!tank_gauge_cache[indicator])
-				tank_gauge_cache[indicator] = image(icon, indicator)
+				tank_gauge_cache[indicator] = image('icons/obj/items/tanks/tank_indicators.dmi', indicator)
 			LAZYADD(overlays_to_add, tank_gauge_cache[indicator])
 		previous_gauge_pressure = gauge_pressure
-
-	overlays = overlays_to_add
+	add_overlay(overlays_to_add)
 
 //Handle exploding, leaking, and rupturing of the tank
 /obj/item/tank/proc/check_status()
@@ -411,10 +435,10 @@ var/list/global/tank_gauge_cache = list()
 			T.assume_air(air_contents)
 			explosion(
 				get_turf(loc),
-				round(min(BOMBCAP_DVSTN_RADIUS, ((mult)*strength)*0.15)),
-				round(min(BOMBCAP_HEAVY_RADIUS, ((mult)*strength)*0.35)),
-				round(min(BOMBCAP_LIGHT_RADIUS, ((mult)*strength)*0.80)),
-				round(min(BOMBCAP_FLASH_RADIUS, ((mult)*strength)*1.20)),
+				round(min(BOMBCAP_DVSTN_RADIUS, ((mult) * strength) * TANK_BOMB_DVSTN_FACTOR)),
+				round(min(BOMBCAP_HEAVY_RADIUS, ((mult) * strength) * TANK_BOMB_HEAVY_FACTOR)),
+				round(min(BOMBCAP_LIGHT_RADIUS, ((mult) * strength) * TANK_BOMB_LIGHT_FACTOR)),
+				round(min(BOMBCAP_FLASH_RADIUS, ((mult) * strength) * TANK_BOMB_FLASH_FACTOR)),
 				)
 
 			var/num_fragments = round(rand(8,10) * sqrt(strength * mult))
@@ -440,7 +464,7 @@ var/list/global/tank_gauge_cache = list()
 				return
 			T.assume_air(air_contents)
 			playsound(get_turf(src), 'sound/weapons/gunshot/shotgun.ogg', 20, 1)
-			visible_message("\icon[src] <span class='danger'>\The [src] flies apart!</span>", "<span class='warning'>You hear a bang!</span>")
+			visible_message("[html_icon(src)] <span class='danger'>\The [src] flies apart!</span>", "<span class='warning'>You hear a bang!</span>")
 			T.hotspot_expose(air_contents.temperature, 70, 1)
 
 			var/strength = 1+((pressure-TANK_LEAK_PRESSURE)/TANK_FRAGMENT_SCALE)
@@ -465,13 +489,13 @@ var/list/global/tank_gauge_cache = list()
 			var/datum/gas_mixture/environment = loc.return_air()
 			var/env_pressure = environment.return_pressure()
 
-			var/release_ratio = Clamp(0.002, sqrt(max(pressure-env_pressure,0)/pressure),1)
+			var/release_ratio = clamp(0.002, sqrt(max(pressure-env_pressure,0)/pressure),1)
 			var/datum/gas_mixture/leaked_gas = air_contents.remove_ratio(release_ratio)
 			//dynamic air release based on ambient pressure
 
 			T.assume_air(leaked_gas)
 			if(!leaking)
-				visible_message("\icon[src] <span class='warning'>\The [src] relief valve flips open with a hiss!</span>", "You hear hissing.")
+				visible_message("[html_icon(src)] <span class='warning'>\The [src] relief valve flips open with a hiss!</span>", "You hear hissing.")
 				playsound(loc, 'sound/effects/spray.ogg', 10, 1, -3)
 				leaking = 1
 				#ifdef FIREDBG
@@ -487,45 +511,28 @@ var/list/global/tank_gauge_cache = list()
 			if(integrity == maxintegrity)
 				leaking = 0
 
-/////////////////////////////////
-///Prewelded tanks
-/////////////////////////////////
+/obj/item/tank/onetankbomb/Initialize()
+	. = ..()
 
-/obj/item/tank/phoron/welded
-	valve_welded = 1
-/obj/item/tank/oxygen/welded
-	valve_welded = 1
+	// Set up appearance/strings.
+	var/obj/item/tank/tank_copy = pick(typesof(/obj/item/tank/oxygen) + typesof(/obj/item/tank/hydrogen))
+	name = initial(tank_copy.name)
+	desc = initial(tank_copy.desc)
+	icon = initial(tank_copy.icon)
+	icon_state = initial(tank_copy.icon_state)
+	volume = initial(tank_copy.volume)
 
-/////////////////////////////////
-///Onetankbombs (added as actual items)
-/////////////////////////////////
-
-/obj/item/tank/proc/onetankbomb()
-	var/phoron_amt = 4 + rand(4)
-	var/oxygen_amt = 6 + rand(8)
-
-	air_contents.gas[MAT_PHORON] = phoron_amt
-	air_contents.gas[MAT_OXYGEN] = oxygen_amt
+	// Set up explosive mix.
+	air_contents.gas[DEFAULT_GAS_ACCELERANT] = 4 + rand(4)
+	air_contents.gas[DEFAULT_GAS_OXIDIZER] = 6 + rand(8)
 	air_contents.update_values()
-	valve_welded = 1
 	air_contents.temperature = FLAMMABLE_GAS_MINIMUM_BURN_TEMPERATURE-1
-
-	wired = 1
-
-	var/obj/item/assembly_holder/H = new(src)
-	proxyassembly.assembly = H
-	H.master = proxyassembly
-
-	H.update_icon()
+	valve_welded = TRUE
+	wired = TRUE
+	proxyassembly.assembly = new /obj/item/assembly_holder(src)
+	proxyassembly.assembly.master = proxyassembly
+	proxyassembly.assembly.update_icon()
 	update_icon(TRUE)
-
-/obj/item/tank/phoron/onetankbomb/Initialize()
-	. = ..()
-	onetankbomb()
-
-/obj/item/tank/oxygen/onetankbomb/Initialize()
-	. = ..()
-	onetankbomb()
 
 /////////////////////////////////
 ///Pulled from rewritten bomb.dm
@@ -534,6 +541,7 @@ var/list/global/tank_gauge_cache = list()
 /obj/item/tankassemblyproxy
 	name = "Tank assembly proxy"
 	desc = "Used as a stand in to trigger single tank assemblies... but you shouldn't see this."
+	is_spawnable_type = FALSE
 	var/obj/item/tank/tank = null
 	var/obj/item/assembly_holder/assembly = null
 
@@ -548,8 +556,6 @@ var/list/global/tank_gauge_cache = list()
 	if(isigniter(S.a_left) == isigniter(S.a_right))		//Check if either part of the assembly has an igniter, but if both parts are igniters, then fuck it
 		return
 
-	if(!M.unequip_item())
-		return					//Remove the assembly from your hands
 	if(!M.unEquip(src))
 		return					//Remove the tank from your character,in case you were holding it
 	M.put_in_hands(src)			//Equips the bomb if possible, or puts it on the floor.
@@ -580,10 +586,12 @@ var/list/global/tank_gauge_cache = list()
 	air_contents.add_thermal_energy(15000)
 
 /obj/item/tankassemblyproxy/on_update_icon()
+	. = ..()
 	tank.update_icon()
 
 /obj/item/tankassemblyproxy/HasProximity(atom/movable/AM)
-	if(assembly)
+	. = ..()
+	if(. && assembly)
 		assembly.HasProximity(AM)
 
 //Fragmentation projectiles
@@ -610,3 +618,8 @@ var/list/global/tank_gauge_cache = list()
 	name = "large metal fragment"
 	damage = 17
 
+#undef TANK_BOMB_DVSTN_FACTOR
+#undef TANK_BOMB_HEAVY_FACTOR
+#undef TANK_BOMB_LIGHT_FACTOR
+#undef TANK_BOMB_FLASH_FACTOR
+#undef MAX_TANK_BOMB_SEVERITY

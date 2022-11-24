@@ -16,7 +16,7 @@
 	var/pellet_loss = round((distance - 1)/range_step) //pellets lost due to distance
 	return max(pellets - pellet_loss, 1)
 
-/obj/item/projectile/bullet/pellet/attack_mob(var/mob/living/target_mob, var/distance, var/miss_modifier)
+/obj/item/projectile/bullet/pellet/attack_mob(var/mob/target_mob, var/distance, var/miss_modifier)
 	if (pellets < 0) return 1
 
 	var/total_pellets = get_pellets(distance)
@@ -35,7 +35,7 @@
 		//pellet hits spread out across different zones, but 'aim at' the targeted zone with higher probability
 		//whether the pellet actually hits the def_zone or a different zone should still be determined by the parent using get_zone_with_miss_chance().
 		var/old_zone = def_zone
-		def_zone = ran_zone(def_zone, spread)
+		def_zone = ran_zone(def_zone, spread, target_mob)
 		if (..()) hits++
 		def_zone = old_zone //restore the original zone the projectile was aimed at
 

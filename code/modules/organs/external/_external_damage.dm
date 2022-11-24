@@ -6,10 +6,14 @@
 	//Continued damage to vital organs can kill you, and robot organs don't count towards total damage so no need to cap them.
 	return (BP_IS_PROSTHETIC(src) || brute_dam + burn_dam + additional_damage < max_damage * 4)
 
-obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
+/obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 	take_external_damage(amount)
 
-/obj/item/organ/external/proc/take_external_damage(brute, burn, damage_flags, used_weapon = null)
+/obj/item/organ/external/proc/take_external_damage(brute, burn, damage_flags, used_weapon, override_droplimb)
+	
+	if(!owner)
+		return
+
 	brute = round(brute * get_brute_mod(damage_flags), 0.1)
 	burn = round(burn * get_burn_mod(damage_flags), 0.1)
 
@@ -45,11 +49,11 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 	//If limb took enough damage, try to cut or tear it off
 	if(owner && loc == owner)
 		owner.updatehealth() //droplimb will call updatehealth() again if it does end up being called
-		if(!is_stump() && (limb_flags & ORGAN_FLAG_CAN_AMPUTATE) && config.limbs_can_break)
+		if((limb_flags & ORGAN_FLAG_CAN_AMPUTATE) && config.limbs_can_break)
 			var/total_damage = brute_dam + burn_dam + brute + burn + spillover
 			var/threshold = max_damage * config.organ_health_multiplier
 			if(total_damage > threshold)
-				if(attempt_dismemberment(pure_brute, burn, sharp, edge, used_weapon, spillover, total_damage > threshold*6))
+				if(attempt_dismemberment(pure_brute, burn, sharp, edge, used_weapon, spillover, total_damage > threshold*6, override_droplimb = override_droplimb))
 					return
 
 	//blunt damage is gud at fracturing
@@ -57,12 +61,11 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 		fracture()
 
 	// High brute damage or sharp objects may damage internal organs
-	if(LAZYLEN(internal_organs))
-		if(damage_internal_organs(brute, burn, damage_flags))
-			brute /= 2
-			burn /= 2
+	if(LAZYLEN(internal_organs) && damage_internal_organs(brute, burn, damage_flags))
+		brute /= 2
+		burn  /= 2
 
-	if(status & ORGAN_BROKEN && brute)
+	if((status & ORGAN_BROKEN) && brute)
 		jostle_bone(brute)
 		if(can_feel_pain() && prob(40))
 			owner.emote("scream")	//getting hit on broken hand hurts
@@ -203,7 +206,11 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 
 // Geneloss/cloneloss.
 /obj/item/organ/external/proc/get_genetic_damage()
-	return ((species && (species.species_flags & SPECIES_FLAG_NO_SCAN)) || BP_IS_PROSTHETIC(src)) ? 0 : genetic_degradation
+	if(species?.species_flags & SPECIES_FLAG_NO_SCAN)
+		return 0
+	if(BP_IS_PROSTHETIC(src))
+		return 0
+	return genetic_degradation
 
 /obj/item/organ/external/proc/remove_genetic_damage(var/amount)
 	if((species.species_flags & SPECIES_FLAG_NO_SCAN) || BP_IS_PROSTHETIC(src))
@@ -244,7 +251,7 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 
 // Pain/halloss
 /obj/item/organ/external/proc/get_pain()
-	if(!can_feel_pain() || BP_IS_PROSTHETIC(src))
+	if(!can_feel_pain())
 		return 0
 	var/lasting_pain = 0
 	if(is_broken())
@@ -270,7 +277,7 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 		return
 	var/last_pain = pain
 	if(owner)
-		amount -= (owner.chem_effects[CE_PAINKILLER]/3)
+		amount -= (GET_CHEMICAL_EFFECT(owner, CE_PAINKILLER)/3)
 		if(amount <= 0)
 			return
 	pain = max(0,min(max_damage,pain+amount))
@@ -280,28 +287,25 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 
 /obj/item/organ/external/proc/stun_act(var/stun_amount, var/agony_amount)
 	if(agony_amount && owner && can_feel_pain())
-		agony_amount -= (owner.chem_effects[CE_PAINKILLER]/2)//painkillers does wonders!
+		agony_amount -= (GET_CHEMICAL_EFFECT(owner, CE_PAINKILLER)/2)//painkillers does wonders!
 		agony_amount += get_pain()
-		if(agony_amount < 5) return
+		if(agony_amount < 5) 
+			return
 
-		if(limb_flags & ORGAN_FLAG_CAN_GRASP)
-			if(prob((agony_amount/max_damage)*100))
-				owner.grasp_damage_disarm(src)
-				return 1
+		if(check_pain_disarm())
+			return TRUE
 
-		else if((limb_flags & ORGAN_FLAG_CAN_STAND))
+		if(limb_flags & ORGAN_FLAG_CAN_STAND)
 			if(prob((agony_amount/max_damage)*100))
 				owner.stance_damage_prone(src)
-				return 1
+				return TRUE
 
 		else if(agony_amount > 0.5 * max_damage)
-			owner.visible_message("<span class='warning'>[owner] reels in pain!</span>")
+			owner.visible_message(SPAN_WARNING("\The [owner] reels in pain!"))
 			if(has_genitals() || agony_amount > max_damage)
-				owner.Weaken(4)
+				SET_STATUS_MAX(owner, STAT_WEAK, 4)
 			else
-				owner.Stun(4)
-				owner.drop_l_hand()
-				owner.drop_r_hand()
+				SET_STATUS_MAX(owner, STAT_STUN, 4)
 			return 1
 
 /obj/item/organ/external/proc/get_agony_multiplier()
@@ -322,9 +326,9 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 	return FALSE
 
 /obj/item/organ/external/proc/get_brute_mod(var/damage_flags)
-	var/obj/item/organ/internal/augment/armor/A = owner && owner.internal_organs_by_name[BP_AUGMENT_CHEST_ARMOUR]
+	var/obj/item/organ/internal/augment/armor/A = owner?.get_organ(BP_AUGMENT_CHEST_ARMOUR, /obj/item/organ/internal/augment/armor)
 	var/B = 1
-	if(A && istype(A))
+	if(A)
 		B = A.brute_mult
 	if(!BP_IS_PROSTHETIC(src))
 		B *= species.get_brute_mod(owner)
@@ -336,9 +340,9 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 	return B + (0.2 * burn_dam/max_damage) //burns make you take more brute damage
 
 /obj/item/organ/external/proc/get_burn_mod(var/damage_flags)
-	var/obj/item/organ/internal/augment/armor/A = owner && owner.internal_organs_by_name[BP_AUGMENT_CHEST_ARMOUR]
+	var/obj/item/organ/internal/augment/armor/A = owner?.get_organ(BP_AUGMENT_CHEST_ARMOUR, /obj/item/organ/internal/augment/armor)
 	var/B = 1
-	if(A && istype(A))
+	if(A)
 		B = A.burn_mult
 	if(!BP_IS_PROSTHETIC(src))
 		B *= species.get_burn_mod(owner)
@@ -351,7 +355,7 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 //2. If the damage amount dealt exceeds the disintegrate threshold, the organ is completely obliterated.
 //3. If the organ has already reached or would be put over it's max damage amount (currently redundant),
 //   and the brute damage dealt exceeds the tearoff threshold, the organ is torn off.
-/obj/item/organ/external/proc/attempt_dismemberment(brute, burn, sharp, edge, used_weapon, spillover, force_droplimb)
+/obj/item/organ/external/proc/attempt_dismemberment(brute, burn, sharp, edge, used_weapon, spillover, force_droplimb, override_droplimb)
 	//Check edge eligibility
 	var/edge_eligible = 0
 	if(edge)
@@ -365,24 +369,24 @@ obj/item/organ/external/take_general_damage(var/amount, var/silent = FALSE)
 		brute = 0.5 * brute
 	if(force_droplimb)
 		if(burn)
-			droplimb(0, DROPLIMB_BURN)
+			dismember(0, (override_droplimb || DISMEMBER_METHOD_BURN))
 		else if(brute)
-			droplimb(0, edge_eligible ? DROPLIMB_EDGE : DROPLIMB_BLUNT)
+			dismember(0, (override_droplimb || (edge_eligible ? DISMEMBER_METHOD_EDGE : DISMEMBER_METHOD_BLUNT)))
 		return TRUE
 
 	if(edge_eligible && brute >= max_damage / DROPLIMB_THRESHOLD_EDGE)
 		if(prob(brute))
-			droplimb(0, DROPLIMB_EDGE)
+			dismember(0, (override_droplimb || DISMEMBER_METHOD_EDGE))
 			return TRUE
 	else if(burn >= max_damage / DROPLIMB_THRESHOLD_DESTROY)
 		if(prob(burn/3))
-			droplimb(0, DROPLIMB_BURN)
+			dismember(0, (override_droplimb || DISMEMBER_METHOD_BURN))
 			return TRUE
 	else if(brute >= max_damage / DROPLIMB_THRESHOLD_DESTROY)
 		if(prob(brute))
-			droplimb(0, DROPLIMB_BLUNT)
+			dismember(0, (override_droplimb || DISMEMBER_METHOD_BLUNT))
 			return TRUE
 	else if(brute >= max_damage / DROPLIMB_THRESHOLD_TEAROFF)
 		if(prob(brute/3))
-			droplimb(0, DROPLIMB_EDGE)
+			dismember(0, (override_droplimb || DISMEMBER_METHOD_EDGE))
 			return TRUE

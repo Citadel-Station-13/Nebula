@@ -1,6 +1,5 @@
 /decl/grab/normal/struggle
 	name = "struggle grab"
-	fancy_desc = "holding"
 	upgrab =   /decl/grab/normal/aggressive
 	downgrab = /decl/grab/normal/passive
 	shift = 8
@@ -10,7 +9,7 @@
 	point_blank_mult = 1
 	same_tile = 0
 	breakability = 3
-	grab_slowdown = 10
+	grab_slowdown = 0.35
 	upgrade_cooldown = 20
 	can_downgrade_on_resist = 0
 	icon_state = "reinforce"
@@ -22,7 +21,8 @@
 	if(!affecting)
 		return
 	if(affecting.incapacitated(INCAPACITATION_UNRESISTING) || affecting.a_intent == I_HELP)
-		affecting.visible_message("<span class='warning'>[affecting] isn't prepared to fight back as [assailant] tightens \his grip!</span>")
+		var/decl/pronouns/assailant_gender = assailant.get_pronouns()
+		affecting.visible_message(SPAN_DANGER("\The [affecting] isn't prepared to fight back as [assailant] tightens [assailant_gender.his] grip!"))
 		G.done_struggle = TRUE
 		G.upgrade(TRUE)
 
@@ -37,7 +37,8 @@
 		return
 
 	if(affecting.incapacitated(INCAPACITATION_UNRESISTING) || affecting.a_intent == I_HELP)
-		affecting.visible_message("<span class='warning'>[affecting] isn't prepared to fight back as [assailant] tightens \his grip!</span>")
+		var/decl/pronouns/assailant_gender = assailant.get_pronouns()
+		affecting.visible_message(SPAN_DANGER("\The [affecting] isn't prepared to fight back as [assailant] tightens [assailant_gender.his] grip!"))
 		G.done_struggle = TRUE
 		G.upgrade(TRUE)
 	else
@@ -57,17 +58,20 @@
 /decl/grab/normal/struggle/can_upgrade(var/obj/item/grab/G)
 	. = ..() && G.done_struggle
 
-/decl/grab/normal/struggle/on_hit_disarm(var/obj/item/grab/G)
-	to_chat(G.assailant, "<span class='warning'>Your grip isn't strong enough to pin.</span>")
-	return 0
+/decl/grab/normal/struggle/on_hit_disarm(var/obj/item/grab/G, var/atom/A, var/proximity)
+	if(proximity)
+		to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to pin."))
+	return FALSE
 
-/decl/grab/normal/struggle/on_hit_grab(var/obj/item/grab/G)
-	to_chat(G.assailant, "<span class='warning'>Your grip isn't strong enough to jointlock.</span>")
-	return 0
+/decl/grab/normal/struggle/on_hit_grab(var/obj/item/grab/G, var/atom/A, var/proximity)
+	if(proximity)
+		to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to jointlock."))
+	return FALSE
 
-/decl/grab/normal/struggle/on_hit_harm(var/obj/item/grab/G)
-	to_chat(G.assailant, "<span class='warning'>Your grip isn't strong enough to dislocate.</span>")
-	return 0
+/decl/grab/normal/struggle/on_hit_harm(var/obj/item/grab/G, var/atom/A, var/proximity)
+	if(proximity)
+		to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to dislocate."))
+	return FALSE
 
 /decl/grab/normal/struggle/resolve_openhand_attack(var/obj/item/grab/G)
-	return 0
+	return FALSE

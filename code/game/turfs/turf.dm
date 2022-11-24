@@ -1,7 +1,8 @@
 /turf
 	icon = 'icons/turf/floors.dmi'
 	level = 1
-
+	abstract_type = /turf
+	is_spawnable_type = TRUE
 	layer = TURF_LAYER
 
 	var/turf_flags
@@ -19,54 +20,90 @@
 	var/blocks_air = 0          // Does this turf contain air/let air through?
 
 	// General properties.
-	var/icon_old = null
 	var/pathweight = 1          // How much does it cost to pathfind over this turf?
-	var/blessed = 0             // Has the turf been blessed?
 
 	var/list/decals
 
+	// Used for slowdown.
 	var/movement_delay
 
 	var/fluid_can_pass
-	var/obj/effect/flood/flood_object
 	var/fluid_blocked_dirs = 0
 	var/flooded // Whether or not this turf is absolutely flooded ie. a water source.
 	var/footstep_type
+	var/open_turf_type // Which turf to use when this turf is destroyed or replaced in a multiz context. Overridden by area.
 
 	var/tmp/changing_turf
+	var/tmp/prev_type // Previous type of the turf, prior to turf translation.
+
+	// Some quick notes on the vars below: is_outside should be left set to OUTSIDE_AREA unless you
+	// EXPLICITLY NEED a turf to have a different outside state to its area (ie. you have used a
+	// roofing tile). By default, it will ask the area for the state to use, and will update on
+	// area change. When dealing with weather, it will check the entire z-column for interruptions
+	// that will prevent it from using its own state, so a floor above a level will generally
+	// override both area is_outside, and turf is_outside. The only time the base value will be used
+	// by itself is if you are dealing with a non-multiz level, or the top level of a multiz chunk.
+
+	// Weather relies on is_outside to determine if it should apply to a turf or not and will be
+	// automatically updated on ChangeTurf set_outside etc. Don't bother setting it manually, it will
+	// get overridden almost immediately.
+
+	// TL;DR: just leave these vars alone.
+	var/tmp/obj/abstract/weather_system/weather
+	var/tmp/is_outside = OUTSIDE_AREA
 
 /turf/Initialize(mapload, ...)
-	. = ..()
+	. = null && ..()	// This weird construct is to shut up the 'parent proc not called' warning without disabling the lint for child types. We explicitly return an init hint so this won't change behavior.
+
+	// atom/Initialize has been copied here for performance (or at least the bits of it that turfs use has been)
+	if(atom_flags & ATOM_FLAG_INITIALIZED)
+		PRINT_STACK_TRACE("Warning: [src]([type]) initialized multiple times!")
+	atom_flags |= ATOM_FLAG_INITIALIZED
+
+	if (light_range && light_power)
+		update_light()
+
 	if(dynamic_lighting)
 		luminosity = 0
 	else
 		luminosity = 1
-	RecalculateOpacity()
-	if (mapload && permit_ao)
+
+	SSambience.queued += src
+
+	if (opacity)
+		has_opaque_atom = TRUE
+
+	if (!mapload)
+		SSair.mark_for_update(src)
+		update_weather(force_update_below = TRUE)
+	else if (permit_ao)
 		queue_ao()
+
+	updateVisibility(src, FALSE)
+
 	if (z_flags & ZM_MIMIC_BELOW)
 		setup_zmimic(mapload)
-	update_starlight()
 
-/turf/on_update_icon()
-	update_flood_overlay()
-	queue_ao(FALSE)
+	if(flooded && !density)
+		make_flooded(TRUE)
 
-/turf/proc/update_flood_overlay()
-	if(is_flooded(absolute = TRUE))
-		if(!flood_object)
-			flood_object = new(src)
-	else if(flood_object)
-		QDEL_NULL(flood_object)
+	return INITIALIZE_HINT_NORMAL
+
+/turf/examine(mob/user, distance, infix, suffix)
+	. = ..()
+	if(user && weather)
+		weather.examine(user)
 
 /turf/Destroy()
+
 	if (!changing_turf)
-		crash_with("Improper turf qdel. Do not qdel turfs directly.")
+		PRINT_STACK_TRACE("Improper turf qdel. Do not qdel turfs directly.")
 
 	changing_turf = FALSE
 
-	remove_cleanables()
-	fluid_update()
+	if (contents.len > !!lighting_overlay)
+		remove_cleanables()
+
 	REMOVE_ACTIVE_FLUID_SOURCE(src)
 
 	if (ao_queued)
@@ -76,8 +113,15 @@
 	if (z_flags & ZM_MIMIC_BELOW)
 		cleanup_zmimic()
 
-	if (bound_overlay)
-		QDEL_NULL(bound_overlay)
+	if (mimic_proxy)
+		QDEL_NULL(mimic_proxy)
+
+	if(connections)
+		connections.erase_all()
+
+	if(weather)
+		remove_vis_contents(src, weather.vis_contents_additions)
+		weather = null
 
 	..()
 	return QDEL_HINT_IWILLGC
@@ -87,7 +131,15 @@
 	return
 
 /turf/proc/is_solid_structure()
-	return 1
+	return !(turf_flags & TURF_FLAG_BACKGROUND) || locate(/obj/structure/lattice, src)
+
+/turf/proc/get_base_movement_delay()
+	return movement_delay
+
+/turf/proc/get_movement_delay(var/travel_dir)
+	. = get_base_movement_delay()
+	if(weather)
+		. += weather.get_movement_delay(return_air(), travel_dir)
 
 /turf/attack_hand(mob/user)
 	user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
@@ -108,17 +160,17 @@
 		return THE.OnHandInterception(user)
 
 /turf/attack_robot(var/mob/user)
-	if(Adjacent(user))
-		attack_hand(user)
+	if(CanPhysicallyInteract(user))
+		return attack_hand(user)
 
 /turf/attackby(obj/item/W, mob/user)
 
 	if(ATOM_IS_OPEN_CONTAINER(W) && W.reagents)
 		var/obj/effect/fluid/F = locate() in src
-		if(F && F.reagents?.total_volume)
+		if(F && F.reagents?.total_volume >= FLUID_PUDDLE)
 			var/taking = min(F.reagents?.total_volume, REAGENTS_FREE_SPACE(W.reagents))
 			if(taking > 0)
-				to_chat(user, SPAN_NOTICE("You fill \the [src] with [F.reagents.get_primary_reagent_name()] from \the [src]."))
+				to_chat(user, SPAN_NOTICE("You fill \the [W] with [F.reagents.get_primary_reagent_name()] from \the [src]."))
 				F.reagents.trans_to(W, taking)
 				return TRUE
 
@@ -130,6 +182,9 @@
 
 	if(istype(W, /obj/item/grab))
 		var/obj/item/grab/G = W
+		if (G.affecting == G.assailant)
+			return TRUE
+
 		step(G.affecting, get_dir(G.affecting.loc, src))
 		return TRUE
 
@@ -175,30 +230,6 @@
 				mover.Bump(obstacle, 1)
 				return 0
 	return 1 //Nothing found to block so return success!
-
-var/const/enterloopsanity = 100
-/turf/Entered(var/atom/atom, var/atom/old_loc)
-
-	..()
-
-	QUEUE_TEMPERATURE_ATOMS(atom)
-
-	if(!istype(atom, /atom/movable))
-		return
-
-	var/atom/movable/A = atom
-
-	var/objects = 0
-	if(A && (A.movable_flags & MOVABLE_FLAG_PROXMOVE))
-		for(var/atom/movable/thing in range(1))
-			if(objects > enterloopsanity) break
-			objects++
-			spawn(0)
-				if(A)
-					A.HasProximity(thing, 1)
-					if ((thing && A) && (thing.movable_flags & MOVABLE_FLAG_PROXMOVE))
-						thing.HasProximity(A, 1)
-	return
 
 /turf/proc/adjacent_fire_act(turf/simulated/floor/source, exposed_temperature, exposed_volume)
 	return
@@ -254,41 +285,31 @@ var/const/enterloopsanity = 100
 			return 1
 	return 0
 
-//expects an atom containing the reagents used to clean the turf
-/turf/proc/clean(atom/source, mob/user = null, var/time = null, var/message = null)
-	if(source.reagents.has_reagent(/decl/material/liquid/water, 1) || source.reagents.has_reagent(/decl/material/liquid/cleaner, 1))
-		if(user && time && !do_after(user, time, src))
-			return
-		clean_blood()
-		remove_cleanables()
-		if(message)
-			to_chat(user, message)
-	else
-		to_chat(user, SPAN_WARNING("\The [source] is too dry to wash that."))
-	source.reagents.touch_turf(src)
-
 /turf/proc/remove_cleanables()
 	for(var/obj/effect/O in src)
-		if(istype(O,/obj/effect/rune) || istype(O,/obj/effect/decal/cleanable) || istype(O,/obj/effect/overlay))
+		if(istype(O,/obj/effect/rune) || istype(O,/obj/effect/decal/cleanable))
 			qdel(O)
 
 /turf/proc/update_blood_overlays()
 	return
 
 /turf/proc/remove_decals()
-	if(decals && decals.len)
-		decals.Cut()
-		decals = null
+	LAZYCLEARLIST(decals)
 
 // Called when turf is hit by a thrown object
 /turf/hitby(atom/movable/AM, var/datum/thrownthing/TT)
-	if(src.density)
+	..()
+	if(density)
 		if(isliving(AM))
 			var/mob/living/M = AM
 			M.turf_collision(src, TT.speed)
-			if(M.pinned)
+			if(LAZYLEN(M.pinned))
 				return
 		addtimer(CALLBACK(src, /turf/proc/bounce_off, AM, TT.init_dir), 2)
+	else if(isobj(AM))
+		var/obj/structure/ladder/L = locate() in contents
+		if(L)
+			L.hitby(AM)
 
 /turf/proc/bounce_off(var/atom/movable/AM, var/direction)
 	step(AM, turn(direction, 180))
@@ -345,17 +366,99 @@ var/const/enterloopsanity = 100
 /turf/proc/is_floor()
 	return FALSE
 
-/turf/proc/update_starlight()
-	if(!config.starlight)
-		return
-	var/area/A = get_area(src)
-	if(!A.show_starlight)
-		return
-	//Let's make sure not to break everything if people use a crazy setting.
-	var/turf/T = locate(/turf/simulated) in RANGE_TURFS(src,1)
-	if(T)
-		A = get_area(T)
-		if(A && A.dynamic_lighting)
-			set_light(min(0.1*config.starlight, 1), 1, 3, l_color = SSskybox.background_color)
-			return
-	set_light(0)
+/turf/proc/get_footstep_sound(var/mob/caller)
+	return
+
+/turf/proc/update_weather(var/obj/abstract/weather_system/new_weather, var/force_update_below = FALSE)
+
+	if(isnull(new_weather))
+		new_weather = global.weather_by_z["[z]"]
+
+	// We have a weather system and we are exposed to it; update our vis contents.
+	if(istype(new_weather) && is_outside())
+		if(weather != new_weather)
+			if(weather)
+				remove_vis_contents(src, weather.vis_contents_additions)
+			weather = new_weather
+			add_vis_contents(src, weather.vis_contents_additions)
+			. = TRUE
+
+	// We are indoors or there is no local weather system, clear our vis contents.
+	else if(weather)
+		remove_vis_contents(src, weather.vis_contents_additions)
+		weather = null
+		. = TRUE
+
+	// Propagate our weather downwards if we permit it.
+	if(force_update_below || (is_open() && .))
+		var/turf/below = GetBelow(src)
+		if(below)
+			below.update_weather(new_weather)
+
+/turf/proc/is_outside()
+
+	// Can't rain inside or through solid walls.
+	// TODO: dense structures like full windows should probably also block weather.
+	if(density)
+		return OUTSIDE_NO
+
+	// What would we like to return in an ideal world?
+	if(is_outside == OUTSIDE_AREA)
+		var/area/A = get_area(src)
+		. = A ? A.is_outside : OUTSIDE_NO
+	else
+		. = is_outside
+
+	// Notes for future self when confused: is_open() on higher
+	// turfs must match effective is_outside value if the turf
+	// should get to use the is_outside value it wants to. If it
+	// doesn't line up, we invert the outside value (roof is not
+	// open but turf wants to be outside, invert to OUTSIDE_NO).
+
+	// Do we have a roof over our head? Should we care?
+	if(HasAbove(z))
+		var/turf/top_of_stack = src
+		while(HasAbove(top_of_stack.z))
+			top_of_stack = GetAbove(top_of_stack)
+			if(top_of_stack.is_open() != . || (top_of_stack.is_outside != OUTSIDE_AREA && top_of_stack.is_outside != .))
+				return !.
+
+/turf/proc/set_outside(var/new_outside, var/skip_weather_update = FALSE)
+	if(is_outside != new_outside)
+		is_outside = new_outside
+		if(!skip_weather_update)
+			update_weather()
+		SSambience.queued += src
+		return TRUE
+	return FALSE
+
+/turf/proc/get_air_graphic()
+	var/datum/gas_mixture/environment = return_air()
+	return environment?.graphic
+
+/turf/proc/get_vis_contents_to_add()
+	var/air_graphic = get_air_graphic()
+	if(length(air_graphic))
+		LAZYADD(., air_graphic)
+	if(weather)
+		LAZYADD(., weather)
+	if(flooded)
+		LAZYADD(., global.flood_object)
+
+/**Whether we can place a cable here
+ * If you cannot build a cable will return an error code explaining why you cannot.
+*/
+/turf/proc/cannot_build_cable()
+	return 1
+
+/**Sends a message to the user explaining why they can't build a cable here */
+/turf/proc/why_cannot_build_cable(var/mob/user, var/cable_error)
+	to_chat(user, SPAN_WARNING("You cannot place a cable here!"))
+
+/**Place a cable if possible, if not warn the user appropriately */
+/turf/proc/try_build_cable(var/obj/item/stack/cable_coil/C, var/mob/user)
+	var/cable_error = cannot_build_cable(user)
+	if(cable_error)
+		why_cannot_build_cable(user, cable_error)
+		return FALSE
+	return C.turf_place(src, user)

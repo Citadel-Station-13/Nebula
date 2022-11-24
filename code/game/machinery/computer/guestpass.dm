@@ -28,7 +28,7 @@
 	else
 		to_chat(usr, SPAN_NOTICE("This pass expires at [worldtime2stationtime(expiration_time)]."))
 
-	to_chat(usr, SPAN_NOTICE("It grants access to following areas:"))
+	to_chat(usr, SPAN_NOTICE("It grants access to the following areas:"))
 	for (var/A in temp_access)
 		to_chat(usr, SPAN_NOTICE("[get_access_desc(A)]."))
 	to_chat(usr, SPAN_NOTICE("Issuing reason: [reason]."))
@@ -91,7 +91,7 @@
 
 	if(giver)
 		data["giver"] = !!giver
-		data["giver_name"] = giver.rank || giver.assignment || SSjobs.get_by_path(giver.job_access_type).title
+		data["giver_name"] = giver.rank || giver.assignment
 		data["giv_name"] = giv_name
 
 		var/list/giver_access = list()

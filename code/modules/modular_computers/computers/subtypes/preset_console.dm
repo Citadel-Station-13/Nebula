@@ -24,12 +24,17 @@
 
 /obj/machinery/computer/modular/preset/Initialize()
 	. = ..()
-	var/datum/extension/interactive/ntos/os = get_extension(src, /datum/extension/interactive/ntos)
+	var/datum/extension/interactive/os/os = get_extension(src, /datum/extension/interactive/os)
 	if(os)
+		// We access the harddrive directly because the filesystem is yet to be initialized.
+		var/obj/item/stock_parts/computer/hard_drive/HDD = os.get_component(PART_HDD)
 		for(var/program_type in default_software)
-			os.store_file(new program_type())
+			HDD.store_file(new program_type(), OS_PROGRAMS_DIR, create_directories = TRUE)
 		if(autorun_program)
-			os.set_autorun(initial(autorun_program.filename))
+			var/datum/computer_file/data/autorun = new()
+			autorun.filename = "autorun"
+			autorun.stored_data = initial(autorun_program.filename)
+			HDD.store_file(autorun)
 
 /obj/machinery/computer/modular/preset/engineering
 	default_software = list(
@@ -79,7 +84,8 @@
 		/datum/computer_file/program/records,
 		/datum/computer_file/program/docking,
 		/datum/computer_file/program/records,
-		/datum/computer_file/program/wordprocessor
+		/datum/computer_file/program/wordprocessor,
+		/datum/computer_file/program/accounts
 	)
 
 /obj/machinery/computer/modular/preset/security

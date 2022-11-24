@@ -4,8 +4,6 @@
 	name = "debris field"
 	desc = "A large field of miscellanious debris."
 	icon_state = "object"
-	known = 0
-
 	initial_generic_waypoints = list(
 		"nav_derelict_1",
 		"nav_derelict_2",
@@ -18,7 +16,6 @@
 
 /datum/map_template/ruin/away_site/derelict
 	name = "Derelict Station"
-	id = "awaysite_derelict"
 	description = "An abandoned construction project."
 	suffixes = list("derelict/derelict-station.dmm")
 	cost = 1

@@ -52,14 +52,22 @@
 	equipment_overlays.Cut()
 
 	if (!client || client.eye == src || client.eye == src.loc) // !client is so the unit tests function
-		if(istype(src.head, /obj/item/clothing/head))
+
+		var/obj/item/clothing/head/head = get_equipped_item(slot_head_str)
+		if(istype(head))
 			add_clothing_protection(head)
-		if(istype(src.glasses, /obj/item/clothing/glasses))
+
+		var/obj/item/clothing/glasses/glasses = get_equipped_item(slot_glasses_str)
+		if(istype(glasses))
 			process_glasses(glasses)
-		if(istype(src.wear_mask, /obj/item/clothing/mask))
-			add_clothing_protection(wear_mask)
-		if(istype(back,/obj/item/rig))
-			process_rig(back)
+
+		var/obj/item/clothing/mask/mask = get_equipped_item(slot_wear_mask_str)
+		if(istype(mask))
+			add_clothing_protection(mask)
+
+		var/obj/item/rig/rig = get_equipped_item(slot_back_str)
+		if(istype(rig))
+			process_rig(rig)
 
 /mob/living/carbon/human/proc/process_glasses(var/obj/item/clothing/glasses/G)
 	if(G)
@@ -81,11 +89,9 @@
 			G.process_hud(src)
 
 /mob/living/carbon/human/proc/process_rig(var/obj/item/rig/O)
+	var/obj/item/head = get_equipped_item(slot_head_str)
 	if(O.visor && O.visor.active && O.visor.vision && O.visor.vision.glasses && (!O.helmet || (head && O.helmet == head)))
 		process_glasses(O.visor.vision.glasses)
-
-/mob/living/carbon/human/get_gender()
-	return gender
 
 /mob/living/carbon/human/fully_replace_character_name(var/new_name, var/in_depth = TRUE)
 	var/old_name = real_name
@@ -174,13 +180,13 @@
 	next_sonar_ping += 10 SECONDS
 	var/heard_something = FALSE
 	to_chat(src, "<span class='notice'>You take a moment to listen in to your environment...</span>")
-	for(var/mob/living/L in range(get_effective_view(client), src))
+	for(var/mob/living/L in range(client?.view || world.view, src))
 		var/turf/T = get_turf(L)
 		if(!T || L == src || L.stat == DEAD || is_below_sound_pressure(T))
 			continue
 		heard_something = TRUE
 		var/image/ping_image = image(icon = 'icons/effects/effects.dmi', icon_state = "sonar_ping", loc = src)
-		ping_image.plane = EFFECTS_ABOVE_LIGHTING_PLANE
+		ping_image.plane = ABOVE_LIGHTING_PLANE
 		ping_image.layer = BEAM_PROJECTILE_LAYER
 		ping_image.pixel_x = (T.x - src.x) * WORLD_ICON_SIZE
 		ping_image.pixel_y = (T.y - src.y) * WORLD_ICON_SIZE
@@ -209,19 +215,11 @@
 	if(!heard_something)
 		to_chat(src, "<span class='notice'>You hear no movement but your own.</span>")
 
-/mob/living/carbon/human/reset_layer()
-	if(hiding)
-		layer = HIDING_MOB_LAYER
-	else if(lying)
-		layer = LYING_HUMAN_LAYER
-	else
-		..()
-
 /mob/living/carbon/human/proc/has_headset_in_ears()
-	return istype(get_equipped_item(slot_l_ear), /obj/item/radio/headset) || istype(get_equipped_item(slot_r_ear), /obj/item/radio/headset)
+	return istype(get_equipped_item(slot_l_ear_str), /obj/item/radio/headset) || istype(get_equipped_item(slot_r_ear_str), /obj/item/radio/headset)
 
 /mob/living/carbon/human/welding_eyecheck()
-	var/obj/item/organ/internal/eyes/E = src.internal_organs_by_name[species.vision_organ]
+	var/obj/item/organ/internal/eyes/E = get_organ(species.vision_organ, /obj/item/organ/internal/eyes)
 	if(!E)
 		return
 	var/safety = eyecheck()
@@ -230,12 +228,12 @@
 			to_chat(src, "<span class='warning'>Your eyes sting a little.</span>")
 			E.damage += rand(1, 2)
 			if(E.damage > 12)
-				eye_blurry += rand(3,6)
+				ADJ_STATUS(src, STAT_BLURRY, rand(3,6))
 		if(FLASH_PROTECTION_MINOR)
 			to_chat(src, "<span class='warning'>Your eyes stings!</span>")
 			E.damage += rand(1, 4)
 			if(E.damage > 10)
-				eye_blurry += rand(3,6)
+				ADJ_STATUS(src, STAT_BLURRY, rand(3,6))
 				E.damage += rand(1, 4)
 		if(FLASH_PROTECTION_NONE)
 			to_chat(src, "<span class='warning'>Your eyes burn!</span>")
@@ -244,15 +242,15 @@
 				E.damage += rand(4,10)
 		if(FLASH_PROTECTION_REDUCED)
 			to_chat(src, "<span class='danger'>Your equipment intensifies the welder's glow. Your eyes itch and burn severely.</span>")
-			eye_blurry += rand(12,20)
+			ADJ_STATUS(src, STAT_BLURRY, rand(12,20))
 			E.damage += rand(12, 16)
 	if(safety<FLASH_PROTECTION_MAJOR)
 		if(E.damage > 10)
 			to_chat(src, "<span class='warning'>Your eyes are really starting to hurt. This can't be good for you!</span>")
 		if (E.damage >= E.min_bruised_damage)
 			to_chat(src, "<span class='danger'>You go blind!</span>")
-			eye_blind = 5
-			eye_blurry = 5
+			set_status(STAT_BLIND, 5)
+			set_status(STAT_BLURRY, 5)
 			disabilities |= NEARSIGHTED
 			spawn(100)
 				disabilities &= ~NEARSIGHTED
@@ -267,7 +265,7 @@
 
 	// We don't present the cloaking message if the human was already cloaked just before cleanup.
 	if(!has_uncloaked && LAZYLEN(cloaking_sources) == 1)
-		update_icons()
+		update_icon()
 		src.visible_message("<span class='warning'>\The [src] seems to disappear before your eyes!</span>", "<span class='notice'>You feel completely invisible.</span>")
 		return TRUE
 	return FALSE
@@ -282,7 +280,7 @@
 	LAZYREMOVE(cloaking_sources, weakref(cloaking_source))
 
 	if(was_cloaked && !LAZYLEN(cloaking_sources))
-		update_icons()
+		update_icon()
 		visible_message(CLOAK_APPEAR_OTHER, CLOAK_APPEAR_SELF)
 		return TRUE
 	return FALSE
@@ -293,7 +291,7 @@
 
 /mob/living/carbon/human/is_cloaked()
 	if(clean_cloaking_sources())
-		update_icons()
+		update_icon()
 		visible_message(CLOAK_APPEAR_OTHER, CLOAK_APPEAR_SELF)
 	return LAZYLEN(cloaking_sources)
 
@@ -318,7 +316,7 @@
 
 	if(rogue_entries.len) // These entries did not cleanup after themselves before being destroyed
 		var/rogue_entries_as_string = jointext(map(rogue_entries, /proc/log_info_line), ", ")
-		crash_with("[log_info_line(src)] - Following cloaking entries were removed during cleanup: [rogue_entries_as_string]")
+		PRINT_STACK_TRACE("[log_info_line(src)] - Following cloaking entries were removed during cleanup: [rogue_entries_as_string]")
 
 	UNSETEMPTY(cloaking_sources)
 	return !cloaking_sources // If cloaking_sources wasn't initially null but is now, we've uncloaked
@@ -329,10 +327,22 @@
 	..()
 
 /mob/living/carbon/human/proc/has_meson_effect()
-	. = FALSE
-	for(var/obj/screen/equipment_screen in equipment_overlays) // check through our overlays to see if we have any source of the meson overlay
-		if (equipment_screen.icon_state == "meson_hud")
-			return TRUE
+	var/datum/global_hud/global_hud = get_global_hud()
+	return (global_hud.meson in equipment_overlays)
 
 /mob/living/carbon/human/proc/is_in_pocket(var/obj/item/I)
-	return I in list(l_store, r_store)
+	for(var/slot in global.pocket_slots)
+		if(get_equipped_item(slot) == I)
+			return TRUE
+	return FALSE
+
+/mob/living/carbon/human/get_accessible_pen()
+	if((. = ..()))
+		return .
+
+	//Look for other slots
+	var/static/list/PEN_CHECK_SLOTS = list(slot_l_ear_str, slot_r_ear_str, slot_l_store_str, slot_r_store_str, slot_s_store_str)
+	for(var/slot in PEN_CHECK_SLOTS)
+		var/obj/item/I = get_equipped_item(slot)
+		if(IS_PEN(I))
+			return I

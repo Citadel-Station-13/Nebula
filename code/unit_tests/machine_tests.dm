@@ -32,7 +32,7 @@
 		if(passed[machine.type] || failed[machine.type])
 			continue
 		var/path = machine.base_type || machine.type
-		var/circuit_type = GLOB.machine_path_to_circuit_type[path]
+		var/circuit_type = get_circuit_by_build_path(path)
 		if(circuit_type && !machine.construct_state)
 			failed[machine.type] = TRUE
 			log_bad("[log_info_line(machine)] had an associated circuit of type [circuit_type] but no construction state.")
@@ -65,25 +65,4 @@
 		fail("One or more machines had an invalid construction state.")
 	else
 		pass("All machines had valid construction states.")
-	return  1
-
-
-/datum/unit_test/fabricator_recipes_shall_be_buildable
-	name = "MACHINE: All fabricators will be able to produce all of their recipes"
-
-/datum/unit_test/fabricator_recipes_shall_be_buildable/start_test()
-	var/failed = list()
-	for(var/thing in typesof(/obj/machinery/fabricator))
-		var/obj/machinery/fabricator/fab = new thing
-		for(var/datum/fabricator_recipe/recipe in SSfabrication.get_all_recipes(fab.fabricator_class))
-			for(var/mat in recipe.resources)
-				if(isnull(fab.storage_capacity[mat]))
-					log_bad("[fab.name] ([fab.type]) could not print [recipe.name] due to lacking [mat].")
-					failed += thing
-					break
-		qdel(fab)
-	if(length(failed))
-		fail("One or more fabricators could not produce an associated recipe.")
-	else
-		pass("All fabricators could produce their associated recipes.")
 	return  1

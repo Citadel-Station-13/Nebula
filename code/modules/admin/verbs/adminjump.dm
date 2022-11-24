@@ -17,7 +17,7 @@
 	var/list/areas = area_repository.get_areas_by_z_level()
 	var/area/A = areas[selected_area]
 	mob.jumpTo(pick(get_area_turfs(A)))
-	log_and_message_admins("jumped to [A]")
+	log_and_message_admins("jumped to [A.proper_name]")
 	SSstatistics.add_field_details("admin_verb","JA") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /client/proc/jumptoturf(var/turf/T)
@@ -73,7 +73,7 @@
 	log_and_message_admins("jumped to coordinates [tx], [ty], [tz]")
 
 /proc/sorted_client_keys()
-	return sortKey(GLOB.clients.Copy())
+	return sortKey(global.clients.Copy())
 
 /client/proc/jumptokey(client/C in sorted_client_keys())
 	set category = "Admin"
@@ -117,7 +117,7 @@
 
 	if(config.allow_admin_jump)
 		var/list/keys = list()
-		for(var/mob/M in GLOB.player_list)
+		for(var/mob/M in global.player_list)
 			keys += M.client
 		var/selection = input("Please, select a player!", "Admin Jumping", null, null) as null|anything in sortKey(keys)
 		if(!selection)
@@ -133,7 +133,7 @@
 	else
 		alert("Admin jumping disabled")
 
-/client/proc/sendmob(var/mob/M in sortmobs())
+/client/proc/sendmob(var/mob/M in get_sorted_mob_list())
 	set category = "Admin"
 	set name = "Send Mob"
 	if(!check_rights(R_ADMIN|R_MOD|R_DEBUG))
@@ -148,5 +148,5 @@
 	if(A)
 		M.jumpTo(pick(get_area_turfs(A)))
 		SSstatistics.add_field_details("admin_verb","SMOB") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
-		log_and_message_admins("teleported [key_name(M)] to [A].")
+		log_and_message_admins("teleported [key_name(M)] to [A.proper_name].")
 

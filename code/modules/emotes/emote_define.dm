@@ -13,6 +13,8 @@
 	var/emote_message_1p_target        // 'You do a flip at Urist McTarget!'
 	var/emote_message_3p_target        // 'Urist McShitter does a flip at Urist McTarget!'
 
+	var/emote_message_radio            // A message to send over the radio if one picks up this emote.
+
 	// Two-dimensional array
 	// First is list of genders, associated to a list of the sound effects to use
 	var/list/emote_sound = null
@@ -20,7 +22,9 @@
 	var/message_type = VISIBLE_MESSAGE // Audible/visual flag
 	var/targetted_emote                // Whether or not this emote needs a target.
 	var/check_restraints               // Can this emote be used while restrained?
-	var/conscious = 1				   // Do we need to be awake to emote this?
+	var/check_range                    // falsy, or a range outside which the emote will not work
+	var/conscious = TRUE               // Do we need to be awake to emote this?
+	var/emote_range = 0                // If >0, restricts emote visibility to viewers within range.
 
 /decl/emote/proc/get_emote_message_1p(var/atom/user, var/atom/target, var/extra_params)
 	if(target)
@@ -47,13 +51,21 @@
 				target = thing
 				break
 
-	var/datum/gender/user_gender = gender_datums[user.get_visible_gender()]
-	var/datum/gender/target_gender
-	if(target)
-		target_gender = gender_datums[target.get_visible_gender()]
+	if(targetted_emote && !target)
+		to_chat(user, SPAN_WARNING("You can't do that to thin air."))
+		return
+
+	if(target && target != user && check_range)
+		if (get_dist(user, target) > check_range)
+			to_chat(user, SPAN_WARNING("\The [target] is too far away."))
+			return
+
+	var/decl/pronouns/user_gender =   user.get_pronouns()
+	var/decl/pronouns/target_gender = target?.get_pronouns()
 
 	var/use_3p
 	var/use_1p
+	var/use_radio_message
 	if(emote_message_1p)
 		if(target && emote_message_1p_target)
 			use_1p = get_emote_message_1p(user, target, extra_params)
@@ -80,18 +92,28 @@
 		use_3p = replacetext(use_3p, "USER", "<b>\the [user]</b>")
 		use_3p = capitalize(use_3p)
 
+	if(emote_message_radio)
+		use_radio_message = replacetext(emote_message_radio, "USER_THEM", user_gender.him)
+		use_radio_message = replacetext(use_radio_message, "USER_THEIR", user_gender.his)
+		use_radio_message = replacetext(use_radio_message, "USER_SELF", user_gender.self)
+		use_radio_message = replacetext(use_radio_message, "USER", "<b>\the [user]</b>")
+
+	var/use_range = emote_range
+	if (!use_range)
+		use_range = world.view
+
 	if(ismob(user))
 		var/mob/M = user
 		if(message_type == AUDIBLE_MESSAGE)
 			if(isliving(user))
 				var/mob/living/L = user
-				if(L.silent)
+				if(HAS_STATUS(L, STAT_SILENCE))
 					M.visible_message(message = "[user] opens their mouth silently!", self_message = "You cannot say anything!", blind_message = emote_message_impaired, checkghosts = /datum/client_preference/ghost_sight)
 					return
 				else
-					M.audible_message(message = use_3p, self_message = use_1p, deaf_message = emote_message_impaired, checkghosts = /datum/client_preference/ghost_sight)
+					M.audible_message(message = use_3p, self_message = use_1p, deaf_message = emote_message_impaired, hearing_distance = use_range, checkghosts = /datum/client_preference/ghost_sight, radio_message = use_radio_message)
 		else
-			M.visible_message(message = use_3p, self_message = use_1p, blind_message = emote_message_impaired, checkghosts = /datum/client_preference/ghost_sight)
+			M.visible_message(message = use_3p, self_message = use_1p, blind_message = emote_message_impaired, range = use_range, checkghosts = /datum/client_preference/ghost_sight)
 
 	do_extra(user, target)
 	do_sound(user)

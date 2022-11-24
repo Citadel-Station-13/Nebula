@@ -8,13 +8,13 @@
 	power_adjustment = 2
 	build_cost = 700
 
-/obj/structure/deity/wizard_recharger/attack_hand(var/mob/living/hitter)
+/obj/structure/deity/wizard_recharger/attack_hand(var/mob/hitter)
 	if(!hitter.mind || !hitter.mind.learned_spells || !hitter.mind.learned_spells.len)
 		to_chat(hitter, "<span class='warning'>You don't feel as if this will do anything for you.</span>")
 		return
 
 	hitter.visible_message("<span class='notice'>\The [hitter] dips their hands into \the [src], a soft glow emanating from them.</span>")
-	if(do_after(hitter,300,src,needhand=0))
+	if(do_after(hitter,300,src,check_holding=0))
 		for(var/s in hitter.mind.learned_spells)
 			var/spell/spell = s
 			spell.charge_counter = spell.charge_max

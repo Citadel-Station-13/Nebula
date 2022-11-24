@@ -28,14 +28,15 @@
 	to_chat(usr, "\[2/5\] - All pipenets purged of gas.")
 
 	// Delete all zones.
-	for(var/zone/Z in world)
+	for(var/zone/Z in SSair.zones)
 		Z.c_invalidate()
 
 	to_chat(usr, "\[3/5\] - All ZAS Zones removed.")
 
 	var/list/unsorted_overlays = list()
-	for(var/id in subtypesof(/decl/material/gas))
-		var/decl/material/mat = decls_repository.get_decl(id)
+	var/list/all_gasses = decls_repository.get_decls_of_subtype(/decl/material/gas)
+	for(var/id in all_gasses)
+		var/decl/material/mat = all_gasses[id]
 		unsorted_overlays |= mat.gas_tile_overlay
 
 	for(var/turf/simulated/T in world)

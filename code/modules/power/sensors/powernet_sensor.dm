@@ -36,7 +36,7 @@
 		var/area/A = get_area(src)
 		if(!A)
 			return // in nullspace
-		id_tag = "[A.name] #[sequential_id(A.name + "power/sensor")]"
+		id_tag = "[A.proper_name] #[sequential_id(A.name + "power/sensor")]"
 	name = "[id_tag] - Powernet Sensor"
 
 // Proc: check_grid_warning()
@@ -158,17 +158,26 @@
 
 		for(var/obj/machinery/power/apc/A in L)
 			var/list/APC_entry = list()
+			APC_entry["breaker"] = A.operating
+			APC_entry["failure"] = A.failure_timer
+			APC_entry["telemetry"] = A.aidisabled
+			APC_entry["remote_control"] = A.remote_control
 			// Channel Statuses
 			APC_entry["s_equipment"] = S[A.equipment+1]
 			APC_entry["s_lighting"] = S[A.lighting+1]
 			APC_entry["s_environment"] = S[A.environ+1]
+			// Channel Statuses (actual vars)
+			APC_entry["n_equipment"] = A.equipment
+			APC_entry["n_lighting"] = A.lighting
+			APC_entry["n_environment"] = A.environ
 			// Cell Status
 			var/obj/item/cell/cell = A.get_cell()
 			APC_entry["cell_charge"] = cell ? round(cell.percent()) : "NO CELL"
 			APC_entry["cell_status"] = cell ? chg[A.charging+1] : "N"
 			// Other info
 			APC_entry["total_load"] = reading_to_text(A.lastused_total)
-			APC_entry["name"] = A.area.name
+			APC_entry["name"] = A.area.proper_name
+			APC_entry["ref"] = "\ref[A]"
 			// Add data into main list of APC data.
 			APC_data += list(APC_entry)
 			// Add load of this APC to total APC load calculation

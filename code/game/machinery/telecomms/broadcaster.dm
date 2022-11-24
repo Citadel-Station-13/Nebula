@@ -7,21 +7,19 @@
 	They receive their message from a server after the message has been logged.
 */
 
-var/list/recentmessages = list() // global list of recent messages broadcasted : used to circumvent massive radio spam
-var/message_delay = 0 // To make sure restarting the recentmessages list is kept in sync
+var/global/list/recentmessages = list() // global list of recent messages broadcasted : used to circumvent massive radio spam
+var/global/message_delay = 0 // To make sure restarting the recentmessages list is kept in sync
 
 /obj/machinery/telecomms/broadcaster
 	name = "Subspace Broadcaster"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/broadcaster.dmi'
 	icon_state = "broadcaster"
 	desc = "A dish-shaped machine used to broadcast processed subspace signals."
 	density = 1
 	anchored = 1
 	idle_power_usage = 25
-	machinetype = 5
 	produces_heat = 0
 	delay = 7
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/broadcaster
 	base_type = /obj/machinery/telecomms/broadcaster
 	outage_probability = 10
 
@@ -103,7 +101,7 @@ var/message_delay = 0 // To make sure restarting the recentmessages list is kept
 	// In case message_delay is left on 1, otherwise it won't reset the list and people can't say the same thing twice anymore.
 	if(message_delay)
 		message_delay = 0
-	..()
+	return ..()
 
 
 /*
@@ -113,22 +111,20 @@ var/message_delay = 0 // To make sure restarting the recentmessages list is kept
 
 /obj/machinery/telecomms/allinone
 	name = "Telecommunications Mainframe"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/tcomms/comm_server.dmi'
 	icon_state = "comm_server"
 	desc = "A compact machine used for portable subspace telecommuniations processing."
 	density = 1
 	anchored = 1
 	use_power = POWER_USE_OFF
 	idle_power_usage = 0
-	machinetype = 6
 	produces_heat = 0
-	circuitboard = /obj/item/stock_parts/circuitboard/telecomms/allinone
 	construct_state = /decl/machine_construction/tcomms/panel_closed/cannot_print
 	var/listening_freqs
 	var/channel_color
 	var/channel_name
 	var/intercept = 0 // if nonzero, broadcasts all messages to syndicate channel
-	
+
 /obj/machinery/telecomms/allinone/Initialize()
 	if(!listening_freqs)
 		listening_freqs = ANTAG_FREQS	//Covers any updates to ANTAG_FREQS
@@ -248,25 +244,21 @@ var/message_delay = 0 // To make sure restarting the recentmessages list is kept
 
 	var/display_freq = freq
 
-	var/list/obj/item/radio/radios = list()
+	var/list/radios = list()
 
 	// --- Broadcast only to intercom devices ---
-
 	if(data == 1)
-
-		for (var/obj/item/radio/intercom/R in connection.devices["[RADIO_CHAT]"])
-			if(R.receive_range(display_freq, level) > -1)
+		for(var/receiver in connection.devices["[RADIO_CHAT]"])
+			var/obj/item/radio/R = receiver
+			if(R.intercom && R.receive_range(display_freq, level) > -1)
 				radios += R
 
 	// --- Broadcast only to intercoms and station-bounced radios ---
 
 	else if(data == 2)
-
 		for (var/obj/item/radio/R in connection.devices["[RADIO_CHAT]"])
-
 			if(istype(R, /obj/item/radio/headset))
 				continue
-
 			if(R.receive_range(display_freq, level) > -1)
 				radios += R
 
@@ -281,15 +273,13 @@ var/message_delay = 0 // To make sure restarting the recentmessages list is kept
 
 	// --- Broadcast to ALL radio devices ---
 	else
-
 		for (var/obj/item/radio/R in connection.devices["[RADIO_CHAT]"])
 			if(R.receive_range(display_freq, level) > -1)
 				radios += R
 
 	for(var/obj/item/radio/R in radios)
-		if((R.last_radio_sound + 1 SECOND) < world.time && R != radio)
-			playsound(R.loc, 'sound/effects/radio_chatter.ogg', 10, 0, -6)
-			R.last_radio_sound = world.time
+		if(R != radio)
+			R.received_chatter(display_freq, level)
 
 	// Get a list of mobs who can hear from the radios we collected.
 	var/list/receive = get_mobs_in_radio_ranges(radios)
@@ -312,7 +302,7 @@ var/message_delay = 0 // To make sure restarting the recentmessages list is kept
 			continue
 
 		// Ghosts hearing all radio chat don't want to hear syndicate intercepts, they're duplicates
-		if(data == 3 && isghost(R) && R.get_preference_value(/datum/client_preference/ghost_radio) == GLOB.PREF_ALL_CHATTER)
+		if(data == 3 && isghost(R) && R.get_preference_value(/datum/client_preference/ghost_radio) == PREF_ALL_CHATTER)
 			continue
 
 		// --- Check for compression ---

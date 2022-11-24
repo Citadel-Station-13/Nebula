@@ -4,10 +4,9 @@
 	item_state = "buildpipe"
 	icon_state = "blank"
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
-	material = MAT_STEEL
+	slot_flags = SLOT_LOWER_BODY
+	material = /decl/material/solid/metal/steel
 
-	var/list/part = null // Order of args is important for installing robolimbs.
 	var/sabotaged = 0 //Emagging limbs can have repercussions when installed as prosthetics.
 	var/model_info
 	var/bp_tag = null // What part is this?
@@ -19,11 +18,13 @@
 
 /obj/item/robot_parts/Initialize(mapload, var/model)
 	. = ..(mapload)
-	if(model_info && model)
+	if(model_info)
+		if(!ispath(model, /decl/prosthetics_manufacturer))
+			model = /decl/prosthetics_manufacturer/basic_human
 		model_info = model
-		var/datum/robolimb/R = all_robolimbs[model]
+		var/decl/prosthetics_manufacturer/R = GET_DECL(model)
 		if(R)
-			SetName("[R.company] [initial(name)]")
+			SetName("[R.name] [initial(name)]")
 			desc = "[R.desc]"
 			if(icon_state in icon_states(R.icon))
 				icon = R.icon
@@ -40,46 +41,41 @@
 	name = "left arm"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "l_arm"
-	part = list(BP_L_ARM, BP_L_HAND)
 	model_info = 1
 	bp_tag = BP_L_ARM
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/robot_parts/r_arm
 	name = "right arm"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "r_arm"
-	part = list(BP_R_ARM, BP_R_HAND)
 	model_info = 1
 	bp_tag = BP_R_ARM
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/robot_parts/l_leg
 	name = "left leg"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "l_leg"
-	part = list(BP_L_LEG, BP_L_FOOT)
 	model_info = 1
 	bp_tag = BP_L_LEG
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/robot_parts/r_leg
 	name = "right leg"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "r_leg"
-	part = list(BP_R_LEG, BP_R_FOOT)
 	model_info = 1
 	bp_tag = BP_R_LEG
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/robot_parts/head
 	name = "head"
 	desc = "A standard reinforced braincase, with spine-plugged neural socket and sensor gimbals."
 	icon_state = "head"
-	part = list(BP_HEAD)
 	model_info = 1
 	bp_tag = BP_HEAD
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	var/obj/item/flash/flash1 = null
 	var/obj/item/flash/flash2 = null
 
@@ -94,10 +90,9 @@
 	name = "torso"
 	desc = "A heavily reinforced case containing cyborg logic boards, with space for a standard power cell."
 	icon_state = "chest"
-	part = list(BP_GROIN,BP_CHEST)
 	model_info = 1
 	bp_tag = BP_CHEST
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	var/wires = 0.0
 	var/obj/item/cell/cell = null
 
@@ -122,7 +117,7 @@
 				return
 			src.cell = W
 			to_chat(user, "<span class='notice'>You insert the cell!</span>")
-	if(isCoil(W))
+	if(IS_COIL(W))
 		if(src.wires)
 			to_chat(user, "<span class='warning'>You have already inserted wire!</span>")
 			return

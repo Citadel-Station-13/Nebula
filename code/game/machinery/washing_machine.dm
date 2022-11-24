@@ -64,7 +64,6 @@
 		state |= WASHER_STATE_BLOODY
 
 	update_use_power(POWER_USE_ACTIVE)
-	update_icon()
 	addtimer(CALLBACK(src, /obj/machinery/washing_machine/proc/wash), 20 SECONDS)
 
 /obj/machinery/washing_machine/proc/wash()
@@ -86,11 +85,10 @@
 					addtimer(CALLBACK(C, /obj/item/clothing/proc/change_smell), detergent.smell_clean_time, TIMER_UNIQUE | TIMER_OVERRIDE)
 	QDEL_NULL(detergent)
 
-	update_use_power(POWER_USE_IDLE)
 	if(locate(/mob/living) in src)
 		gibs_ready = 1
 	state &= ~WASHER_STATE_RUNNING
-	update_icon()
+	update_use_power(POWER_USE_IDLE)
 
 /obj/machinery/washing_machine/verb/climb_out()
 	set name = "Climb out"
@@ -101,7 +99,7 @@
 		return
 	if(state & WASHER_STATE_CLOSED)
 		to_chat(usr, SPAN_WARNING("\The [src] is closed."))
-		return	
+		return
 	if(!do_after(usr, 2 SECONDS, src))
 		return
 	if(!(state & WASHER_STATE_CLOSED))
@@ -113,14 +111,14 @@
 /obj/machinery/washing_machine/clean_blood()
 	. = ..()
 	state &= ~WASHER_STATE_BLOODY
-	update_icon()	
+	update_icon()
 
 /obj/machinery/washing_machine/components_are_accessible(path)
 	return !(state & WASHER_STATE_RUNNING) && ..()
 
 /obj/machinery/washing_machine/attackby(obj/item/W, mob/user)
 	if(!(state & WASHER_STATE_CLOSED))
-		if(!crayon && istype(W,/obj/item/pen/crayon))
+		if(!crayon && IS_PEN(W))
 			if(!user.unEquip(W, src))
 				return
 			crayon = W
@@ -154,9 +152,6 @@
 		if ( istype(W,/obj/item/clothing/suit/syndicatefake ) )
 			to_chat(user, "This item does not fit.")
 			return
-		if ( istype(W,/obj/item/clothing/suit/cyborg_suit ) )
-			to_chat(user, "This item does not fit.")
-			return
 		if ( istype(W,/obj/item/clothing/suit/bomb_suit ) )
 			to_chat(user, "This item does not fit.")
 			return
@@ -172,9 +167,6 @@
 		if ( istype(W,/obj/item/clothing/mask/smokable/cigarette ) )
 			to_chat(user, "This item does not fit.")
 			return
-		if ( istype(W,/obj/item/clothing/head/syndicatefake ) )
-			to_chat(user, "This item does not fit.")
-			return
 		if ( istype(W,/obj/item/clothing/head/helmet ) )
 			to_chat(user, "This item does not fit.")
 			return
@@ -188,7 +180,7 @@
 			else
 				to_chat(user, SPAN_NOTICE("You can't put the item in right now."))
 		else
-			to_chat(user, SPAN_NOTICE("\The [src] is full"))
+			to_chat(user, SPAN_NOTICE("\The [src] is full."))
 		return TRUE
 
 	if(state & WASHER_STATE_RUNNING)

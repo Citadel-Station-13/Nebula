@@ -8,8 +8,8 @@
 	w_class = ITEM_SIZE_NORMAL
 	layer = LATTICE_LAYER
 	color = COLOR_STEEL
-	material = MAT_STEEL
-	obj_flags = OBJ_FLAG_NOFALL
+	material = /decl/material/solid/metal/steel
+	obj_flags = OBJ_FLAG_NOFALL | OBJ_FLAG_MOVES_UNSUPPORTED
 	material_alteration = MAT_FLAG_ALTERATION_ALL
 
 /obj/structure/lattice/Initialize()
@@ -18,7 +18,8 @@
 		DELETE_IF_DUPLICATE_OF(/obj/structure/lattice)
 		if(!istype(material))
 			return INITIALIZE_HINT_QDEL
-		if(!istype(src.loc, /turf/space) && !istype(src.loc, /turf/simulated/open))
+		var/turf/T = loc
+		if(!istype(T) || !T.is_open())
 			return INITIALIZE_HINT_QDEL
 		. = INITIALIZE_HINT_LATELOAD
 
@@ -41,7 +42,7 @@
 			AM.fall(old_loc)
 
 /obj/structure/lattice/proc/update_neighbors(var/location = loc)
-	for (var/dir in GLOB.cardinal)
+	for (var/dir in global.cardinal)
 		var/obj/structure/lattice/L = locate(/obj/structure/lattice, get_step(location, dir))
 		if(L)
 			L.update_icon()
@@ -53,18 +54,17 @@
 
 /obj/structure/lattice/proc/deconstruct(var/mob/user)
 	to_chat(user, SPAN_NOTICE("Slicing lattice joints..."))
-	new /obj/item/stack/material/rods(loc, 1, material.type)
-	qdel(src)
+	physically_destroyed()
 
 /obj/structure/lattice/attackby(obj/item/C, mob/user)
 
-	if (istype(C, /obj/item/stack/tile/floor))
+	if (istype(C, /obj/item/stack/tile))
 		var/turf/T = get_turf(src)
 		T.attackby(C, user) //BubbleWrap - hand this off to the underlying turf instead
 		return
-	if(isWelder(C))
+	if(IS_WELDER(C))
 		var/obj/item/weldingtool/WT = C
-		if(WT.remove_fuel(0, user))
+		if(WT.weld(0, user))
 			deconstruct(user)
 		return
 	if(istype(C, /obj/item/gun/energy/plasmacutter))
@@ -94,11 +94,12 @@
 /obj/structure/lattice/on_update_icon()
 	..()
 	var/dir_sum = 0
-	for (var/direction in GLOB.cardinal)
+	for (var/direction in global.cardinal)
 		var/turf/T = get_step(src, direction)
 		if(locate(/obj/structure/lattice, T) || locate(/obj/structure/catwalk, T))
 			dir_sum += direction
 		else
-			if(!(istype(get_step(src, direction), /turf/space)) && !(istype(get_step(src, direction), /turf/simulated/open)))
+			var/turf/O = get_step(src, direction) 
+			if(!istype(O) || !O.is_open())
 				dir_sum += direction
 	icon_state = "lattice[dir_sum]"

@@ -4,14 +4,14 @@
 	icon = 'icons/obj/items/device/depth_scanner.dmi'
 	icon_state = "crap"
 	item_state = "analyzer"
-	origin_tech = "{'magnets':2,'engineering':2,'bluespace':2}"
-	material = MAT_STEEL
+	origin_tech = "{'magnets':2,'engineering':2,'wormholes':2}"
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_ALUMINIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_TRACE
 	)
 	w_class = ITEM_SIZE_SMALL
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	var/list/positive_locations = list()
 	var/datum/depth_scan/current
 
@@ -27,8 +27,8 @@
 /obj/item/depth_scanner/proc/scan_atom(var/mob/user, var/atom/A)
 	user.visible_message("<span class='notice'>\The [user] scans \the [A], the air around them humming gently.</span>")
 
-	if(istype(A, /turf/simulated/wall/natural))
-		var/turf/simulated/wall/natural/M = A
+	if(istype(A, /turf/exterior/wall))
+		var/turf/exterior/wall/M = A
 		if((M.finds && M.finds.len) || M.artifact_find)
 
 			//create a new scanlog entry
@@ -47,7 +47,7 @@
 
 			positive_locations.Add(D)
 
-			to_chat(user, "<span class='notice'>\icon[src] [src] pings.</span>")
+			to_chat(user, "<span class='notice'>[html_icon(src)] [src] pings.</span>")
 
 	else if(istype(A, /obj/structure/boulder))
 		var/obj/structure/boulder/B = A
@@ -65,9 +65,9 @@
 
 			positive_locations.Add(D)
 
-			to_chat(user, "<span class='notice'>\icon[src] [src] pings [pick("madly","wildly","excitedly","crazily")]!</span>")
+			to_chat(user, "<span class='notice'>[html_icon(src)] [src] pings [pick("madly","wildly","excitedly","crazily")]!</span>")
 
-/obj/item/depth_scanner/attack_self(var/mob/living/user)
+/obj/item/depth_scanner/attack_self(var/mob/user)
 	interact(user)
 
 /obj/item/depth_scanner/interact(var/mob/user)
@@ -99,8 +99,9 @@
 
 	dat += "<hr>"
 	dat += "<A href='?src=\ref[src];refresh=1'>Refresh</a><br>"
-	dat += "<A href='?src=\ref[src];close=1'>Close</a><br>"
-	show_browser(user, dat, "window=depth_scanner;size=300x500")
+	var/datum/browser/popup = new(user, "depth_scanner", "Results", 300, 500)
+	popup.set_content(dat)
+	popup.open()
 	onclose(user, "depth_scanner")
 
 /obj/item/depth_scanner/OnTopic(user, href_list)
@@ -108,7 +109,6 @@
 		var/index = text2num(href_list["select"])
 		if(index && index <= positive_locations.len)
 			current = positive_locations[index]
-		. = TOPIC_REFRESH
 	else if(href_list["clear"])
 		var/index = text2num(href_list["clear"])
 		if(index)
@@ -120,8 +120,5 @@
 			//GC will hopefully pick them up before too long
 			positive_locations = list()
 			QDEL_NULL(current)
-		. = TOPIC_REFRESH
-	else if(href_list["close"])
-		close_browser(user, "window=depth_scanner")
-	updateSelfDialog()
+	interact(user)
 

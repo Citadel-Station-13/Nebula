@@ -1,12 +1,12 @@
-GLOBAL_DATUM_INIT(default_hardpoint_background, /image, null)
-GLOBAL_DATUM_INIT(hardpoint_error_icon, /image, null)
-GLOBAL_DATUM_INIT(hardpoint_bar_empty, /image, null)
+var/global/image/default_hardpoint_background = null
+var/global/image/hardpoint_error_icon = null
+var/global/image/hardpoint_bar_empty = null
 
-GLOBAL_LIST_INIT(hardpoint_bar_cache, new)
-GLOBAL_LIST_INIT(mech_damage_overlay_cache, new)
-GLOBAL_LIST_INIT(mech_image_cache, new)
-GLOBAL_LIST_INIT(mech_icon_cache, new)
-GLOBAL_LIST_INIT(mech_weapon_overlays, icon_states('icons/mecha/mech_weapon_overlays.dmi'))
+var/global/list/hardpoint_bar_cache =       list()
+var/global/list/mech_damage_overlay_cache = list()
+var/global/list/mech_image_cache =          list()
+var/global/list/mech_icon_cache =           list()
+var/global/list/mech_weapon_overlays =      icon_states('icons/mecha/mech_weapon_overlays.dmi')
 
 #define HARDPOINT_BACK "back"
 #define HARDPOINT_LEFT_HAND "left hand"
@@ -19,7 +19,6 @@ GLOBAL_LIST_INIT(mech_weapon_overlays, icon_states('icons/mecha/mech_weapon_over
 #define MECH_SOFTWARE_UTILITY "utility equipment"                // Plasma torch, clamp, drill.
 #define MECH_SOFTWARE_MEDICAL "medical support systems"          // Sleeper.
 #define MECH_SOFTWARE_WEAPONS "standard weapon systems"          // Ballistics and energy weapons.
-#define MECH_SOFTWARE_ADVWEAPONS "advanced weapon systems"       // Railguns, missile launcher.
 #define MECH_SOFTWARE_ENGINEERING "advanced engineering systems" // RCD.
 
 // EMP damage points before various effects occur.
@@ -40,3 +39,8 @@ GLOBAL_LIST_INIT(mech_weapon_overlays, icon_states('icons/mecha/mech_weapon_over
 
 #define FRAME_WIRED 1
 #define FRAME_WIRED_ADJUSTED 2
+
+//POWER!
+#define MECH_POWER_OFF 0
+#define MECH_POWER_TRANSITION 1
+#define MECH_POWER_ON 2

@@ -18,7 +18,7 @@
 /obj/machinery/vitals_monitor/Destroy()
 	victim = null
 	. = ..()
-	
+
 /obj/machinery/vitals_monitor/examine(mob/user)
 	. = ..()
 	if(victim)
@@ -29,8 +29,8 @@
 		to_chat(user, SPAN_NOTICE("Pulse: [victim.get_pulse(GETPULSE_TOOL)]"))
 
 		var/brain_activity = "none"
-		var/obj/item/organ/internal/brain/brain = victim.internal_organs_by_name[BP_BRAIN]
-		if(istype(brain) && victim.stat != DEAD && !(victim.status_flags & FAKEDEATH))
+		var/obj/item/organ/internal/brain = GET_INTERNAL_ORGAN(victim, BP_BRAIN)
+		if(brain && victim.stat != DEAD && !(victim.status_flags & FAKEDEATH))
 			if(user.skill_check(SKILL_MEDICAL, SKILL_BASIC))
 				switch(brain.get_current_damage_threshold())
 					if(0 to 2)
@@ -44,13 +44,13 @@
 		to_chat(user, SPAN_NOTICE("Brain activity: [brain_activity]"))
 
 		var/breathing = "none"
-		var/obj/item/organ/internal/lungs/lungs = victim.internal_organs_by_name[BP_LUNGS]
+		var/obj/item/organ/internal/lungs/lungs = victim.get_organ(BP_LUNGS, /obj/item/organ/internal/lungs)
 		if(istype(lungs) && !(victim.status_flags & FAKEDEATH))
 			if(lungs.breath_fail_ratio < 0.3)
 				breathing = "normal"
 			else if(lungs.breath_fail_ratio < 1)
 				breathing = "shallow"
-		
+
 		to_chat(user, SPAN_NOTICE("Breathing: [breathing]"))
 
 /obj/machinery/vitals_monitor/Process()
@@ -63,17 +63,17 @@
 		update_icon()
 	if(beep && victim && victim.pulse())
 		playsound(src, 'sound/machines/quiet_beep.ogg')
-	
-/obj/machinery/vitals_monitor/MouseDrop(over_object, src_location, over_location)
-	if(!CanMouseDrop(over_object))
-		return
-	if(victim)
-		victim = null
-		update_use_power(POWER_USE_IDLE)
-	else if(ishuman(over_object))
-		victim = over_object
+
+/obj/machinery/vitals_monitor/handle_mouse_drop(var/atom/over, var/mob/user)
+	if(ishuman(over))
+		if(victim)
+			victim = null
+			update_use_power(POWER_USE_IDLE)
+		victim = over
 		update_use_power(POWER_USE_ACTIVE)
-		visible_message(SPAN_NOTICE("\The [src] is now showing data for [victim]."))
+		visible_message(SPAN_NOTICE("\The [src] is now showing data for \the [victim]."))
+		return TRUE
+	. = ..()
 
 /obj/machinery/vitals_monitor/on_update_icon()
 	overlays.Cut()
@@ -83,7 +83,7 @@
 
 	if(!victim)
 		return
-	
+
 	switch(victim.pulse())
 		if(PULSE_NONE)
 			overlays += image(icon, icon_state = "pulse_flatline")
@@ -96,7 +96,7 @@
 			overlays += image(icon, icon_state = "pulse_thready")
 			overlays += image(icon, icon_state = "pulse_warning")
 
-	var/obj/item/organ/internal/brain/brain = victim.internal_organs_by_name[BP_BRAIN]
+	var/obj/item/organ/internal/brain = GET_INTERNAL_ORGAN(victim, BP_BRAIN)
 	if(istype(brain) && victim.stat != DEAD && !(victim.status_flags & FAKEDEATH))
 		switch(brain.get_current_damage_threshold())
 			if(0 to 2)
@@ -109,7 +109,7 @@
 	else
 		overlays += image(icon, icon_state = "brain_warning")
 
-	var/obj/item/organ/internal/lungs/lungs = victim.internal_organs_by_name[BP_LUNGS]
+	var/obj/item/organ/internal/lungs/lungs = victim.get_organ(BP_LUNGS, /obj/item/organ/internal/lungs)
 	if(istype(lungs) && !(victim.status_flags & FAKEDEATH))
 		if(lungs.breath_fail_ratio < 0.3)
 			overlays += image(icon, icon_state = "breathing_normal")
@@ -128,11 +128,11 @@
 	var/mob/user = usr
 	if(!istype(user))
 		return
-	
+
 	if(CanPhysicallyInteract(user))
 		beep = !beep
 		to_chat(user, SPAN_NOTICE("You turn the sound on \the [src] [beep ? "on" : "off"]."))
-		
+
 /obj/item/stock_parts/circuitboard/vitals_monitor
 	name = "circuit board (Vitals Monitor)"
 	build_path = /obj/machinery/vitals_monitor

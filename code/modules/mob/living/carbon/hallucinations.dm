@@ -6,7 +6,10 @@
 /mob/living/proc/adjust_hallucination(duration, power)
 	return
 
-/mob/living/carbon/proc/hallucination(duration, power)
+/mob/living/proc/set_hallucination(duration, power)
+	return
+
+/mob/living/carbon/set_hallucination(duration, power)
 	hallucination_duration = max(hallucination_duration, duration)
 	hallucination_power = max(hallucination_power, power)
 
@@ -17,16 +20,14 @@
 /mob/living/carbon/proc/handle_hallucinations()
 	//Tick down the duration
 	hallucination_duration = max(0, hallucination_duration - 1)
-	if(chem_effects[CE_MIND] > 0)
-		hallucination_duration = max(0, hallucination_duration - 1)
-
 	//Adjust power if we have some chems that affect it
-	if(chem_effects[CE_MIND] < 0)
-		hallucination_power = min(hallucination_power++, 50)
-	if(chem_effects[CE_MIND] < -1)
+	if(has_chemical_effect(CE_MIND, threshold_under = -1))
 		hallucination_power = hallucination_power++
-	if(chem_effects[CE_MIND] > 0)
-		hallucination_power = max(hallucination_power - chem_effects[CE_MIND], 0)
+	else if(has_chemical_effect(CE_MIND, threshold_under = 0))
+		hallucination_power = min(hallucination_power++, 50)
+	else if(has_chemical_effect(CE_MIND, 1))
+		hallucination_duration = max(0, hallucination_duration - 1)
+		hallucination_power = max(hallucination_power - GET_CHEMICAL_EFFECT(src, CE_MIND), 0)
 
 	//See if hallucination is gone
 	if(!hallucination_power)
@@ -38,7 +39,7 @@
 
 	if(!client || stat || world.time < next_hallucination)
 		return
-	if(chem_effects[CE_MIND] > 0 && prob(chem_effects[CE_MIND]*40)) //antipsychotics help
+	if(has_chemical_effect(CE_MIND, 1) && prob(GET_CHEMICAL_EFFECT(src, CE_MIND)*40)) //antipsychotics help
 		return
 	var/hall_delay = rand(10,20) SECONDS
 
@@ -165,12 +166,19 @@
 		else
 			to_chat(holder,"<B>[talker.name]</B> points at [holder.name]")
 			to_chat(holder,"<span class='game say'><span class='name'>[talker.name]</span> says something softly.</span>")
-		var/image/speech_bubble = image('icons/mob/talk.dmi',talker,"h[holder.say_test(message)]")
-		spawn(30) qdel(speech_bubble)
-		show_image(holder,speech_bubble)
+
+		var/speech_state = holder.check_speech_punctuation_state(message)
+		if(speech_state)
+			var/image/speech_bubble = image('icons/mob/talk.dmi', talker, speech_state)
+			addtimer(CALLBACK(src, .proc/qdel_image, speech_bubble), 3 SECONDS)
+			show_image(holder, speech_bubble)
+
 		sanity-- //don't spam them in very populated rooms.
 		if(!sanity)
 			return
+
+/datum/hallucination/talking/proc/qdel_image(var/image/speech_bubble)
+	qdel(speech_bubble)
 
 //Spiderling skitters
 /datum/hallucination/skitter/start()
@@ -181,10 +189,12 @@
 	min_power = 40
 
 /datum/hallucination/spiderbabies/start()
-	if(istype(holder,/mob/living/carbon/human))
-		var/mob/living/carbon/human/H = holder
-		var/obj/O = pick(H.organs)
-		to_chat(H,"<span class='warning'>You feel something [pick("moving","squirming","skittering")] inside of your [O.name]!</span>")
+	var/mob/living/carbon/H = holder
+	var/list/limbs = H.get_external_organs()
+	if(!LAZYLEN(limbs))
+		return
+	var/obj/O = pick(limbs)
+	to_chat(H,SPAN_WARNING("You feel something [pick("moving","squirming","skittering")] inside of your [O.name]!"))
 
 //Seeing stuff
 /datum/hallucination/mirage
@@ -223,7 +233,7 @@
 	number = 2
 
 /datum/hallucination/mirage/money/generate_mirage()
-	return image('icons/obj/items/money.dmi', "spacecash[pick(1000,500,200,100,50)]", layer = BELOW_TABLE_LAYER)
+	return image('icons/obj/items/money.dmi', "cash_x_5]", layer = BELOW_TABLE_LAYER)
 
 //Blood and aftermath of firefight
 /datum/hallucination/mirage/carnage
@@ -238,7 +248,7 @@
 	else
 		var/image/I = image('icons/obj/ammo.dmi', "s-casing-spent", layer = BELOW_TABLE_LAYER)
 		I.layer = BELOW_TABLE_LAYER
-		I.dir = pick(GLOB.alldirs)
+		I.dir = pick(global.alldirs)
 		I.pixel_x = rand(-10,10)
 		I.pixel_y = rand(-10,10)
 		return I
@@ -265,22 +275,22 @@
 		return
 
 	if(stat)
-		to_chat(usr, "<span class = 'warning'>You're not in any state to use your powers right now!'</span>")
+		to_chat(usr, SPAN_WARNING("You're not in any state to use your powers right now!"))
 		return
 
-	if(chem_effects[CE_MIND] > 0)
-		to_chat(usr, "<span class = 'warning'>Chemicals in your blood prevent you from using your power!'</span>")
+	if(has_chemical_effect(CE_MIND, 1))
+		to_chat(usr, SPAN_WARNING("Chemicals in your blood prevent you from using your power!"))
 
 	var/list/creatures = list()
 	for(var/mob/living/carbon/C in SSmobs.mob_list)
 		creatures += C
 	creatures -= usr
-	var/mob/target = input("Who do you want to project your mind to ?") as null|anything in creatures
+	var/mob/target = input("Who do you want to project your mind to?") as null|anything in creatures
 	if (isnull(target))
 		return
 
 	var/msg = sanitize(input(usr, "What do you wish to transmit"))
-	show_message("<span class = 'notice'>You project your mind into [target.name]: \"[msg]\"</span>")
+	show_message(SPAN_NOTICE("You project your mind into [target.name]: \"[msg]\""))
 	if(!stat && prob(20))
 		say(msg)
 

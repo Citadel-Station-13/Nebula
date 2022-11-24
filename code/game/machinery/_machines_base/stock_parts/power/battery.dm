@@ -42,7 +42,7 @@
 	if(cell)
 		return
 	cell = new_cell
-	GLOB.destroyed_event.register(cell, src, .proc/remove_cell)
+	events_repository.register(/decl/observ/destroyed, cell, src, .proc/remove_cell)
 	if(!machine)
 		machine = loc
 	if(istype(machine))
@@ -54,7 +54,7 @@
 
 /obj/item/stock_parts/power/battery/proc/remove_cell()
 	if(cell)
-		GLOB.destroyed_event.unregister(cell, src)
+		events_repository.unregister(/decl/observ/destroyed, cell, src)
 		. = cell
 		cell = null
 		var/obj/machinery/machine = loc
@@ -143,6 +143,7 @@
 	charge_rate *= 1 + 0.5 * machine.total_component_rating_of_type(/obj/item/stock_parts/capacitor)
 
 /obj/item/stock_parts/power/battery/on_update_icon()
+	. = ..()
 	icon_state = "battery[!!cell]"
 
 // Cell interaction
@@ -190,14 +191,17 @@
 /obj/item/stock_parts/power/battery/get_cell()
 	return cell
 
+/obj/item/stock_parts/power/battery/get_source_info()
+	return "The machine can receive power from an installed power cell."
+
 /obj/item/stock_parts/power/battery/buildable
 	part_flags = PART_FLAG_HAND_REMOVE
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/stock_parts/power/battery/buildable/crap
 	name = "battery backup (weak)"
 	desc = "The BAT84 is an all-in-one battery backup system sold at an affordable price."
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	charge_rate = 0.25
 	charge_wait_counter = 15
 
@@ -217,10 +221,10 @@
 	name = "battery backup (rapid)"
 	desc = "The Xcharge state-of-the-art battery backup claims to charge over ten times as fast as its competitors."
 	charge_rate = 5
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_ALUMINIUM = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/stock_parts/power/battery/buildable/turbo/get_lore_info()
@@ -232,10 +236,10 @@
 	desc = "The Focal Point FOXUS is a battery backup device marketed for its fast startup time."
 	charge_wait_counter = 2
 	charge_rate = 0.8
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_ALUMINIUM = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/stock_parts/power/battery/buildable/responsive/get_lore_info()

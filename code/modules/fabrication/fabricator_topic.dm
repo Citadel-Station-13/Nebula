@@ -5,16 +5,22 @@
 			return TOPIC_HANDLED
 		show_category = choice
 		. = TOPIC_REFRESH
-	else if(href_list["make"])
+
+	if(href_list["make"])
 		try_queue_build(locate(href_list["make"]), text2num(href_list["multiplier"]))
 		. = TOPIC_REFRESH
-	else if(href_list["cancel"])
+
+	if(href_list["cancel"])
 		try_cancel_build(locate(href_list["cancel"]))
 		. = TOPIC_REFRESH
-	else if(href_list["eject_mat"])
-		try_dump_material(href_list["eject_mat"])
-		. = TOPIC_REFRESH
-	else if(href_list["settings"])
+
+	if(href_list["eject_mat"])
+		var/decl/material/mat = locate(href_list["eject_mat"])
+		if(istype(mat))
+			try_dump_material(mat.type)
+			. = TOPIC_REFRESH
+
+	if(href_list["network_settings"])
 		var/datum/extension/network_device/D = get_extension(src, /datum/extension/network_device)
 		D.ui_interact(user)
 		. = TOPIC_REFRESH
@@ -28,7 +34,24 @@
 		if(!choice)
 			return TOPIC_HANDLED
 		selected_color = choice
-		return TOPIC_REFRESH
+		. = TOPIC_REFRESH
+
+	if(href_list["set_filter"])
+		var/new_filter_string = sanitize(input(user, "Enter a new filter string.", "Fabricator Filter") as text|null)
+		if(CanInteract(user, DefaultTopicState()))
+			filter_string = new_filter_string
+			. = TOPIC_REFRESH
+
+	//Tab expanding/collapsing
+	if(href_list["toggle_resources"])
+		ui_expand_resources = !ui_expand_resources
+		. = TOPIC_REFRESH
+	if(href_list["toggle_queue"])
+		ui_expand_queue = !ui_expand_queue
+		. = TOPIC_REFRESH
+	if(href_list["toggle_config"])
+		ui_expand_config = !ui_expand_config
+		. = TOPIC_REFRESH
 
 /obj/machinery/fabricator/proc/try_cancel_build(var/datum/fabricator_build_order/order)
 	if(istype(order) && currently_building != order && is_functioning())
@@ -39,15 +62,15 @@
 			queued_orders -= order
 		qdel(order)
 
-/obj/machinery/fabricator/proc/try_dump_material(var/mat_name)
-	mat_name = lowertext(mat_name)
-	for(var/mat_path in stored_substances_to_names)
-		if(stored_substances_to_names[mat_path] == mat_name)
-			if(ispath(mat_path, /decl/material))
-				var/decl/material/mat = decls_repository.get_decl(mat_path)
-				if(mat && stored_material[mat_path] > SHEET_MATERIAL_AMOUNT && mat.stack_type)
-					var/sheet_count = Floor(stored_material[mat_path]/SHEET_MATERIAL_AMOUNT)
-					stored_material[mat_path] -= sheet_count * SHEET_MATERIAL_AMOUNT
-					mat.place_sheet(get_turf(src), sheet_count)
-			else if(!isnull(stored_material[mat_path]))
-				stored_material[mat_path] = 0
+/obj/machinery/fabricator/proc/try_dump_material(var/mat_path)
+	if(!mat_path || !stored_material[mat_path])
+		return
+	// TODO: proper liquid reagent ejection checks (acid sheet ejection...).
+	var/decl/material/mat = GET_DECL(mat_path)
+	if(mat?.phase_at_temperature() != MAT_PHASE_SOLID)
+		stored_material[mat_path] = 0
+	else
+		var/sheet_count = FLOOR(stored_material[mat_path]/SHEET_MATERIAL_AMOUNT)
+		if(sheet_count >= 1)
+			stored_material[mat_path] -= sheet_count * SHEET_MATERIAL_AMOUNT
+			SSmaterials.create_object(mat_path, get_turf(src), sheet_count)

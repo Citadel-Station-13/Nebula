@@ -1,7 +1,7 @@
 //This is the combination of logic pertaining music
 //An atom should use the logic and call it as it wants
 /datum/real_instrument
-	var/datum/instrument/instruments
+	var/list/instruments
 	var/datum/sound_player/player
 	var/datum/nano_module/song_editor/song_editor
 	var/datum/nano_module/usage_info/usage_info
@@ -14,15 +14,15 @@
 /datum/real_instrument/New(obj/who, datum/sound_player/how, datum/instrument/what)
 	player = how
 	owner = who
-	maximum_lines = GLOB.musical_config.max_lines
-	maximum_line_length = GLOB.musical_config.max_line_length
-	instruments = what //This can be a list, or it can also not be one
+	maximum_lines = global.musical_config.max_lines
+	maximum_line_length = global.musical_config.max_line_length
+	instruments = istype(what) ? list(what) : what
 
 /datum/real_instrument/proc/Topic_call(href, href_list, usr)
 	var/target = href_list["target"]
 	var/value = text2num(href_list["value"])
 	if (href_list["value"] && !isnum(value))
-		to_chat(usr, "Non-numeric value was given")
+		to_chat(usr, "Non-numeric value was given.")
 		return 0
 
 
@@ -39,12 +39,12 @@
 			var/t = ""
 			do
 				t = html_encode(input(usr, "Please paste the entire song, formatted:", text("[]", owner.name), t)  as message)
-				if(!CanInteractWith(usr, owner, GLOB.physical_state))
+				if(!CanInteractWith(usr, owner, global.physical_topic_state))
 					return
 
 				if(length(t) >= 2*src.maximum_lines*src.maximum_line_length)
 					var/cont = input(usr, "Your message is too long! Would you like to continue editing it?", "", "yes") in list("yes", "no")
-					if(!CanInteractWith(usr, owner, GLOB.physical_state))
+					if(!CanInteractWith(usr, owner, global.physical_topic_state))
 						return
 					if(cont == "no")
 						break
@@ -81,20 +81,20 @@
 		if ("volume")
 			src.player.volume = min(max(min(player.volume+text2num(value), 100), 0), player.max_volume)
 		if ("transposition")
-			src.player.song.transposition = max(min(player.song.transposition+value, GLOB.musical_config.highest_transposition), GLOB.musical_config.lowest_transposition)
+			src.player.song.transposition = max(min(player.song.transposition+value, global.musical_config.highest_transposition), global.musical_config.lowest_transposition)
 		if ("min_octave")
-			src.player.song.octave_range_min = max(min(player.song.octave_range_min+value, GLOB.musical_config.highest_octave), GLOB.musical_config.lowest_octave)
+			src.player.song.octave_range_min = max(min(player.song.octave_range_min+value, global.musical_config.highest_octave), global.musical_config.lowest_octave)
 			src.player.song.octave_range_max = max(player.song.octave_range_max, player.song.octave_range_min)
 		if ("max_octave")
-			src.player.song.octave_range_max = max(min(player.song.octave_range_max+value, GLOB.musical_config.highest_octave), GLOB.musical_config.lowest_octave)
+			src.player.song.octave_range_max = max(min(player.song.octave_range_max+value, global.musical_config.highest_octave), global.musical_config.lowest_octave)
 			src.player.song.octave_range_min = min(player.song.octave_range_max, player.song.octave_range_min)
 		if ("sustain_timer")
-			src.player.song.sustain_timer = max(min(player.song.sustain_timer+value, GLOB.musical_config.longest_sustain_timer), 1)
+			src.player.song.sustain_timer = max(min(player.song.sustain_timer+value, global.musical_config.longest_sustain_timer), 1)
 		if ("soft_coeff")
-			var/new_coeff = input(usr, "from [GLOB.musical_config.gentlest_drop] to [GLOB.musical_config.steepest_drop]") as num
-			if(!CanInteractWith(usr, owner, GLOB.physical_state))
+			var/new_coeff = input(usr, "from [global.musical_config.gentlest_drop] to [global.musical_config.steepest_drop]") as num
+			if(!CanInteractWith(usr, owner, global.physical_topic_state))
 				return
-			new_coeff = round(min(max(new_coeff, GLOB.musical_config.gentlest_drop), GLOB.musical_config.steepest_drop), 0.001)
+			new_coeff = round(min(max(new_coeff, global.musical_config.gentlest_drop), global.musical_config.steepest_drop), 0.001)
 			src.player.song.soft_coeff = new_coeff
 		if ("instrument")
 			var/list/categories = list()
@@ -103,7 +103,7 @@
 				categories |= instrument.category
 
 			var/category = input(usr, "Choose a category") as null|anything in categories
-			if(!CanInteractWith(usr, owner, GLOB.physical_state))
+			if(!CanInteractWith(usr, owner, global.physical_topic_state))
 				return
 			var/list/instruments_available = list()
 			for (var/key in instruments)
@@ -112,7 +112,7 @@
 					instruments_available += key
 
 			var/new_instrument = input(usr, "Choose an instrument") as null|anything in instruments_available
-			if(!CanInteractWith(usr, owner, GLOB.physical_state))
+			if(!CanInteractWith(usr, owner, global.physical_topic_state))
 				return
 			if (new_instrument)
 				src.player.song.instrument_data = instruments[new_instrument]
@@ -120,12 +120,12 @@
 		if ("decay") src.player.song.linear_decay = value
 		if ("echo") src.player.apply_echo = value
 		if ("show_env_editor")
-			if (GLOB.musical_config.env_settings_available)
+			if (global.musical_config.env_settings_available)
 				if (!src.env_editor)
 					src.env_editor = new (src.player)
 				src.env_editor.ui_interact(usr)
 			else
-				to_chat(usr, "Virtual environment is disabled")
+				to_chat(usr, "Virtual environment is disabled.")
 
 		if ("show_echo_editor")
 			if (!src.echo_editor)
@@ -160,8 +160,8 @@
 			)
 		),
 		"advanced_options" = list(
-			"all_environments" = GLOB.musical_config.all_environments,
-			"selected_environment" = GLOB.musical_config.id_to_environment(src.player.virtual_environment_selected),
+			"all_environments" = global.musical_config.all_environments,
+			"selected_environment" = global.musical_config.id_to_environment(src.player.virtual_environment_selected),
 			"apply_echo" = src.player.apply_echo
 		),
 		"sustain" = list(
@@ -171,14 +171,14 @@
 		),
 		"show" = list(
 			"playback" = src.player.song.lines.len > 0,
-			"custom_env_options" = GLOB.musical_config.is_custom_env(src.player.virtual_environment_selected),
-			"env_settings" = GLOB.musical_config.env_settings_available
+			"custom_env_options" = global.musical_config.is_custom_env(src.player.virtual_environment_selected),
+			"env_settings" = global.musical_config.env_settings_available
 		),
 		"status" = list(
 			"channels" = src.player.song.available_channels,
 			"events" = src.player.event_manager.events.len,
-			"max_channels" = GLOB.musical_config.channels_per_instrument,
-			"max_events" = GLOB.musical_config.max_events,
+			"max_channels" = global.musical_config.channels_per_instrument,
+			"max_events" = global.musical_config.max_events,
 		)
 	)
 
@@ -201,7 +201,7 @@
 	var/datum/real_instrument/real_instrument
 	icon = 'icons/obj/musician.dmi'
 	//Initialization data
-	var/datum/instrument/instruments = list()
+	var/list/instruments = list()
 	var/path = /datum/instrument
 	var/sound_player = /datum/sound_player
 
@@ -253,17 +253,20 @@
 /obj/item/synthesized_instrument
 	var/datum/real_instrument/real_instrument
 	icon = 'icons/obj/musician.dmi'
-	var/datum/instrument/instruments = list()
+	material = /decl/material/solid/plastic
+	var/list/instruments = list()
 	var/path = /datum/instrument
 	var/sound_player = /datum/sound_player
 
 /obj/item/synthesized_instrument/Initialize()
 	. = ..()
 	for (var/type in typesof(path))
-		var/datum/instrument/new_instrument = new type
-		if (!new_instrument.id) continue
+		var/datum/instrument/new_instrument = type
+		if (!initial(new_instrument.id))
+			continue
+		new_instrument = new type
 		new_instrument.create_full_sample_deviation_map()
-		src.instruments[new_instrument.name] = new_instrument
+		instruments[new_instrument.name] = new_instrument
 	src.real_instrument = new /datum/real_instrument(src, new sound_player(src, instruments[pick(instruments)]), instruments)
 
 /obj/item/synthesized_instrument/Destroy()

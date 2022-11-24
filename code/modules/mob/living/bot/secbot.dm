@@ -25,10 +25,9 @@
 	var/check_arrest = 1 // If true, arrests people who are set to arrest.
 	var/declare_arrests = 0 // If true, announces arrests over sechuds.
 
-	var/is_ranged = 0
 	var/awaiting_surrender = 0
 
-	var/obj/item/melee/baton/stun_baton
+	var/obj/item/baton/stun_baton
 	var/obj/item/handcuffs/cyborg/handcuffs
 
 	var/list/threat_found_sounds = list('sound/voice/bcriminal.ogg', 'sound/voice/bjustice.ogg', 'sound/voice/bfreeze.ogg')
@@ -62,7 +61,8 @@
 	..()
 	stun_baton.set_status(on, null)
 
-/mob/living/bot/secbot/update_icons()
+/mob/living/bot/secbot/on_update_icon()
+	..()
 	icon_state = "secbot[on]"
 
 /mob/living/bot/secbot/GetInteractTitle()
@@ -133,26 +133,26 @@
 /mob/living/bot/secbot/proc/begin_arrest(mob/target, var/threat)
 	var/suspect_name = target_name(target)
 	if(declare_arrests)
-		broadcast_security_hud_message("[src] is arresting a level [threat] suspect <b>[suspect_name]</b> in <b>[get_area(src)]</b>.", src)
+		broadcast_security_hud_message("[src] is arresting a level [threat] suspect <b>[suspect_name]</b> in <b>[get_area_name(src)]</b>.", src)
 	say("Down on the floor, [suspect_name]! You have [SECBOT_WAIT_TIME] seconds to comply.")
 	playsound(src.loc, pick(preparing_arrest_sounds), 50)
-	GLOB.moved_event.register(target, src, /mob/living/bot/secbot/proc/target_moved)
+	events_repository.register(/decl/observ/moved, target, src, /mob/living/bot/secbot/proc/target_moved)
 
 /mob/living/bot/secbot/proc/target_moved(atom/movable/moving_instance, atom/old_loc, atom/new_loc)
 	if(get_dist(get_turf(src), get_turf(target)) >= 1)
 		awaiting_surrender = INFINITY
-		GLOB.moved_event.unregister(moving_instance, src)
+		events_repository.unregister(/decl/observ/moved, moving_instance, src)
 
 /mob/living/bot/secbot/proc/react_to_attack(mob/attacker)
 	if(!target)
 		playsound(src.loc, pick(threat_found_sounds), 50)
-		broadcast_security_hud_message("[src] was attacked by a hostile <b>[target_name(attacker)]</b> in <b>[get_area(src)]</b>.", src)
+		broadcast_security_hud_message("[src] was attacked by a hostile <b>[target_name(attacker)]</b> in <b>[get_area_name(src)]</b>.", src)
 	target = attacker
 	awaiting_surrender = INFINITY
 
 /mob/living/bot/secbot/resetTarget()
 	..()
-	GLOB.moved_event.unregister(target, src)
+	events_repository.unregister(/decl/observ/moved, target, src)
 	awaiting_surrender = -1
 	walk_to(src, 0)
 
@@ -189,7 +189,7 @@
 		UnarmedAttack(target)
 
 /mob/living/bot/secbot/proc/cuff_target(var/mob/living/carbon/C)
-	if(istype(C) && !C.handcuffed)
+	if(istype(C) && !C.get_equipped_item(slot_handcuffed_str))
 		handcuffs.place_handcuffs(C, src)
 	resetTarget() //we're done, failed or not. Don't want to get stuck if C is not
 
@@ -217,13 +217,11 @@
 	visible_message("<span class='warning'>[src] blows apart!</span>")
 	var/turf/Tsec = get_turf(src)
 	new /obj/item/assembly/prox_sensor(Tsec)
-	new /obj/item/melee/baton(Tsec)
+	new /obj/item/baton(Tsec)
 	if(prob(50))
 		new /obj/item/robot_parts/l_arm(Tsec)
 
-	var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	spark_at(src, cardinal_only = TRUE)
 
 	new /obj/effect/decal/cleanable/blood/oil(Tsec)
 	qdel(src)

@@ -16,7 +16,7 @@
 	density = 0
 	dir = NORTH
 	w_class = ITEM_SIZE_NORMAL
-	material = MAT_GLASS
+	material = /decl/material/solid/glass
 	tool_interaction_flags = TOOL_INTERACTION_ALL
 
 	var/obj/item/stock_parts/circuitboard/airlock_electronics/windoor/electronics = null
@@ -29,12 +29,13 @@
 	. = ..()
 	update_nearby_tiles(need_rebuild=1)
 
-obj/structure/windoor_assembly/Destroy()
+/obj/structure/windoor_assembly/Destroy()
 	set_density(0)
 	update_nearby_tiles()
 	..()
 
 /obj/structure/windoor_assembly/on_update_icon()
+	..()
 	icon_state = "[facing_left ? "l" : "r"]_[secure ? "_secure" : ""]windoor_assembly[anchored && wired ? "02" : "01"]"
 
 /obj/structure/windoor_assembly/CanPass(atom/movable/mover, turf/target, height=0, air_group=0)

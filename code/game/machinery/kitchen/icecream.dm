@@ -66,14 +66,19 @@
 
 /obj/machinery/icecream_vat/Initialize(mapload, d, populate_parts)
 	. = ..()
-	create_reagents(100)
+	initialize_reagents()
 	while(product_types.len < 8)
 		product_types.Add(5)
-	if(populate_parts)
-		reagents.add_reagent(/decl/material/liquid/drink/milk, 5)
-		reagents.add_reagent(/decl/material/liquid/nutriment/flour, 5)
-		reagents.add_reagent(/decl/material/liquid/nutriment/sugar, 5)
-		reagents.add_reagent(/decl/material/solid/ice, 5)
+
+/obj/machinery/icecream_vat/initialize_reagents(populate = TRUE)
+	create_reagents(100)
+	. = ..()
+
+/obj/machinery/icecream_vat/populate_reagents()
+	reagents.add_reagent(/decl/material/liquid/drink/milk, 5)
+	reagents.add_reagent(/decl/material/liquid/nutriment/flour, 5)
+	reagents.add_reagent(/decl/material/liquid/nutriment/sugar, 5)
+	reagents.add_reagent(/decl/material/solid/ice, 5)
 
 /obj/machinery/icecream_vat/interface_interact(mob/user)
 	interact(user)
@@ -96,7 +101,7 @@
 	dat += "<br>"
 	dat += "<b>VAT CONTENT</b><br>"
 	for(var/reagent_type in reagents?.reagent_volumes)
-		var/decl/material/R = decls_repository.get_decl(reagent_type)
+		var/decl/material/R = GET_DECL(reagent_type)
 		dat += "[R.name]: [REAGENT_VOLUME(reagents, reagent_type)]"
 		dat += "<A href='?src=\ref[src];disposeI=\ref[R]'>Purge</A><BR>"
 	dat += "<a href='?src=\ref[src];refresh=1'>Refresh</a> <a href='?src=\ref[src];close=1'>Close</a>"
@@ -106,11 +111,11 @@
 	popup.open()
 
 /obj/machinery/icecream_vat/attackby(var/obj/item/O, var/mob/user)
-	if(istype(O, /obj/item/chems/food/snacks/icecream))
-		var/obj/item/chems/food/snacks/icecream/I = O
+	if(istype(O, /obj/item/chems/food/icecream))
+		var/obj/item/chems/food/icecream/I = O
 		if(!I.ice_creamed)
 			if(product_types[dispense_flavour] > 0)
-				src.visible_message("\icon[src] <span class='info'>[user] scoops delicious [flavour_name] icecream into [I].</span>")
+				src.visible_message("[html_icon(src)] <span class='info'>[user] scoops delicious [flavour_name] icecream into [I].</span>")
 				product_types[dispense_flavour] -= 1
 				I.add_ice_cream(flavour_name)
 			//	if(beaker)
@@ -161,7 +166,7 @@
 		var/cone_name = get_flavour_name(dispense_cone)
 		if(product_types[dispense_cone] >= 1)
 			product_types[dispense_cone] -= 1
-			var/obj/item/chems/food/snacks/icecream/I = new(src.loc)
+			var/obj/item/chems/food/icecream/I = new(src.loc)
 			I.cone_type = cone_name
 			I.icon_state = "icecream_cone_[cone_name]"
 			I.desc = "Delicious [cone_name] cone, but no ice cream."
@@ -185,26 +190,32 @@
 	if(href_list["refresh"])
 		. = TOPIC_REFRESH
 
-/obj/item/chems/food/snacks/icecream
+/obj/item/chems/food/icecream
 	name = "ice cream cone"
 	desc = "Delicious waffle cone, but no ice cream."
+	icon = 'icons/obj/icecream.dmi'
 	icon_state = "icecream_cone_waffle" //default for admin-spawned cones, href_list["cone"] should overwrite this all the time
 	layer = ABOVE_OBJ_LAYER
 	bitesize = 3
 	volume = 20
-
-	var/ice_creamed = 0
+	var/ice_creamed
 	var/cone_type
 
-/obj/item/chems/food/snacks/icecream/Initialize()
+/obj/item/chems/food/icecream/Initialize()
 	. = ..()
 	reagents.add_reagent(/decl/material/liquid/nutriment, 5)
+	update_icon()
 
-/obj/item/chems/food/snacks/icecream/proc/add_ice_cream(var/flavour_name)
+/obj/item/chems/food/icecream/on_update_icon()
+	. = ..()
+	if(ice_creamed)
+		add_overlay("icecream_[ice_creamed]")
+
+/obj/item/chems/food/icecream/proc/add_ice_cream(var/flavour_name)
 	name = "[flavour_name] icecream"
-	src.overlays += "icecream_[flavour_name]"
 	desc = "Delicious [cone_type] cone with a dollop of [flavour_name] ice cream."
-	ice_creamed = 1
+	ice_creamed = flavour_name
+	update_icon()
 
 #undef ICECREAM_VANILLA
 #undef ICECREAM_CHOCOLATE

@@ -2,10 +2,9 @@
 	name = "gun"
 	desc = "A gun that fires bullets."
 	icon = 'icons/obj/guns/pistol.dmi'
-	icon_state = "pistol"
 	origin_tech = "{'combat':2,'materials':2}"
 	w_class = ITEM_SIZE_NORMAL
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	screen_shake = 1
 	space_recoil = 1
 	combustion = 1
@@ -90,7 +89,7 @@
 		var/zone = BP_CHEST
 		if(user && user.zone_sel)
 			zone = user.zone_sel.selecting
-		var/obj/item/organ/external/E = H.get_organ(zone)
+		var/obj/item/organ/external/E = GET_EXTERNAL_ORGAN(H, zone)
 		if(E)
 			chambered.put_residue_on(E)
 			H.apply_damage(3, BURN, used_weapon = "Gunpowder Burn", given_organ = E)
@@ -177,7 +176,7 @@
 //attempts to unload src. If allow_dump is set to 0, the speedloader unloading method will be disabled
 /obj/item/gun/projectile/proc/unload_ammo(mob/user, var/allow_dump=1)
 	if(is_jammed)
-		user.visible_message("\The [user] begins to unjam [src].", "You clear the jam and unload [src]")
+		user.visible_message("\The [user] begins to unjam [src].", "You clear the jam and unload [src].")
 		if(!do_after(user, 4, src))
 			return
 		is_jammed = 0
@@ -222,7 +221,7 @@
 		unload_ammo(user)
 
 /obj/item/gun/projectile/attack_hand(mob/user)
-	if(user.get_inactive_hand() == src)
+	if(user.is_holding_offhand(src))
 		unload_ammo(user, allow_dump=0)
 	else
 		return ..()
@@ -264,15 +263,15 @@
 	..()
 	if(ammo_indicator)
 		overlays += get_ammo_indicator()
-	
+
 /obj/item/gun/projectile/proc/get_ammo_indicator()
 	var/base_state = get_world_inventory_state()
 	if(!ammo_magazine || !LAZYLEN(ammo_magazine.stored_ammo))
-		return get_mutable_overlay(icon, "[base_state]_ammo_bad")
+		return mutable_appearance(icon, "[base_state]_ammo_bad")
 	else if(LAZYLEN(ammo_magazine.stored_ammo) <= 0.5 * ammo_magazine.max_ammo)
-		return get_mutable_overlay(icon, "[base_state]_ammo_warn") 
+		return mutable_appearance(icon, "[base_state]_ammo_warn")
 	else
-		return get_mutable_overlay(icon, "[base_state]_ammo_ok") 
+		return mutable_appearance(icon, "[base_state]_ammo_ok")
 
 /* Unneeded -- so far.
 //in case the weapon has firemodes and can't unload using attack_hand()

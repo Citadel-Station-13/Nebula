@@ -1,7 +1,7 @@
 /*
 	This state checks that the src_object is in view of the user.
 */
-GLOBAL_DATUM_INIT(view_state, /datum/topic_state/view, new)
+var/global/datum/topic_state/view/view_topic_state = new
 
 /datum/topic_state/view/can_use_topic(src_object, mob/user)
 	return user.view_can_use_topic(src_object)
@@ -9,7 +9,7 @@ GLOBAL_DATUM_INIT(view_state, /datum/topic_state/view, new)
 /mob/proc/view_can_use_topic(src_object)
 	if(!client)
 		return STATUS_CLOSE
-	if(src_object in view(get_effective_view(client), src))
+	if(src_object in view(client.view, src))
 		return shared_nano_interaction(src_object)
 	return STATUS_CLOSE
 

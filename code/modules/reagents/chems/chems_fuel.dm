@@ -5,12 +5,16 @@
 	color = "#660000"
 	touch_met = 5
 	fuel_value = 1
+	burn_product = /decl/material/gas/carbon_monoxide
+	gas_flags = XGM_GAS_FUEL
+	exoplanet_rarity = MAT_RARITY_UNCOMMON
+	uid = "chem_fuel"
 
 	glass_name = "welder fuel"
 	glass_desc = "Unless you are an industrial tool, this is probably not safe for consumption."
 	value = 1.5
 
-/decl/material/liquid/fuel/affect_blood(var/mob/living/carbon/M, var/alien, var/removed, var/datum/reagents/holder)
+/decl/material/liquid/fuel/affect_blood(var/mob/living/M, var/removed, var/datum/reagents/holder)
 	M.adjustToxLoss(2 * removed)
 
 /decl/material/liquid/fuel/explosion_act(obj/item/chems/holder, severity)
@@ -22,7 +26,7 @@
 		var/turf/T = get_turf(holder)
 		var/datum/gas_mixture/products = new(_temperature = 5 * FLAMMABLE_GAS_FLASHPOINT)
 		var/gas_moles = 3 * volume
-		products.adjust_multi(MAT_NO, 0.1 * gas_moles, MAT_NO2, 0.1 * gas_moles, MAT_NITROGEN, 0.6 * gas_moles, MAT_HYDROGEN, 0.02 * gas_moles)
+		products.adjust_multi(/decl/material/gas/nitricoxide, 0.1 * gas_moles, /decl/material/gas/nitrodioxide, 0.1 * gas_moles, /decl/material/gas/nitrogen, 0.6 * gas_moles, /decl/material/gas/hydrogen, 0.02 * gas_moles)
 		T.assume_air(products)
 		if(volume > 500)
 			explosion(T,1,2,4)
@@ -41,3 +45,4 @@
 	touch_met = 5
 	value = 1.2
 	fuel_value = 1.2
+	uid = "chem_hydrazine"

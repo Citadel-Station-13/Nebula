@@ -1,9 +1,8 @@
 /obj/item/gun/projectile/dartgun
 	name = "dart gun"
 	desc = "The Artemis is a gas-powered dart gun capable of delivering chemical cocktails swiftly across short distances."
-	on_mob_icon = 'icons/obj/guns/dartgun.dmi'
 	icon = 'icons/obj/guns/dartgun.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 
 	caliber = CALIBER_DART
 	fire_sound = 'sound/weapons/empty.ogg'
@@ -19,35 +18,34 @@
 	var/list/beakers = list() //All containers inside the gun.
 	var/list/mixing = list() //Containers being used for mixing.
 	var/max_beakers = 3
-	var/dart_reagent_amount = 15
 	var/container_type = /obj/item/chems/glass/beaker
 	var/list/starting_chems = null
 
 /obj/item/gun/projectile/dartgun/Initialize()
-	if(starting_chems)
-		for(var/chem in starting_chems)
-			var/obj/B = new container_type(src)
-			B.reagents.add_reagent(chem, 60)
-			beakers += B
+	initialize_reagents()
 	. = ..()
 	update_icon()
 
+/obj/item/gun/projectile/dartgun/populate_reagents()
+	if(!starting_chems)
+		return
+	for(var/chem in starting_chems)
+		var/obj/B = new container_type(src)
+		B.reagents.add_reagent(chem, 60)
+		beakers += B
+
 /obj/item/gun/projectile/dartgun/on_update_icon()
-	if(!ammo_magazine)
-		icon_state = "[get_world_inventory_state()]-empty"
-		return 1
+	..()
+	if(ammo_magazine)
+		icon_state = "[get_world_inventory_state()]-[clamp(length(ammo_magazine.stored_ammo.len), 0, 5)]"
+	else
+		icon_state = get_world_inventory_state()
 
-	icon_state = "[get_world_inventory_state()]-[Clamp(length(ammo_magazine.stored_ammo.len), 0, 5)]"
-	return 1
+/obj/item/gun/projectile/dartgun/adjust_mob_overlay(var/mob/living/user_mob, var/bodytype,  var/image/overlay, var/slot, var/bodypart)
+	if(overlay && (slot in user_mob?.held_item_slots) && ammo_magazine)
+		overlay.icon_state += "-[clamp(length(ammo_magazine.stored_ammo.len), 0, 5)]"
+	. = ..()
 
-/obj/item/gun/projectile/dartgun/experimental_mob_overlay(mob/user_mob, slot)
-	var/image/I = ..()
-	if(slot == slot_r_hand_str || slot == slot_l_hand_str)
-		if(!ammo_magazine)
-			I.icon_state += "-empty"
-		else
-			I.icon_state += "-[Clamp(length(ammo_magazine.stored_ammo.len), 0, 5)]"
-	return I
 /obj/item/gun/projectile/dartgun/consume_next_projectile()
 	. = ..()
 	var/obj/item/projectile/bullet/chemdart/dart = .
@@ -61,7 +59,7 @@
 		for(var/obj/item/chems/glass/beaker/B in beakers)
 			if(B.reagents && LAZYLEN(B.reagents?.reagent_volumes))
 				for(var/rtype in B.reagents.reagent_volumes)
-					var/decl/material/R = decls_repository.get_decl(rtype)
+					var/decl/material/R = GET_DECL(rtype)
 					to_chat(user, "<span class='notice'>[REAGENT_VOLUME(B.reagents, rtype)] units of [R.name]</span>")
 
 /obj/item/gun/projectile/dartgun/attackby(obj/item/I, mob/user)
@@ -112,7 +110,7 @@
 			dat += "Beaker [i] contains: "
 			if(B.reagents && LAZYLEN(B.reagents.reagent_volumes))
 				for(var/rtype in B.reagents.reagent_volumes)
-					var/decl/material/R = decls_repository.get_decl(rtype)
+					var/decl/material/R = GET_DECL(rtype)
 					dat += "<br>    [REAGENT_VOLUME(B.reagents, rtype)] units of [R.name], "
 				if(B in mixing)
 					dat += "<A href='?src=\ref[src];stop_mix=[i]'><font color='green'>Mixing</font></A> "

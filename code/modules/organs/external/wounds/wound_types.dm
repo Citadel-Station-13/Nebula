@@ -82,6 +82,7 @@
 	min_damage = damage_list[current_stage]
 	if(damage > min_damage)
 		heal_damage(damage-min_damage)
+	autoheal_cutoff = initial(autoheal_cutoff)
 
 /datum/wound/cut/small
 	// link wound descriptions to amounts of damage
@@ -104,7 +105,7 @@
 		"deep cut" = 15,
 		"clotted cut" = 8,
 		"scab" = 2,
-		"fresh skin" = 0
+		"fresh patch of skin" = 0
 		)
 
 /datum/wound/cut/flesh
@@ -115,7 +116,7 @@
 		"flesh wound" = 25,
 		"blood soaked clot" = 15,
 		"large scab" = 5,
-		"fresh skin" = 0
+		"fresh patch of skin" = 0
 		)
 
 /datum/wound/cut/gaping
@@ -138,7 +139,7 @@
 		"large straight scar" = 0
 		)
 
-datum/wound/cut/massive
+/datum/wound/cut/massive
 	max_bleeding_stage = 3
 	stages = list(
 		"massive wound" = 70,
@@ -193,7 +194,7 @@ datum/wound/cut/massive
 		"large round scar" = 0
 		)
 
-datum/wound/puncture/massive
+/datum/wound/puncture/massive
 	max_bleeding_stage = 3
 	stages = list(
 		"massive wound" = 60,
@@ -232,7 +233,7 @@ datum/wound/puncture/massive
 		"ripped burn" = 10,
 		"moderate burn" = 5,
 		"healing moderate burn" = 2,
-		"fresh skin" = 0
+		"fresh patch of skin" = 0
 		)
 
 /datum/wound/burn/large
@@ -240,7 +241,7 @@ datum/wound/puncture/massive
 		"ripped large burn" = 20,
 		"large burn" = 15,
 		"healing large burn" = 5,
-		"fresh skin" = 0
+		"fresh patch of skin" = 0
 		)
 
 /datum/wound/burn/severe
@@ -268,13 +269,15 @@ datum/wound/puncture/massive
 
 /** EXTERNAL ORGAN LOSS **/
 /datum/wound/lost_limb
+	var/limb_tag
 
 /datum/wound/lost_limb/New(var/obj/item/organ/external/lost_limb, var/losstype, var/clean)
 	var/damage_amt = lost_limb.max_damage
 	if(clean) damage_amt /= 2
+	limb_tag = lost_limb.organ_tag
 
 	switch(losstype)
-		if(DROPLIMB_EDGE, DROPLIMB_BLUNT)
+		if(DISMEMBER_METHOD_EDGE, DISMEMBER_METHOD_BLUNT)
 			damage_type = CUT
 			if(BP_IS_PROSTHETIC(lost_limb))
 				max_bleeding_stage = -1
@@ -295,7 +298,7 @@ datum/wound/puncture/massive
 					"clotted stump" = damage_amt*0.5,
 					"scarred stump" = 0
 				)
-		if(DROPLIMB_BURN)
+		if(DISMEMBER_METHOD_BURN, DISMEMBER_METHOD_ACID)
 			damage_type = BURN
 			stages = list(
 				"mangled charred stump" = damage_amt*1.3,

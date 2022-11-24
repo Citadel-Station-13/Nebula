@@ -12,11 +12,11 @@
 	uncreated_component_parts = null
 	stat_immune = 0
 
-obj/machinery/seed_extractor/attackby(var/obj/item/O, var/mob/user)
+/obj/machinery/seed_extractor/attackby(var/obj/item/O, var/mob/user)
 	if((. = component_attackby(O, user)))
 		return
 	// Fruits and vegetables.
-	if(istype(O, /obj/item/chems/food/snacks/grown) || istype(O, /obj/item/grown))
+	if(istype(O, /obj/item/chems/food/grown) || istype(O, /obj/item/grown))
 		if(!user.unEquip(O))
 			return
 
@@ -25,14 +25,14 @@ obj/machinery/seed_extractor/attackby(var/obj/item/O, var/mob/user)
 			var/obj/item/grown/F = O
 			new_seed_type = SSplants.seeds[F.plantname]
 		else
-			var/obj/item/chems/food/snacks/grown/F = O
+			var/obj/item/chems/food/grown/F = O
 			new_seed_type = SSplants.seeds[F.plantname]
 
 		if(new_seed_type)
 			to_chat(user, "<span class='notice'>You extract some seeds from [O].</span>")
 			var/produce = rand(1,4)
 			for(var/i = 0;i<=produce;i++)
-				var/obj/item/seeds/seeds = new(get_turf(src))
+				var/obj/item/seeds/seeds = new /obj/item/seeds/modified(get_turf(src))
 				seeds.seed_type = new_seed_type.name
 				seeds.update_seed()
 		else

@@ -1,15 +1,17 @@
 /obj/item/underwear
 	w_class = ITEM_SIZE_TINY
-	var/required_slot_flags
+	material = /decl/material/solid/cloth
 	var/required_free_body_parts
+	var/slot_offset_str
 
 /obj/item/underwear/afterattack(var/atom/target, var/mob/user, var/proximity)
 	if(!proximity)
 		return // Might as well check
 	DelayedEquipUnderwear(user, target)
 
-/obj/item/underwear/MouseDrop(var/atom/target)
-	DelayedEquipUnderwear(usr, target)
+/obj/item/underwear/handle_mouse_drop(atom/over, mob/user)
+	DelayedEquipUnderwear(user, over)
+	return TRUE
 
 /obj/item/underwear/proc/CanEquipUnderwear(var/mob/user, var/mob/living/carbon/human/H)
 	if(!CanAdjustUnderwear(user, H, "put on"))
@@ -37,9 +39,9 @@
 		return FALSE
 
 	var/list/covering_items = H.get_covering_equipped_items(required_free_body_parts)
-	if(covering_items.len)
+	if(length(covering_items))
 		var/obj/item/I = covering_items[1]
-		var/datum/gender/G = gender_datums[I.gender]
+		var/decl/pronouns/G = I.get_pronouns()
 		if(adjustment_verb)
 			to_chat(user, "<span class='warning'>Cannot [adjustment_verb] \the [src]. [english_list(covering_items)] [covering_items.len == 1 ? G.is : "are"] in the way.</span>")
 		return FALSE
@@ -108,13 +110,17 @@
 	RemoveUnderwear(usr, usr)
 
 /obj/item/underwear/socks
-	required_free_body_parts = FEET
+	required_free_body_parts = SLOT_FEET
+	slot_offset_str = slot_socks_str
 
 /obj/item/underwear/top
-	required_free_body_parts = UPPER_TORSO
+	required_free_body_parts = SLOT_UPPER_BODY
+	slot_offset_str = slot_undershirt_str
 
 /obj/item/underwear/bottom
-	required_free_body_parts = FEET|LEGS|LOWER_TORSO
+	required_free_body_parts = SLOT_FEET|SLOT_LEGS|SLOT_LOWER_BODY
+	slot_offset_str = slot_underpants_str
 
 /obj/item/underwear/undershirt
-	required_free_body_parts = UPPER_TORSO
+	required_free_body_parts = SLOT_UPPER_BODY
+	slot_offset_str = slot_undershirt_str

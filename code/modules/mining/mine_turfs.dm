@@ -6,7 +6,7 @@
 	density = 1
 	opacity = 1
 
-var/list/mining_floors = list()
+var/global/list/mining_floors = list()
 /**********************Asteroid**************************/
 // Setting icon/icon_state initially will use these values when the turf is built on/replaced.
 // This means you can put grass on the asteroid etc.
@@ -19,13 +19,13 @@ var/list/mining_floors = list()
 	base_icon = 'icons/turf/flooring/asteroid.dmi'
 	base_icon_state = "asteroid"
 	footstep_type = /decl/footsteps/asteroid
-
 	initial_flooring = null
 	initial_gas = null
 	temperature = TCMB
+	turf_flags = TURF_FLAG_BACKGROUND
+
 	var/dug = 0       //0 = has not yet been dug, 1 = has already been dug
 	var/overlay_detail
-	has_resources = 1
 
 /turf/simulated/floor/asteroid/Initialize()
 	. = ..()
@@ -83,10 +83,10 @@ var/list/mining_floors = list()
 		to_chat(user, "<span class='notice'>You dug a hole.</span>")
 		gets_dug()
 
-	else if(istype(W,/obj/item/storage/ore))
+	else if(istype(W,/obj/item/storage/ore)) //#FIXME: Its kinda silly to put this in a specific turf's subtype's attackby.
 		var/obj/item/storage/ore/S = W
 		if(S.collection_mode)
-			for(var/obj/item/ore/O in contents)
+			for(var/obj/item/stack/material/ore/O in contents)
 				return O.attackby(W,user)
 	else if(istype(W,/obj/item/storage/bag/fossils))
 		var/obj/item/storage/bag/fossils/S = W
@@ -98,16 +98,11 @@ var/list/mining_floors = list()
 		return ..(W,user)
 
 /turf/simulated/floor/asteroid/proc/gets_dug()
-
 	if(dug)
 		return
-
-	for(var/i=0;i<(rand(3)+2);i++)
-		new/obj/item/ore/glass(src)
-
-	dug = 1
+	LAZYADD(., new /obj/item/stack/material/ore/glass(src, (rand(3) + 2)))
+	dug = TRUE
 	icon_state = "asteroid_dug"
-	return
 
 /turf/simulated/floor/asteroid/proc/updateMineralOverlays(var/update_neighbors)
 
@@ -116,14 +111,14 @@ var/list/mining_floors = list()
 	var/list/step_overlays = list("n" = NORTH, "s" = SOUTH, "e" = EAST, "w" = WEST)
 	for(var/direction in step_overlays)
 
-		if(istype(get_step(src, step_overlays[direction]), /turf/space))
+		if(isspaceturf(get_step(src, step_overlays[direction])))
 			var/image/aster_edge = image('icons/turf/flooring/asteroid.dmi', "asteroid_edges", dir = step_overlays[direction])
-			aster_edge.turf_decal_layerise()
+			aster_edge.layer = DECAL_LAYER
 			overlays += aster_edge
 
 	if(overlay_detail)
 		var/image/floor_decal = image(icon = 'icons/turf/flooring/decals.dmi', icon_state = overlay_detail)
-		floor_decal.turf_decal_layerise()
+		floor_decal.layer = DECAL_LAYER
 		overlays |= floor_decal
 
 	if(update_neighbors)

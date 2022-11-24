@@ -5,17 +5,11 @@
 	return ..()
 
 /obj/item/gun/equipped(var/mob/living/user, var/slot)
-	if(istype(user) && (slot != slot_l_hand && slot != slot_r_hand))
+	if(istype(user) && !(slot in user.held_item_slots))
 		user.stop_aiming(src)
 	return ..()
 
 //Compute how to fire.....
 //Return 1 if a target was found, 0 otherwise.
 /obj/item/gun/proc/PreFire(var/atom/A, var/mob/living/user, var/params)
-	if(!user.aiming)
-		user.aiming = new(user)
-	user.face_atom(A)
-	if(ismob(A) && user.aiming)
-		user.aiming.aim_at(A, src)
-		return 1
-	return 0
+	return istype(user) && user.aim_at(A, src)

@@ -4,10 +4,10 @@
 	channels = list(
 		"Service" = TRUE
 	)
-	sprites = list(
-		"Basic" = "JanBot2",
-		"Mopbot"  = "janitorrobot",
-		"Mop Gear Rex" = "mopgearrex"
+	module_sprites = list(
+		"Basic"        = 'icons/mob/robots/robot_janbot.dmi',
+		"Mopbot"       = 'icons/mob/robots/robot_janitor_old.dmi',
+		"Mop Gear Rex" = 'icons/mob/robots/robot_janitor.dmi'
 	)
 	equipment = list(
 		/obj/item/flash,
@@ -17,17 +17,11 @@
 		/obj/item/holosign_creator,
 		/obj/item/lightreplacer,
 		/obj/item/borg/sight/hud/jani,
-		/obj/item/plunger/robot,
+		/obj/item/plunger/unbreakable,
 		/obj/item/crowbar,
 		/obj/item/weldingtool
 	)
 	emag = /obj/item/chems/spray
-	skills = list(
-		SKILL_LITERACY = SKILL_ADEPT,
-		SKILL_EVA      = SKILL_MAX,
-		SKILL_MECH     = HAS_PERK,
-		SKILL_BOTANY   = SKILL_MAX
-	) // lol, idk
 
 /obj/item/robot_module/janitor/finalize_emag()
 	. = ..()

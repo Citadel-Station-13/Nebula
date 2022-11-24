@@ -5,12 +5,12 @@
 	speech_verb = "says"
 	whisper_verb = "whispers"
 	colour = "solcom"
-	flags = WHITELISTED
+	flags = LANG_FLAG_WHITELISTED | LANG_FLAG_RESTRICTED
 	shorthand = "???"
 	space_chance = 40
-	category = /decl/language/human
+	abstract_type = /decl/language/human
 
-/decl/language/human/get_spoken_verb(var/msg_end)
+/decl/language/human/get_spoken_verb(mob/living/speaker, msg_end)
 	switch(msg_end)
 		if("!")
 			return pick("exclaims","shouts","yells")
@@ -21,9 +21,9 @@
 /decl/language/human/get_random_name(var/gender)
 	if (prob(80))
 		if(gender==FEMALE)
-			return capitalize(pick(GLOB.first_names_female)) + " " + capitalize(pick(GLOB.last_names))
+			return capitalize(pick(global.first_names_female)) + " " + capitalize(pick(global.last_names))
 		else
-			return capitalize(pick(GLOB.first_names_male)) + " " + capitalize(pick(GLOB.last_names))
+			return capitalize(pick(global.first_names_male)) + " " + capitalize(pick(global.last_names))
 	else
 		return ..()
 
@@ -41,7 +41,7 @@
 	whisper_verb = "whispers"
 	colour = ""
 	key = "1"
-	flags = WHITELISTED
+	flags = LANG_FLAG_WHITELISTED
 	shorthand = "C"
 	partial_understanding = list()
 	syllables = list(

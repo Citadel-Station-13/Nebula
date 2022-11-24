@@ -10,7 +10,7 @@
 	var/list/possible_gifts = list(
 		/obj/item/flashlight/lamp/lava,
 		/obj/item/storage/fancy/crayons,
-		/obj/item/instrument/guitar,
+		/obj/item/guitar,
 		/obj/item/toy/shipmodel,
 		/obj/item/clothing/accessory/locket,
 		/obj/item/binoculars,
@@ -20,7 +20,7 @@
 
 	var/list/rare_gifts = list(
 		/obj/item/toy/bosunwhistle,
-		/obj/item/material/sword/cult_toy,
+		/obj/item/sword/cult_toy,
 		/obj/item/bikehorn/airhorn,
 		/obj/item/gun/projectile/revolver/capgun,
 		/obj/item/grenade/fake,
@@ -32,7 +32,7 @@
 	var/list/to_receive = list()
 
 /datum/event/mail/setup()
-	for(var/datum/computer_file/report/crew_record/CR in GLOB.all_crew_records)
+	for(var/datum/computer_file/report/crew_record/CR in global.all_crew_records)
 		if(prob(25))
 			to_receive.Add(CR.get_name())
 
@@ -77,12 +77,9 @@
 		var/obj/item/gift = new gift_path()
 
 		// Wrap it all up in a parcel
-		var/obj/item/smallDelivery/parcel = new /obj/item/smallDelivery()
-		parcel.SetName("normal-sized parcel (to [name])")
+		var/obj/item/parcel/parcel = new(gift_crate, null, gift, "to [name]")
+		parcel.attach_label(null, null, "to [name]")
 		letter.forceMove(parcel)
-		gift.forceMove(parcel)
-
-		parcel.forceMove(gift_crate)
 
 	// Add the crate to the supply shuttle if possible
 	if(!SSsupply.addAtom(gift_crate))

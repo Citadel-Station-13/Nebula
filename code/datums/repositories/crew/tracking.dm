@@ -2,7 +2,7 @@
 /crew_sensor_modifier/tracking/process_crew_data(var/mob/living/carbon/human/H, var/obj/item/clothing/under/C, var/turf/pos, var/list/crew_data)
 	if(pos)
 		var/area/A = get_area(pos)
-		crew_data["area"] = sanitize(A.name)
+		crew_data["area"] = A.proper_name
 		crew_data["x"] = pos.x
 		crew_data["y"] = pos.y
 		crew_data["z"] = pos.z
@@ -33,7 +33,7 @@
 		x_shift = rand(-shift_range, shift_range)
 		y_shift = rand(-shift_range, shift_range)
 	if(pos)
-		var/new_x = Clamp(pos.x + x_shift, 1, world.maxx)
-		var/new_y = Clamp(pos.y + y_shift, 1, world.maxy)
+		var/new_x = clamp(pos.x + x_shift, 1, world.maxx)
+		var/new_y = clamp(pos.y + y_shift, 1, world.maxy)
 		pos = locate(new_x, new_y, pos.z)
 	return ..(H, C, pos, crew_data)

@@ -11,18 +11,15 @@
 	name = "locator"
 	desc = "Used to track those with locater implants."
 	icon = 'icons/obj/items/device/locator.dmi'
-	icon_state = "locator"
+	icon_state = ICON_STATE_WORLD
 	var/temp = null
 	var/frequency = 1451
-	var/broadcasting = null
-	var/listening = 1.0
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	w_class = ITEM_SIZE_SMALL
-	item_state = "electronic"
 	throw_speed = 4
 	throw_range = 20
 	origin_tech = "{'magnets':1}"
-	material = MAT_ALUMINIUM
+	material = /decl/material/solid/metal/aluminium
 
 /obj/item/locator/attack_self(mob/user)
 	user.set_machine(src)
@@ -51,7 +48,7 @@ Frequency:
 	if(!current_location||current_location.z==2)//If turf was not found or they're on z level 2.
 		to_chat(usr, "The [src] is malfunctioning.")
 		return
-	if ((usr.contents.Find(src) || (in_range(src, usr) && istype(src.loc, /turf))))
+	if ((usr.contents.Find(src) || (in_range(src, usr) && isturf(src.loc))))
 		usr.set_machine(src)
 		if (href_list["refresh"])
 			src.temp = "<B>Persistent Signal Locator</B><HR>"
@@ -60,7 +57,7 @@ Frequency:
 			if (sr)
 				src.temp += "<B>Located Beacons:</B><BR>"
 
-				for(var/obj/item/radio/beacon/W in world)
+				for(var/obj/item/radio/beacon/W in global.radio_beacons)
 					if(!W.functioning)
 						continue
 					if (W.frequency == src.frequency)
@@ -80,7 +77,7 @@ Frequency:
 							src.temp += "[W.code]-[dir2text(get_dir(sr, tr))]-[direct]<BR>"
 
 				src.temp += "<B>Extranneous Signals:</B><BR>"
-				for (var/obj/item/implant/tracking/W in world)
+				for (var/obj/item/implant/tracking/W in global.tracking_implants)
 					if (!W.implanted || !(istype(W.loc,/obj/item/organ/external) || ismob(W.loc)))
 						continue
 					else

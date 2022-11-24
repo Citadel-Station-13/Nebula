@@ -1,8 +1,8 @@
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/remove_animal(var/mob/M)
 	animals -= M
-	GLOB.death_event.unregister(M, src)
-	GLOB.destroyed_event.unregister(M, src)
+	events_repository.unregister(/decl/observ/death, M, src)
+	events_repository.unregister(/decl/observ/destroyed, M, src)
 	repopulate_types |= M.type
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/handle_repopulation()
@@ -18,8 +18,8 @@
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/track_animal(mob/A)
 	animals += A
-	GLOB.death_event.register(A, src, /obj/effect/overmap/visitable/sector/exoplanet/proc/remove_animal)
-	GLOB.destroyed_event.register(A, src, /obj/effect/overmap/visitable/sector/exoplanet/proc/remove_animal)
+	events_repository.register(/decl/observ/death, A, src, /obj/effect/overmap/visitable/sector/exoplanet/proc/remove_animal)
+	events_repository.register(/decl/observ/destroyed, A, src, /obj/effect/overmap/visitable/sector/exoplanet/proc/remove_animal)
 
 /obj/effect/overmap/visitable/sector/exoplanet/proc/adapt_animal(var/mob/living/simple_animal/A)
 	if(species[A.type])
@@ -31,7 +31,7 @@
 		A.verbs |= /mob/living/simple_animal/proc/name_species
 	if(atmosphere)
 		//Set up gases for living things
-		var/list/all_gasses = subtypesof(/decl/material/gas)
+		var/list/all_gasses = decls_repository.get_decl_paths_of_subtype(/decl/material/gas)
 		if(!LAZYLEN(breathgas))
 			var/list/goodgases = all_gasses.Copy() 
 			var/gasnum = min(rand(1,3), goodgases.len)
@@ -75,30 +75,30 @@
 	return TRUE
 
 // Landmarks placed by random map generator
-/obj/effect/landmark/exoplanet_spawn
+/obj/abstract/landmark/exoplanet_spawn
 	name = "spawn exoplanet animal"
 
-/obj/effect/landmark/exoplanet_spawn/Initialize()
+/obj/abstract/landmark/exoplanet_spawn/Initialize()
 	..()
 	return INITIALIZE_HINT_LATELOAD
 
-/obj/effect/landmark/exoplanet_spawn/LateInitialize()
+/obj/abstract/landmark/exoplanet_spawn/LateInitialize()
 	. = ..()
-	var/obj/effect/overmap/visitable/sector/exoplanet/E = map_sectors["[z]"]
+	var/obj/effect/overmap/visitable/sector/exoplanet/E = global.overmap_sectors["[z]"]
 	if(istype(E))
 		do_spawn(E)
 		
-/obj/effect/landmark/exoplanet_spawn/proc/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
+/obj/abstract/landmark/exoplanet_spawn/proc/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
 	if(LAZYLEN(planet.fauna_types))
 		var/beastie = pick(planet.fauna_types)
 		var/mob/M = new beastie(get_turf(src))
 		planet.adapt_animal(M)
 		planet.track_animal(M)
 
-/obj/effect/landmark/exoplanet_spawn/megafauna
+/obj/abstract/landmark/exoplanet_spawn/megafauna
 	name = "spawn exoplanet megafauna"
 
-/obj/effect/landmark/exoplanet_spawn/megafauna/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
+/obj/abstract/landmark/exoplanet_spawn/megafauna/do_spawn(var/obj/effect/overmap/visitable/sector/exoplanet/planet)
 	if(LAZYLEN(planet.megafauna_types))
 		var/beastie = pick(planet.megafauna_types)
 		var/mob/M = new beastie(get_turf(src))

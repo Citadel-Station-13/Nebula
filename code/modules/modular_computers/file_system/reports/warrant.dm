@@ -1,6 +1,9 @@
 /datum/computer_file/report/warrant
 	title = "Warrant"
 	form_name = "W-104"
+	
+	write_access = list(list(access_security), list(access_bridge))
+	read_access = list(list(access_security), list(access_bridge))
 	var/archived = FALSE
 
 /datum/computer_file/report/warrant/New()
@@ -35,13 +38,13 @@
 /datum/computer_file/report/warrant/arrest
 	title = "Arrest Warrant"
 	form_name = "W-104-A"
+	write_access = list(access_security)
 
 /datum/computer_file/report/warrant/arrest/generate_fields()
 	add_field(/datum/report_field/text_label/header, "Arrest Warrant")
 	add_field(/datum/report_field/simple_text, "Name", "Unknown")
 	add_field(/datum/report_field/pencode_text, "Charges", "No charges")
 	add_field(/datum/report_field/signature, "Authorized by", "Unathorized")
-	set_access(access_edit = access_security)
 
 /datum/computer_file/report/warrant/arrest/get_category()
 	. = ..()
@@ -59,13 +62,13 @@
 			<HTML><HEAD><TITLE>Arrest Warramt: [get_name()]</TITLE></HEAD>
 			<BODY><center><h2>Warrant Tracker System</h2>
 			Issued in the jurisdiction of the</br>
-			[GLOB.using_map.boss_name] in [GLOB.using_map.system_name]</br>
+			[global.using_map.boss_name] in [global.using_map.system_name]</br>
 			</br>
 			<h1>ARREST WARRANT</h1></center>
 			</br>
 			This document serves as authorization and notice for the arrest of _<u>[get_name()]</u>____ for the crime(s) of:</br>[get_reason()]</br>
 			</br>
-			Vessel or habitat: _<u>[GLOB.using_map.station_name]</u>____</br>
+			Vessel or habitat: _<u>[global.using_map.station_name]</u>____</br>
 			</br>_<u>[get_auth()]</u>____</br>
 			<small>Person authorizing arrest</small></br>
 			</BODY></HTML>
@@ -74,13 +77,13 @@
 /datum/computer_file/report/warrant/search
 	title = "Search Warrant"
 	form_name = "W-104-S"
+	write_access = list(access_security)
 
 /datum/computer_file/report/warrant/search/generate_fields()
 	add_field(/datum/report_field/text_label/header, "Search Warrant")
 	add_field(/datum/report_field/simple_text, "Person/Location", "Unknown")
 	add_field(/datum/report_field/pencode_text, "Reason", "No reason")
 	add_field(/datum/report_field/signature, "Authorized by", "Unathorized")
-	set_access(access_edit = access_security)
 
 /datum/computer_file/report/warrant/search/get_category()
 	. = ..()
@@ -98,7 +101,7 @@
 	<HTML><HEAD><TITLE>Search Warrant: [get_name()]</TITLE></HEAD>
 	<BODY><center><h2>Warrant Tracker System</h2>
 	Issued in the jurisdiction of the</br>
-	[GLOB.using_map.boss_name] in [GLOB.using_map.system_name]</br>
+	[global.using_map.boss_name] in [global.using_map.system_name]</br>
 	</br>
 	<h1>SEARCH WARRANT</h1></center>
 	</br>
@@ -108,7 +111,7 @@
 	</br>
 	<b>Warrant issued by: </b> [get_auth()]</br>
 	</br>
-	Vessel or habitat: _<u>[GLOB.using_map.station_name]</u>____</br>
+	Vessel or habitat: _<u>[global.using_map.station_name]</u>____</br>
 	</br>
 	<center><small><i>The Security Officer(s) bearing this Warrant are hereby authorized by the Issuer to conduct a one time lawful search of the Suspect's person/belongings/premises and/or Department for any items and materials that could be connected to the suspected criminal act described below, pending an investigation in progress.</br>
 	</br>

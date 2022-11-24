@@ -49,15 +49,15 @@
 		return FALSE
 
 	if (istype(O,/obj/item/chems/glass) || \
-		istype(O,/obj/item/chems/food/drinks/glass2) || \
-		istype(O,/obj/item/chems/food/drinks/shaker))
+		istype(O,/obj/item/chems/drinks/glass2) || \
+		istype(O,/obj/item/chems/drinks/shaker))
 
-		if (beaker)
+		if(beaker)
 			return TRUE
 		else
 			if(!user.unEquip(O, src))
 				return FALSE
-			beaker =  O
+			beaker = O
 			update_icon()
 			SSnano.update_uis(src)
 			return FALSE
@@ -120,7 +120,7 @@
 	return TRUE
 
 /obj/machinery/reagentgrinder/DefaultTopicState()
-	return GLOB.physical_state
+	return global.physical_topic_state
 
 /obj/machinery/reagentgrinder/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1)
 	var/list/data = list()
@@ -134,7 +134,7 @@
 	data["beakercontents"] = list()
 	if(beaker?.reagents)
 		for(var/rtype in beaker.reagents.reagent_volumes)
-			var/decl/material/R = decls_repository.get_decl(rtype)
+			var/decl/material/R = GET_DECL(rtype)
 			data["beakercontents"] += "<b>[capitalize(R.name)]</b> ([REAGENT_VOLUME(beaker.reagents, rtype)]u)"
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
@@ -208,7 +208,7 @@
 			if(!material)
 				break
 
-			var/amount_to_take = max(0,min(stack.amount, Floor(remaining_volume / REAGENT_UNITS_PER_MATERIAL_SHEET)))
+			var/amount_to_take = max(0,min(stack.amount, FLOOR(remaining_volume / REAGENT_UNITS_PER_MATERIAL_SHEET)))
 			if(amount_to_take)
 				stack.use(amount_to_take)
 				if(QDELETED(stack))
@@ -230,7 +230,7 @@
 	if(!istype(user) || !prob(user.skill_fail_chance(skill_to_check, 50, SKILL_BASIC)))
 		return FALSE
 	var/hand = pick(BP_L_HAND, BP_R_HAND)
-	var/obj/item/organ/external/hand_organ = user.get_organ(hand)
+	var/obj/item/organ/external/hand_organ = GET_EXTERNAL_ORGAN(user, hand)
 	if(!hand_organ)
 		return FALSE
 
@@ -241,20 +241,20 @@
 		beaker.reagents.add_reagent(/decl/material/solid/metal/iron, dam)
 	else
 		user.take_blood(beaker, dam)
-	user.Stun(2)
+	SET_STATUS_MAX(user, STAT_STUN, 2)
 	shake(user, 40)
 
-/obj/machinery/reagentgrinder/proc/shake(mob/user, duration)
+/obj/machinery/reagentgrinder/proc/shake(mob/living/user, duration)
 	if(!user)
 		return
 	for(var/i = 1 to duration)
 		sleep(1)
 		if(!Adjacent(user))
 			break
-		if(!user.is_jittery)
+		if(!HAS_STATUS(user, STAT_JITTER))
 			user.do_jitter(4)
 
-	if(!user.is_jittery)
+	if(!HAS_STATUS(user, STAT_JITTER))
 		user.do_jitter(0)
 
 /obj/machinery/reagentgrinder/juicer

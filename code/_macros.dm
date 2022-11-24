@@ -1,19 +1,12 @@
 #define any2ref(x) "\ref[x]"
 
-#if DM_VERSION < 513
-
-#define islist(A) istype(A, /list)
-
-#define ismovable(A) istype(A, /atom/movable)
-
-#endif
-
 #define PUBLIC_GAME_MODE SSticker.master_mode
 
-#define Clamp(value, low, high) (value <= low ? low : (value >= high ? high : value))
-#define CLAMP01(x) 		(Clamp(x, 0, 1))
+#define CLAMP01(x) 		(clamp(x, 0, 1))
 
 #define get_turf(A) get_step(A,0)
+
+#define get_area(A) (get_step(A, 0)?.loc)
 
 #define get_x(A) (get_step(A, 0)?.x || 0)
 
@@ -57,6 +50,8 @@
 
 #define isobj(A) istype(A, /obj)
 
+#define iseffect(A) istype(A, /obj/effect)
+
 #define isghost(A) istype(A, /mob/observer/ghost)
 
 #define isobserver(A) istype(A, /mob/observer)
@@ -65,15 +60,15 @@
 
 #define isstack(A) istype(A, /obj/item/stack)
 
-#define isspace(A) istype(A, /area/space)
+#define isspacearea(A) istype(A, /area/space)
+
+#define isspaceturf(A) istype(A, /turf/space)
 
 #define ispAI(A) istype(A, /mob/living/silicon/pai)
 
 #define isrobot(A) istype(A, /mob/living/silicon/robot)
 
 #define issilicon(A) istype(A, /mob/living/silicon)
-
-#define isslime(A) istype(A, /mob/living/carbon/slime)
 
 #define isunderwear(A) istype(A, /obj/item/underwear)
 
@@ -83,9 +78,7 @@
 
 #define attack_animation(A) if(istype(A)) A.do_attack_animation(src)
 
-#define isopenspace(A) istype(A, /turf/simulated/open)
-
-#define isPlunger(A) istype(A, /obj/item/clothing/mask/plunger) || istype(A, /obj/item/plunger/robot)
+#define isplunger(A) istype(A, /obj/item/plunger)
 
 /proc/isspecies(A, B)
 	if(!iscarbon(A))
@@ -97,23 +90,33 @@
 
 #define random_id(key,min_id,max_id) uniqueness_repository.Generate(/datum/uniqueness_generator/id_random, key, min_id, max_id)
 
+/proc/place_meta_charset(content)
+	if(istext(content))
+		content = "<meta charset=\"utf-8\">" + content
+	return content
+
 #define to_chat(target, message)                            target << (message)
 #define to_world(message)                                   world << (message)
 #define to_world_log(message)                               world.log << (message)
 #define sound_to(target, sound)                             target << (sound)
 #define to_file(file_entry, source_var)                     file_entry << (source_var)
 #define from_file(file_entry, target_var)                   file_entry >> (target_var)
-#define show_browser(target, browser_content, browser_name) target << browse(browser_content, browser_name)
+#define show_browser(target, browser_content, browser_name) target << browse(place_meta_charset(browser_content), browser_name)
 #define close_browser(target, browser_name)                 target << browse(null, browser_name)
 #define show_image(target, image)                           target << (image)
 #define send_rsc(target, rsc_content, rsc_name)             target << browse_rsc(rsc_content, rsc_name)
-#define open_link(target, url)             target << link(url)
+#define open_link(target, url)                              target << link(url)
+#define to_savefile(target, key, value)                     target[(key)] << (value)
+#define from_savefile(target, key, value)                   target[(key)] >> (value)
+#define to_output(target, output_content, output_args)      target << output((output_content), (output_args))
+#define direct_output(target, value)                        target << (value)
 
-#define MAP_IMAGE_PATH "nano/images/[GLOB.using_map.path]/"
+/proc/html_icon(var/thing) // Proc instead of macro to avoid precompiler problems.
+	. = "\icon[thing]"
 
-#define map_image_file_name(z_level) "[GLOB.using_map.path]-[z_level].png"
+#define MAP_IMAGE_PATH "nano/images/[global.using_map.path]/"
 
-#define RANDOM_BLOOD_TYPE pick(4;"O-", 36;"O+", 3;"A-", 28;"A+", 1;"B-", 20;"B+", 1;"AB-", 5;"AB+")
+#define map_image_file_name(z_level) "[global.using_map.path]-[z_level].png"
 
 #define CanInteract(user, state) (CanUseTopic(user, state) == STATUS_INTERACTIVE)
 
@@ -122,12 +125,6 @@
 #define CanPhysicallyInteract(user) (CanUseTopicPhysical(user) == STATUS_INTERACTIVE)
 
 #define CanPhysicallyInteractWith(user, target) (target.CanUseTopicPhysical(user) == STATUS_INTERACTIVE)
-
-#define QDEL_NULL_LIST(x) if(x) { for(var/y in x) { qdel(y) }}; if(x) {x.Cut(); x = null } // Second x check to handle items that LAZYREMOVE on qdel.
-
-#define QDEL_NULL(x) if(x) { qdel(x) ; x = null }
-
-#define QDEL_IN(item, time) addtimer(CALLBACK(GLOBAL_PROC, .proc/qdel, item), time, TIMER_STOPPABLE)
 
 #define DROP_NULL(x) if(x) { x.dropInto(loc); x = null; }
 
@@ -147,23 +144,41 @@
 
 #define JOINTEXT(X) jointext(X, null)
 
-#define SPAN_ITALIC(X) "<span class='italic'>[X]</span>"
+#define SPAN_STYLE(S, X) "<span style='[S]'>[X]</span>"
 
-#define SPAN_BOLD(X) "<span class='bold'>[X]</span>"
+#define SPAN_CLASS(C, X) "<span class='[C]'>[X]</span>"
+#define SPAN_ITALIC(X)   SPAN_CLASS("italic",        X)
+#define SPAN_BOLD(X)     SPAN_CLASS("bold",          X)
+#define SPAN_NOTICE(X)   SPAN_CLASS("notice",        X)
+#define SPAN_WARNING(X)  SPAN_CLASS("warning",       X)
+#define SPAN_DANGER(X)   SPAN_CLASS("danger",        X)
+#define SPAN_OCCULT(X)   SPAN_CLASS("cult",          X)
+#define SPAN_MFAUNA(X)   SPAN_CLASS("mfauna",        X)
+#define SPAN_SUBTLE(X)   SPAN_CLASS("subtle",        X)
+#define SPAN_INFO(X)     SPAN_CLASS("info",          X)
+#define SPAN_RED(X)      SPAN_CLASS("font_red",      X)
+#define SPAN_ORANGE(X)   SPAN_CLASS("font_orange",   X)
+#define SPAN_YELLOW(X)   SPAN_CLASS("font_yellow",   X)
+#define SPAN_GREEN(X)    SPAN_CLASS("font_green",    X)
+#define SPAN_BLUE(X)     SPAN_CLASS("font_blue",     X)
+#define SPAN_VIOLET(X)   SPAN_CLASS("font_violet",   X)
+#define SPAN_PURPLE(X)   SPAN_CLASS("font_purple",   X)
+#define SPAN_GREY(X)     SPAN_CLASS("font_grey",     X)
+#define SPAN_MAROON(X)   SPAN_CLASS("font_maroon",   X)
+#define SPAN_PINK(X)     SPAN_CLASS("font_pink",     X)
+#define SPAN_PALEPINK(X) SPAN_CLASS("font_palepink", X)
 
-#define SPAN_NOTICE(X) "<span class='notice'>[X]</span>"
+// placeholders
+#define SPAN_GOOD(X)     SPAN_GREEN(X)
+#define SPAN_NEUTRAL(X)  SPAN_BLUE(X)
+#define SPAN_BAD(X)      SPAN_RED(X)
+#define SPAN_HARDSUIT(X) SPAN_BLUE(X)
 
-#define SPAN_WARNING(X) "<span class='warning'>[X]</span>"
+#define STYLE_SMALLFONTS(X, S, C1) "<span style=\"font-family: 'Small Fonts'; color: [C1]; font-size: [S]px\">[X]</span>"
 
-#define SPAN_DANGER(X) "<span class='danger'>[X]</span>"
+#define STYLE_SMALLFONTS_OUTLINE(X, S, C1, C2) "<span style=\"font-family: 'Small Fonts'; color: [C1]; -dm-text-outline: 1 [C2]; font-size: [S]px\">[X]</span>"
 
-#define SPAN_OCCULT(X) "<span class='cult'>[X]</span>"
-
-#define SPAN_MFAUNA(X) "<span class='mfauna'>[X]</span>"
-
-#define SPAN_SUBTLE(X) "<span class='subtle'>[X]</span>"
-
-#define SPAN_INFO(X) "<span class='info'>[X]</span>"
+#define FONT_COLORED(color, text) "<font color='[color]'>[text]</font>"
 
 #define FONT_SMALL(X) "<font size='1'>[X]</font>"
 
@@ -175,4 +190,4 @@
 
 #define FONT_GIANT(X) "<font size='5'>[X]</font>"
 
-#define crash_with(X) crash_at(X, __FILE__, __LINE__)
+#define PRINT_STACK_TRACE(X) get_stack_trace(X, __FILE__, __LINE__)

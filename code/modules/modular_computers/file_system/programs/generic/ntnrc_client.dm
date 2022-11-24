@@ -6,7 +6,7 @@
 	program_menu_icon = "comment"
 	extended_desc = "This program allows communication over the local network"
 	size = 8
-	requires_network_feature = NETWORK_COMMUNICATION
+	requires_network_feature = NET_FEATURE_COMMUNICATION
 	network_destination = "chat server"
 	ui_header = "ntnrc_idle.gif"
 	available_on_network = 1
@@ -70,7 +70,7 @@
 	if(href_list["PRG_newchannel"])
 		. = 1
 		var/mob/living/user = usr
-		var/channel_title = sanitizeSafe(input(user,"Enter channel name or leave blank to cancel:"), 64)
+		var/channel_title = sanitize_safe(input(user,"Enter channel name or leave blank to cancel:"), 64)
 		if(!channel_title)
 			return
 		var/datum/chat_conversation/C = new/datum/chat_conversation(network)
@@ -87,7 +87,7 @@
 				channel = null
 			return 1
 		var/mob/living/user = usr
-		if(can_run(usr, 1, access_network))
+		if(has_access(list(access_network), usr.GetAccess()))
 			if(channel)
 				var/response = alert(user, "Really engage admin-mode? You will be disconnected from your current channel!", "NTNRC Admin mode", "Yes", "No")
 				if(response == "Yes")
@@ -123,7 +123,7 @@
 			logfile.stored_data += "[logstring]\[BR\]"
 		logfile.stored_data += "\[b\]Logfile dump completed.\[/b\]"
 		logfile.calculate_size()
-		if(!computer.store_file(logfile))
+		if(!computer.store_file(logfile, OS_LOGS_DIR, create_directories = TRUE))
 			computer.show_error(user, "I/O Error - Check hard drive and free space. Required space: [logfile.size]GQ.")
 	if(href_list["PRG_renamechannel"])
 		. = 1
@@ -186,8 +186,8 @@
 /datum/nano_module/program/computer_chatclient
 	name = "Intranet Relay Chat Client"
 
-/datum/nano_module/program/computer_chatclient/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
-	var/datum/computer_network/network = program.computer.get_network()
+/datum/nano_module/program/computer_chatclient/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
+	var/datum/computer_network/network = program?.computer?.get_network()
 	if(!network || !network.chat_channels)
 		return
 

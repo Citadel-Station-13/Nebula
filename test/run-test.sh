@@ -51,7 +51,7 @@
 # groups that already exists. Add it to the relevant run_xxx_tests function, and
 # if it introduces any new dependencies, add them to the check_xxx_deps
 # function. Some dependencies are guaranteed to be on CI platforms by outside
-# means (like .travis.yml), others will need to be installed by this script.
+# means (like .github/workflows/test.yml), others will need to be installed by this script.
 # You'll see plenty of examples of checking for CI and gating tests on that,
 # installing instead of checking when running on CI.
 #
@@ -160,7 +160,6 @@ function find_code_deps {
     need_cmd grep
     need_cmd awk
     need_cmd md5sum
-    need_cmd pyenv
 }
 
 function find_byond_deps {
@@ -184,10 +183,10 @@ function find_code {
 }
 
 function setup_python3 {
-    pyenv global 3.6.7
     pip3 install --upgrade pip -q
     pip3 install pyyaml==5.3 -q
     pip3 install beautifulsoup4==4.8.2 -q
+    pip3 install git+https://github.com/ComicIronic/ByondToolsv3.git@0.1.5#egg=ByondToolsv3 -q
 }
 
 function run_code_tests {
@@ -195,8 +194,9 @@ function run_code_tests {
     find_code_deps
     setup_python3
     shopt -s globstar
-    run_test "check travis contains all maps" "scripts/validateTravisContainsAllMaps.sh"
+    run_test "check test workflow contains all maps" "scripts/validateTestingContainsAllMaps.sh"
     run_test_fail "maps contain no step_[xy]" "grep 'step_[xy]' maps/**/*.dmm"
+    run_test_fail "maps contain no cable dir setting" "grep 'd[12] = ' maps/**/*.dmm"
     run_test_fail "maps contain no layer adjustments" "grep 'layer = ' maps/**/*.dmm"
     run_test_fail "maps contain no plane adjustments" "grep 'plane = ' maps/**/*.dmm"
     run_test_fail "ensure nanoui templates unique" "find nano/templates/ -type f -exec md5sum {} + | sort | uniq -D -w 32 | grep nano"
@@ -207,8 +207,11 @@ function run_code_tests {
     run_test "check tags" "python3 tools/TagMatcher/tag-matcher.py ."
     run_test "check color hex" "python3 tools/ColorHexChecker/color-hex-checker.py ."
     run_test "check punctuation" "python3 tools/PunctuationChecker/punctuation-checker.py ."
-    run_test "check icon state limit" "python3 tools/dmitool/check_icon_state_limit.py ."
-    run_test_ci "check changelog builds" "python3 tools/GenerateChangelog/ss13_genchangelog.py html/changelog.html html/changelogs"
+    run_test "check icon state limit (icons)" "python3 tools/check_icon_state_limit.py icons"
+    run_test "check icon state limit (mods)" "python3 tools/check_icon_state_limit.py mods"
+    run_test "check icon state limit (maps)" "python3 tools/check_icon_state_limit.py maps"
+    run_test_ci "check changelog builds" "python3 tools/changelog/ss13_genchangelog.py html/changelog.html html/changelogs"
+    run_test "check files included" "python3 tools/validate_dme.py < nebula.dme"
 }
 
 function run_byond_tests {
@@ -219,6 +222,7 @@ function run_byond_tests {
     else msg "configured map is '$MAP_PATH'"
     fi
     cp config/example/* config/
+    cp data/secrets/example/* data/secrets/
     if [[ "$CI" == "true" ]]; then
         msg "installing BYOND"
         ./install-byond.sh || exit 1

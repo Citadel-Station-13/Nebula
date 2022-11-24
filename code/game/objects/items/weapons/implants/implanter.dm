@@ -6,8 +6,8 @@
 	throw_speed = 1
 	throw_range = 5
 	w_class = ITEM_SIZE_SMALL
-	material = MAT_ALUMINIUM
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/aluminium
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
 	var/obj/item/implant/imp = null
 
 /obj/item/implanter/Initialize()
@@ -21,10 +21,8 @@
 	. = ..()
 
 /obj/item/implanter/on_update_icon()
-	if (imp)
-		icon_state = "implanter1"
-	else
-		icon_state = "implanter0"
+	. = ..()
+	icon_state = "implanter[imp == TRUE]"
 
 /obj/item/implanter/verb/remove_implant()
 	set category = "Object"
@@ -57,7 +55,7 @@
 
 	if(M.incapacitated())
 		return 0
-	if((src in M.contents) || (istype(loc, /turf) && in_range(src, M)))
+	if((src in M.contents) || (isturf(loc) && in_range(src, M)))
 		return 1
 	return 0
 
@@ -88,5 +86,3 @@
 
 				src.imp = null
 				update_icon()
-
-	return

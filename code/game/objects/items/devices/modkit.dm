@@ -7,8 +7,9 @@
 	desc = "A kit containing all the needed tools and parts to modify a hardsuit for another user."
 	icon = 'icons/obj/items/modkit.dmi'
 	icon_state = "modkit"
+	material = /decl/material/solid/plastic
 	var/parts = MODKIT_FULL
-	var/target_bodytype
+	var/target_bodytype = BODYTYPE_HUMANOID
 
 	var/list/permitted_types = list(
 		/obj/item/clothing/head/helmet/space/void,
@@ -17,7 +18,8 @@
 
 /obj/item/modkit/Initialize(ml, material_key)
 	if(!target_bodytype)
-		target_bodytype = GLOB.using_map.default_species
+		var/decl/species/species = GET_DECL(global.using_map.default_species)
+		target_bodytype = species.default_bodytype.bodytype_flag
 	. = ..()
 	
 /obj/item/modkit/afterattack(obj/O, mob/user, proximity)
@@ -40,12 +42,6 @@
 	var/obj/item/clothing/I = O
 	if (!istype(I) || !allowed)
 		to_chat(user, "<span class='notice'>[src] is unable to modify that.</span>")
-		return
-
-	var/excluding = ("exclude" in I.bodytype_restricted)
-	var/in_list = (target_bodytype in I.bodytype_restricted)
-	if (excluding ^ in_list)
-		to_chat(user, "<span class='notice'>[I] is already modified.</span>")
 		return
 
 	if(!isturf(O.loc))

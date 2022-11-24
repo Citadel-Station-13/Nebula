@@ -10,7 +10,7 @@
 	level = 1			// underfloor only
 	dir = 0				// dir will contain dominant direction for junction pipes
 	alpha = 192 // Plane and alpha modified for mapping, reset to normal on spawn.
-	layer = DISPOSALS_PIPE_LAYER
+	layer = ABOVE_TILE_LAYER
 	var/dpdir = 0		// bitmask of pipe directions
 	var/base_icon_state	// initial icon state on map
 	var/sort_type = ""
@@ -21,11 +21,13 @@
 /obj/structure/disposalpipe/Initialize()
 	. = ..()
 	alpha = 255
+	layer = DISPOSALS_PIPE_LAYER
 	base_icon_state = icon_state
+	update_icon()
 
 // pipe is deleted
 // ensure if holder is present, it is expelled
-obj/structure/disposalpipe/Destroy()
+/obj/structure/disposalpipe/Destroy()
 	var/obj/structure/disposalholder/H = locate() in src
 	if(H)
 		// holder was present
@@ -80,9 +82,9 @@ obj/structure/disposalpipe/Destroy()
 
 	// update the icon_state to reflect hidden status
 /obj/structure/disposalpipe/proc/update()
-	var/turf/T = src.loc
-	if(loc)
-		hide(!T.is_plating() && !istype(T,/turf/space))	// space never hides pipes
+	var/turf/T = loc
+	if(istype(T))
+		hide(!T.is_plating() && !T.is_open()) // space never hides pipes
 
 	// hide called by levelupdate if turf intact status changes
 	// change visibility status and force update of icon
@@ -120,7 +122,7 @@ obj/structure/disposalpipe/Destroy()
 
 	var/turf/target
 	if(direction)		// direction is specified
-		if(istype(T, /turf/space)) // if ended in space, then range is unlimited
+		if(isspaceturf(T)) // if ended in space, then range is unlimited
 			target = get_edge_target_turf(T, direction)
 		else						// otherwise limit to 10 tiles
 			target = get_ranged_target_turf(T, direction, 10)
@@ -157,7 +159,7 @@ obj/structure/disposalpipe/Destroy()
 // remains : set to leave broken pipe pieces in place
 /obj/structure/disposalpipe/proc/broken(var/remains = 0)
 	if(remains)
-		for(var/D in GLOB.cardinal)
+		for(var/D in global.cardinal)
 			if(D & dpdir)
 				var/obj/structure/disposalpipe/broken/P = new(src.loc)
 				P.set_dir(D)
@@ -204,7 +206,7 @@ obj/structure/disposalpipe/Destroy()
 	src.add_fingerprint(user, 0, I)
 	if(istype(I, /obj/item/weldingtool))
 		var/obj/item/weldingtool/W = I
-		if(W.remove_fuel(0,user))
+		if(W.weld(0,user))
 			playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 			// check if anything changed over 2 seconds
 			var/turf/uloc = user.loc
@@ -459,7 +461,7 @@ obj/structure/disposalpipe/Destroy()
 /obj/structure/disposalpipe/tagger/Initialize()
 	. = ..()
 	dpdir = dir | turn(dir, 180)
-	if(sort_tag) GLOB.tagger_locations |= sort_tag
+	if(sort_tag) global.tagger_locations |= sort_tag
 	updatename()
 	updatedesc()
 	update()
@@ -470,13 +472,13 @@ obj/structure/disposalpipe/Destroy()
 
 	if(istype(I, /obj/item/destTagger))
 		var/obj/item/destTagger/O = I
-
-		if(O.currTag)// Tag set
-			sort_tag = O.currTag
+		if(O.current_tag)// Tag set
+			sort_tag = O.current_tag
 			playsound(src.loc, 'sound/machines/twobeep.ogg', 100, 1)
-			to_chat(user, "<span class='notice'>Changed tag to '[sort_tag]'.</span>")
+			to_chat(user, SPAN_NOTICE("Changed tag to '[sort_tag]'."))
 			updatename()
 			updatedesc()
+		return TRUE
 
 /obj/structure/disposalpipe/tagger/transfer(var/obj/structure/disposalholder/H)
 	if(sort_tag)
@@ -523,7 +525,7 @@ obj/structure/disposalpipe/Destroy()
 
 /obj/structure/disposalpipe/diversion_junction/Initialize()
 	. = ..()
-	GLOB.diversion_junctions += src
+	global.diversion_junctions += src
 	updatedir()
 	updatedesc()
 	update()
@@ -534,7 +536,7 @@ obj/structure/disposalpipe/Destroy()
 	updatedesc()
 
 /obj/structure/disposalpipe/diversion_junction/Destroy()
-	GLOB.diversion_junctions -= src
+	global.diversion_junctions -= src
 	if(linked)
 		linked.junctions.Remove(src)
 	linked = null
@@ -620,7 +622,7 @@ obj/structure/disposalpipe/Destroy()
 
 /obj/structure/disposalpipe/sortjunction/Initialize()
 	. = ..()
-	if(sort_type) GLOB.tagger_locations |= sort_type
+	if(sort_type) global.tagger_locations |= sort_type
 
 	updatedir()
 	updatename()
@@ -640,10 +642,10 @@ obj/structure/disposalpipe/Destroy()
 	if(istype(I, /obj/item/destTagger))
 		var/obj/item/destTagger/O = I
 
-		if(O.currTag)// Tag set
-			sort_type = O.currTag
+		if(O.current_tag)// Tag set
+			sort_type = O.current_tag
 			playsound(src.loc, 'sound/machines/twobeep.ogg', 100, 1)
-			to_chat(user, "<span class='notice'>Changed filter to '[sort_type]'.</span>")
+			to_chat(user, SPAN_NOTICE("Changed filter to '[sort_type]'."))
 			updatename()
 			updatedesc()
 
@@ -761,7 +763,7 @@ obj/structure/disposalpipe/Destroy()
 	if(istype(I, /obj/item/weldingtool))
 		var/obj/item/weldingtool/W = I
 
-		if(W.remove_fuel(0,user))
+		if(W.weld(0,user))
 			playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 			// check if anything changed over 2 seconds
 			var/turf/uloc = user.loc

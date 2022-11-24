@@ -1,5 +1,6 @@
 /datum/ai/human
 	name = "human"
+	expected_type = /mob/living/carbon/human
 
 /datum/ai/human/do_process(var/time_elapsed)
 	var/mob/living/carbon/human/H = body
@@ -21,7 +22,7 @@
 	if(!H.restrained() && H.shock_stage < 40 && prob(3))
 		var/maxdam = 0
 		var/obj/item/organ/external/damaged_organ = null
-		for(var/obj/item/organ/external/E in H.organs)
+		for(var/obj/item/organ/external/E in H.get_external_organs())
 			if(!E.can_feel_pain()) continue
 			var/dam = E.get_damage()
 			// make the choice of the organ depend on damage,
@@ -29,19 +30,19 @@
 			if(dam > maxdam && (maxdam == 0 || prob(50)) )
 				damaged_organ = E
 				maxdam = dam
-		var/datum/gender/T = gender_datums[H.get_gender()]
+		var/decl/pronouns/G = H.get_pronouns()
 		if(damaged_organ)
 			if(damaged_organ.status & ORGAN_BLEEDING)
-				H.custom_emote("clutches [T.his] [damaged_organ.name], trying to stop the blood.")
+				H.custom_emote("clutches [G.his] [damaged_organ.name], trying to stop the blood.")
 			else if(damaged_organ.status & ORGAN_BROKEN)
-				H.custom_emote("holds [T.his] [damaged_organ.name] carefully.")
+				H.custom_emote("holds [G.his] [damaged_organ.name] carefully.")
 			else if(damaged_organ.burn_dam > damaged_organ.brute_dam && damaged_organ.organ_tag != BP_HEAD)
-				H.custom_emote("blows on [T.his] [damaged_organ.name] carefully.")
+				H.custom_emote("blows on [G.his] [damaged_organ.name] carefully.")
 			else
-				H.custom_emote("rubs [T.his] [damaged_organ.name] carefully.")
+				H.custom_emote("rubs [G.his] [damaged_organ.name] carefully.")
 
-		for(var/obj/item/organ/I in H.internal_organs)
+		for(var/obj/item/organ/I in H.get_internal_organs())
 			if((I.status & ORGAN_DEAD) || BP_IS_PROSTHETIC(I)) continue
 			if(I.damage > 2) if(prob(2))
-				var/obj/item/organ/external/parent = H.get_organ(I.parent_organ)
-				H.custom_emote("clutches [T.his] [parent.name]!")
+				var/obj/item/organ/external/parent = GET_EXTERNAL_ORGAN(H, I.parent_organ)
+				H.custom_emote("clutches [G.his] [parent.name]!")

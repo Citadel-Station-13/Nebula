@@ -1,13 +1,12 @@
 /datum/job/tradeship_doctor
 	title = "Junior Doctor"
-	department_refs = list(DEPT_MEDICAL)
+	department_types = list(/decl/department/medical)
 	head_position = 0
 	supervisors = "the Head Doctor and the Captain"
 	total_positions = 2
 	spawn_positions = 2
 	alt_titles = list()
 	skill_points = 24
-	hud_icon = "hudmedicaldoctor"
 	min_skill = list(
 		SKILL_LITERACY  = SKILL_ADEPT,
 	    SKILL_MEDICAL   = SKILL_EXPERT,
@@ -40,13 +39,14 @@
 		access_virology
 	)
 	outfit_type = /decl/hierarchy/outfit/job/tradeship/doc/junior
+	event_categories = list(ASSIGNMENT_MEDICAL)
 
 /datum/job/tradeship_doctor/head
 	title = "Head Doctor"
 	head_position = 1
-	department_refs = list(
-		DEPT_MEDICAL,
-		DEPT_COMMAND
+	department_types = list(
+		/decl/department/medical,
+		/decl/department/command
 	)
 	supervisors = "the Captain and your own ethics"
 	outfit_type = /decl/hierarchy/outfit/job/tradeship/doc
@@ -98,3 +98,4 @@
 	)
 	minimal_player_age = 14
 	ideal_character_age = 50
+	event_categories = list(ASSIGNMENT_MEDICAL)

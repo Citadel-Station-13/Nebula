@@ -4,11 +4,18 @@
 	icon_screen = "teleport"
 	light_color = "#77fff8"
 	extra_view = 4
-	var/obj/machinery/shipsensors/sensors
+	var/weakref/sensor_ref
 	var/list/last_scan
+	var/tmp/muted = FALSE
 	var/working_sound = 'sound/machines/sensors/dradis.ogg'
 	var/datum/sound_token/sound_token
 	var/sound_id
+
+/obj/machinery/computer/ship/sensors/proc/get_sensors()
+	var/obj/machinery/shipsensors/sensors = sensor_ref?.resolve()
+	if(!istype(sensors) || QDELETED(sensors))
+		sensor_ref = null
+	return sensors
 
 /obj/machinery/computer/ship/sensors/attempt_hook_up(obj/effect/overmap/visitable/ship/sector)
 	if(!(. = ..()))
@@ -20,7 +27,7 @@
 		return
 	for(var/obj/machinery/shipsensors/S in SSmachines.machinery)
 		if(linked.check_ownership(S))
-			sensors = S
+			sensor_ref = weakref(S)
 			break
 
 /obj/machinery/computer/ship/sensors/proc/update_sound()
@@ -28,10 +35,12 @@
 		return
 	if(!sound_id)
 		sound_id = "[type]_[sequential_id(/obj/machinery/computer/ship/sensors)]"
-	if(linked && sensors.use_power ** sensors.powered())
+
+	var/obj/machinery/shipsensors/sensors = get_sensors()
+	if(linked && sensors?.use_power && !(sensors.stat & NOPOWER))
 		var/volume = 10
 		if(!sound_token)
-			sound_token = GLOB.sound_player.PlayLoopingSound(src, sound_id, working_sound, volume = volume, range = 10)
+			sound_token = play_looping_sound(src, sound_id, working_sound, volume = volume, range = 10)
 		sound_token.SetVolume(volume)
 	else if(sound_token)
 		QDEL_NULL(sound_token)
@@ -43,7 +52,9 @@
 
 	var/data[0]
 
+	var/obj/machinery/shipsensors/sensors = get_sensors()
 	data["viewing"] = viewing_overmap(user)
+	data["muted"] = muted
 	if(sensors)
 		data["on"] = sensors.use_power
 		data["range"] = sensors.range
@@ -51,7 +62,7 @@
 		data["critical_heat"] = sensors.critical_heat
 		if(sensors.is_broken())
 			data["status"] = "DESTROYED"
-		else if(!sensors.powered())
+		else if(sensors.stat & NOPOWER)
 			data["status"] = "NO POWER"
 		else if(!sensors.in_vacuum())
 			data["status"] = "VACUUM SEAL BROKEN"
@@ -63,9 +74,9 @@
 
 		for(var/obj/effect/overmap/nearby in view(7,linked))
 			if(nearby.requires_contact) // Some ships require.
-				continue 
+				continue
 			potential_contacts |= nearby
-		
+
 		// Effects that require contact are only added to the contacts if they have been identified.
 		// Allows for coord tracking out of range of the player's view.
 		for(var/obj/effect/overmap/visitable/identified_contact in contact_datums)
@@ -90,7 +101,7 @@
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if (!ui)
-		ui = new(user, src, ui_key, "shipsensors.tmpl", "[linked.name] Sensors Control", 420, 530, src)
+		ui = new(user, src, ui_key, "shipsensors.tmpl", "[linked.name] Sensors Control", 420, 530, nref = src)
 		ui.set_initial_data(data)
 		ui.open()
 		ui.set_auto_update(1)
@@ -111,13 +122,18 @@
 		find_sensors()
 		return TOPIC_REFRESH
 
+	if (href_list["mute"])
+		muted = !muted
+		return TOPIC_REFRESH
+
+	var/obj/machinery/shipsensors/sensors = get_sensors()
 	if(sensors)
 		if (href_list["range"])
 			var/nrange = input("Set new sensors range", "Sensor range", sensors.range) as num|null
 			if(!CanInteract(user,state))
 				return TOPIC_NOACTION
 			if (nrange)
-				sensors.set_range(Clamp(nrange, 1, world.view))
+				sensors.set_range(clamp(nrange, 1, world.view))
 			return TOPIC_REFRESH
 		if (href_list["toggle"])
 			sensors.toggle()
@@ -133,7 +149,7 @@
 				LAZYSET(last_scan, "name", "[O]")
 				to_chat(user, SPAN_NOTICE("Successfully scanned [O]."))
 				return TOPIC_HANDLED
-		
+
 		to_chat(user, SPAN_WARNING("Could not get a scan!"))
 		return TOPIC_HANDLED
 
@@ -145,7 +161,7 @@
 /obj/machinery/shipsensors
 	name = "sensors suite"
 	desc = "Long range gravity scanner with various other sensors, used to detect irregularities in surrounding space. Can only run in vacuum to protect delicate quantum BS elements."
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/ship_sensors.dmi'
 	icon_state = "sensors"
 	anchored = 1
 	var/critical_heat = 50 // sparks and takes damage when active & above this heat
@@ -180,7 +196,6 @@
 	if(!use_power) //need some juice to kickstart
 		use_power_oneoff(idle_power_usage*5)
 	update_use_power(!use_power)
-	queue_icon_update()
 
 /obj/machinery/shipsensors/Process()
 	if(use_power) //can't run in non-vacuum
@@ -188,9 +203,7 @@
 			toggle()
 		if(heat > critical_heat)
 			src.visible_message("<span class='danger'>\The [src] violently spews out sparks!</span>")
-			var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-			s.set_up(3, 1, src)
-			s.start()
+			spark_at(src, cardinal_only = TRUE)
 			take_damage(10, BURN)
 			toggle()
 		heat += idle_power_usage/15000
@@ -200,7 +213,7 @@
 
 /obj/machinery/shipsensors/power_change()
 	. = ..()
-	if(use_power && !powered())
+	if(use_power && (stat & NOPOWER))
 		toggle()
 
 /obj/machinery/shipsensors/proc/set_range(nrange)
@@ -215,8 +228,8 @@
 
 /obj/machinery/shipsensors/RefreshParts()
 	..()
-	sensor_strength = Clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 0, 5)
-	
+	sensor_strength = clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 0, 5)
+
 /obj/machinery/shipsensors/weak
 	heat_reduction = 0.2
 	desc = "Miniturized gravity scanner with various other sensors, used to detect irregularities in surrounding space. Can only run in vacuum to protect delicate quantum BS elements."

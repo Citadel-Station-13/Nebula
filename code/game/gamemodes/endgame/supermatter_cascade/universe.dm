@@ -40,11 +40,11 @@ var/global/universe_has_ended = 0
 	to_world("<span class='sinister' style='font-size:22pt'>You are blinded by a brilliant flash of energy.</span>")
 	sound_to(world, sound('sound/effects/cascade.ogg'))
 
-	for(var/mob/M in GLOB.player_list)
+	for(var/mob/M in global.player_list)
 		M.flash_eyes()
 
-	if(SSevac.evacuation_controller.cancel_evacuation())
-		priority_announcement.Announce("The evacuation has been aborted due to bluespace distortion.")
+	if(SSevac.evacuation_controller?.cancel_evacuation())
+		priority_announcement.Announce("The evacuation has been aborted due to severe distortion of local space-time.")
 
 	AreaSet()
 	MiscSet()
@@ -52,43 +52,44 @@ var/global/universe_has_ended = 0
 	OverlayAndAmbientSet()
 
 	// Disable Nar-Sie.
-	GLOB.cult.allow_narsie = 0
+	var/decl/special_role/cultist/cult = GET_DECL(/decl/special_role/cultist)
+	cult.allow_narsie = 0
 
 	PlayerSet()
 	SSskybox.change_skybox("cascade", new_use_stars = FALSE, new_use_overmap_details = FALSE)
 
-	new /obj/singularity/narsie/large/exit(pick(endgame_exits))
-	spawn(rand(30,60) SECONDS)
-		var/txt = {"
-A galaxy-wide electromagnetic pulse has been detected. All systems across space are heavily damaged and many personnel have died or are dying. We are currently detecting increasing indications that the universe itself is beginning to unravel.
+	var/spawned_exit = FALSE
+	if(length(global.endgame_exits))
+		spawned_exit = new /obj/singularity/narsie/large/exit(pick(global.endgame_exits))
 
-[station_name()], the largest source of disturbances has been pinpointed directly to you. We estimate you have five minutes until a bluespace rift opens within your facilities.
+	addtimer(CALLBACK(src, /datum/universal_state/supermatter_cascade/proc/announce_end_of_universe, spawned_exit), rand(30, 60) SECONDS)
+	addtimer(CALLBACK(src, /datum/universal_state/supermatter_cascade/proc/finalize_end_of_universe), 5 MINUTES)
 
-There is no known way to stop the formation of the rift, nor any way to escape it. You are entirely alone.
+/datum/universal_state/supermatter_cascade/proc/announce_end_of_universe(var/exit_exists)
+	var/end_message = "Attn. [global.using_map.station_name]: Severe gravitational anomalies of unheard of scope have been detected in the local volume. Size and intensity of anomalies are increasing exponentially. Within the hour, a newborn black hole will have consumed everything in this sector."
+	if(exit_exists)
+		end_message += "\n\nCuriously, the distortion is predicted to form a traversable wormhole quite close to your current location in approximately five minutes. The terminus is unknown, but it must be better than behind a hungry singularity. Godspeed."
+	end_message += "\n\nAUTOMATED ALERT: Link to [command_name()] lost."
+	priority_announcement.Announce(end_message, "SUPERMATTER CASCADE DETECTED")
 
-God help your s\[\[###!!!-
-
-AUTOMATED ALERT: Link to [command_name()] lost.
-
-"}
-		priority_announcement.Announce(txt,"SUPERMATTER CASCADE DETECTED")
-
-		spawn(5 MINUTES)
-			GLOB.cinematic.station_explosion_cinematic(0,null) // TODO: Custom cinematic
-			universe_has_ended = 1
-		return
+/datum/universal_state/supermatter_cascade/proc/finalize_end_of_universe()
+	global.cinematic.station_explosion_cinematic(0,null) // TODO: Custom cinematic
+	universe_has_ended = TRUE
 
 /datum/universal_state/supermatter_cascade/proc/AreaSet()
-	for(var/area/A)
-		if(!istype(A,/area) || istype(A, /area/space) || istype(A,/area/beach))
-			continue
-
-		A.update_icon()
+	for(var/area/A as anything in global.areas)
+		var/invalid_area = FALSE
+		for(var/check_area in global.using_map.get_universe_end_evac_areas())
+			if(istype(A, check_area))
+				invalid_area = TRUE
+				break
+		if(!invalid_area)
+			A.update_icon()
 
 /datum/universal_state/supermatter_cascade/OverlayAndAmbientSet()
 	spawn(0)
 		for(var/datum/lighting_corner/L in world)
-			if(L.z in GLOB.using_map.admin_levels)
+			if(isAdminLevel(L.z))
 				L.update_lumcount(1,1,1)
 			else
 				L.update_lumcount(0.0, 0.4, 1)
@@ -112,11 +113,11 @@ AUTOMATED ALERT: Link to [command_name()] lost.
 			APC.queue_icon_update()
 
 /datum/universal_state/supermatter_cascade/proc/PlayerSet()
-	for(var/datum/mind/M in GLOB.player_list)
+	for(var/datum/mind/M in global.player_list)
 		if(!istype(M.current,/mob/living))
 			continue
 		if(M.current.stat!=2)
-			M.current.Weaken(10)
+			SET_STATUS_MAX(M.current, STAT_WEAK, 10)
 			M.current.flash_eyes()
 
 		clear_antag_roles(M)

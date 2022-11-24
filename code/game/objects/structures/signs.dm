@@ -1,54 +1,67 @@
 /obj/structure/sign
 	icon = 'icons/obj/decals.dmi'
-	anchored = 1
-	opacity = 0
-	density = 0
+	anchored = TRUE
+	opacity = FALSE
+	density = FALSE
 	layer = ABOVE_WINDOW_LAYER
 	w_class = ITEM_SIZE_NORMAL
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'WEST':{'x':-32}, 'EAST':{'x':32}}"
 
 /obj/structure/sign/explosion_act(severity)
 	..()
 	if(!QDELETED(src))
 		physically_destroyed()
 
-/obj/structure/sign/attackby(obj/item/tool, mob/user)	//deconstruction
-	if(isScrewdriver(tool) && !istype(src, /obj/structure/sign/double))
-		to_chat(user, "You unfasten the sign with your [tool.name].")
-		var/obj/item/sign/S = new(src.loc)
-		S.SetName(name)
-		S.desc = desc
-		S.icon_state = icon_state
-		S.sign_state = icon_state
-		qdel(src)
+/obj/structure/sign/attackby(obj/item/W, mob/user)	//deconstruction
+	if(IS_SCREWDRIVER(W) && !istype(src, /obj/structure/sign/double))
+		if(!QDELETED(src) && do_after(user, 30, src))
+			to_chat(user, "You unfasten the sign with your [W].")
+			var/obj/item/sign/S = new(src.loc)
+			S.SetName(name)
+			S.desc = desc
+			S.icon_state = icon_state
+			S.sign_state = icon_state
+			qdel(src)
+		return
 	else ..()
+
+/obj/structure/sign/hide()
+	return //Signs should no longer hide in walls.
 
 /obj/item/sign
 	name = "sign"
 	desc = ""
 	icon = 'icons/obj/decals.dmi'
 	w_class = ITEM_SIZE_NORMAL		//big
+	material = /decl/material/solid/plastic
 	var/sign_state = ""
 
-/obj/item/sign/attackby(obj/item/tool, mob/user)	//construction
-	if(istype(tool, /obj/item/screwdriver) && isturf(user.loc))
+/obj/item/sign/attackby(obj/item/W, mob/user)	//construction
+	if(IS_SCREWDRIVER(W) && isturf(user.loc))
 		var/direction = input("In which direction?", "Select direction.") in list("North", "East", "South", "West", "Cancel")
-		if(direction == "Cancel") return
-		var/obj/structure/sign/S = new(user.loc)
-		switch(direction)
-			if("North")
-				S.pixel_y = 32
-			if("East")
-				S.pixel_x = 32
-			if("South")
-				S.pixel_y = -32
-			if("West")
-				S.pixel_x = -32
-			else return
-		S.SetName(name)
-		S.desc = desc
-		S.icon_state = sign_state
-		to_chat(user, "You fasten \the [S] with your [tool].")
-		qdel(src)
+		if(direction == "Cancel")
+			return
+		if(!QDELETED(src) && do_after(user, 3 SECONDS, src))
+			var/obj/structure/sign/S = new(user.loc)
+			S.SetName(name)
+			S.desc = desc
+			S.icon_state = sign_state			
+			switch(direction)
+				if("North")
+					S.set_dir(NORTH)
+				if("East")
+					S.set_dir(EAST)
+				if("South")
+					S.set_dir(SOUTH)
+				if("West")
+					S.set_dir(WEST)
+				else
+					return
+			to_chat(user, "You fasten \the [S] with your [W].")
+			user.unEquip(src)
+			qdel(src)
+		return
 	else ..()
 
 /obj/structure/sign/double/map
@@ -408,6 +421,11 @@
 	icon = 'icons/obj/decals.dmi'
 	icon_state = "goldenplaque"
 	sign_state = "goldenplaque"
+	material = /decl/material/solid/wood
+	matter = list(
+		/decl/material/solid/glass     = MATTER_AMOUNT_SECONDARY,
+		/decl/material/solid/cardboard = MATTER_AMOUNT_REINFORCEMENT, //#TODO: Change to paper
+	)
 	var/claimant
 
 /obj/item/sign/medipolma/attack_self(mob/user)

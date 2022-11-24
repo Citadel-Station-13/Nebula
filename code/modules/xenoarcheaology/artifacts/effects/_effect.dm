@@ -19,7 +19,7 @@
 	trigger = new triggertype
 
 	//this will be replaced by the excavation code later, but it's here just in case
-	artifact_id = "[pick(GLOB.greek_letters)]-[rand(100,999)]"
+	artifact_id = "[pick(global.greek_letters)]-[rand(100,999)]"
 
 	//random charge time and distance
 	switch(pick(100;1, 50;2, 25;3))
@@ -53,9 +53,9 @@
 		else
 			display_msg = pick("grows dull!","fades in intensity!","suddenly becomes very still!","suddenly becomes very quiet!")
 		var/atom/toplevelholder = holder
-		while(!istype(toplevelholder.loc, /turf))
+		while(!isturf(toplevelholder.loc))
 			toplevelholder = toplevelholder.loc
-		toplevelholder.visible_message("<span class='warning'>\icon[toplevelholder] [toplevelholder] [display_msg]</span>")
+		toplevelholder.visible_message("<span class='warning'>[html_icon(toplevelholder)] [toplevelholder] [display_msg]</span>")
 
 /datum/artifact_effect/proc/DoEffectTouch(var/mob/user)
 /datum/artifact_effect/proc/DoEffectAura(var/atom/holder)
@@ -85,8 +85,6 @@
 			. += "High frequency particles"
 		if(EFFECT_ORGANIC)
 			. += "Organically reactive exotic particles"
-		if(EFFECT_BLUESPACE)
-			. += "Interdimensional/bluespace? phasing"
 		if(EFFECT_SYNTH)
 			. += "Atomic synthesis"
 		else

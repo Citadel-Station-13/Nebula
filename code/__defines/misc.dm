@@ -1,7 +1,8 @@
 #define DEBUG
 // Turf-only flags.
-#define TURF_FLAG_NOJAUNT 1 // This is used in literally one place, turf.dm, to block ethereal jaunt.
-#define TURF_FLAG_NORUINS 2
+#define TURF_FLAG_NOJAUNT             BITFLAG(0) // This is used in literally one place, turf.dm, to block ethereal jaunt.
+#define TURF_FLAG_NORUINS             BITFLAG(1) // Used by the ruin generator to skip placing loaded ruins on this turf.
+#define TURF_FLAG_BACKGROUND          BITFLAG(2) // Used by shuttle movement to determine if it should be ignored by turf translation.
 
 #define TRANSITIONEDGE 7 // Distance from edge to move to another z-level.
 #define RUIN_MAP_EDGE_PAD 15
@@ -73,57 +74,48 @@
 //General-purpose life speed define for plants.
 #define HYDRO_SPEED_MULTIPLIER 1
 
-#define DEFAULT_JOB_TYPE /datum/job/assistant
-
 //Area flags, possibly more to come
-#define AREA_FLAG_RAD_SHIELDED      1 // Shielded from radiation, clearly.
-#define AREA_FLAG_EXTERNAL          2 // External as in exposed to space, not outside in a nice, green, forest.
-#define AREA_FLAG_ION_SHIELDED      4 // Shielded from ionospheric anomalies.
-#define AREA_FLAG_IS_NOT_PERSISTENT 8 // SSpersistence will not track values from this area.
-#define AREA_FLAG_IS_BACKGROUND     16// Blueprints can create areas on top of these areas. Cannot edit the name of or delete these areas.
+#define AREA_FLAG_RAD_SHIELDED         BITFLAG(1)  // Shielded from radiation, clearly.
+#define AREA_FLAG_EXTERNAL             BITFLAG(2)  // External as in exposed to space, not outside in a nice, green, forest.
+#define AREA_FLAG_ION_SHIELDED         BITFLAG(3)  // Shielded from ionospheric anomalies.
+#define AREA_FLAG_IS_NOT_PERSISTENT    BITFLAG(4)  // SSpersistence will not track values from this area.
+#define AREA_FLAG_IS_BACKGROUND        BITFLAG(5)  // Blueprints can create areas on top of these areas. Cannot edit the name of or delete these areas.
+#define AREA_FLAG_MAINTENANCE          BITFLAG(6)  // Area is a maintenance area.
+#define AREA_FLAG_SHUTTLE              BITFLAG(7)  // Area is a shuttle area.
+#define AREA_FLAG_HALLWAY              BITFLAG(8)  // Area is a public hallway suitable for event selection
+#define AREA_FLAG_PRISON               BITFLAG(9)  // Area is a prison for the purposes of brigging objectives.
+#define AREA_FLAG_HOLY                 BITFLAG(10) // Area is holy for the purposes of marking turfs as cult-resistant.
+#define AREA_FLAG_SECURITY             BITFLAG(11) // Area is security for the purposes of newscaster init.
 
 //Map template flags
-#define TEMPLATE_FLAG_ALLOW_DUPLICATES 1 // Lets multiple copies of the template to be spawned
-#define TEMPLATE_FLAG_SPAWN_GUARANTEED 2 // Makes it ignore away site budget and just spawn (only for away sites)
-#define TEMPLATE_FLAG_CLEAR_CONTENTS   4 // if it should destroy objects it spawns on top of
-#define TEMPLATE_FLAG_NO_RUINS         8 // if it should forbid ruins from spawning on top of it
-#define TEMPLATE_FLAG_NO_RADS          16// Removes all radiation from the template after spawning.
+#define TEMPLATE_FLAG_ALLOW_DUPLICATES BITFLAG(0)  // Lets multiple copies of the template to be spawned
+#define TEMPLATE_FLAG_SPAWN_GUARANTEED BITFLAG(1)  // Makes it ignore away site budget and just spawn (only for away sites)
+#define TEMPLATE_FLAG_CLEAR_CONTENTS   BITFLAG(2)  // if it should destroy objects it spawns on top of
+#define TEMPLATE_FLAG_NO_RUINS         BITFLAG(3)  // if it should forbid ruins from spawning on top of it
+#define TEMPLATE_FLAG_NO_RADS          BITFLAG(4)  // Removes all radiation from the template after spawning.
+#define TEMPLATE_FLAG_TEST_DUPLICATES  BITFLAG(5)  // Makes unit testing attempt to spawn mutliple copies of this template. Assumes unit testing is spawning at least one copy.
 
 // Convoluted setup so defines can be supplied by Bay12 main server compile script.
 // Should still work fine for people jamming the icons into their repo.
 #ifndef CUSTOM_ITEM_CONFIG
 #define CUSTOM_ITEM_CONFIG "config/custom_items/"
 #endif
-#ifndef CUSTOM_ITEM_SYNTH_CONFIG
-#define CUSTOM_ITEM_SYNTH_CONFIG "config/custom_sprites.txt"
-#endif
-#ifndef CUSTOM_ITEM_OBJ
-#define CUSTOM_ITEM_OBJ 'icons/obj/custom_items_obj.dmi'
-#endif
-#ifndef CUSTOM_ITEM_MOB
-#define CUSTOM_ITEM_MOB 'icons/mob/custom_items_mob.dmi'
-#endif
-#ifndef CUSTOM_ITEM_SYNTH
-#define CUSTOM_ITEM_SYNTH 'icons/mob/custom_synthetic.dmi'
+#ifndef CUSTOM_ICON_CONFIG
+#define CUSTOM_ICON_CONFIG "config/custom_icons/"
 #endif
 
 #define WALL_CAN_OPEN 1
 #define WALL_OPENING 2
 
-#define BOMBCAP_DVSTN_RADIUS (GLOB.max_explosion_range/4)
-#define BOMBCAP_HEAVY_RADIUS (GLOB.max_explosion_range/2)
-#define BOMBCAP_LIGHT_RADIUS GLOB.max_explosion_range
-#define BOMBCAP_FLASH_RADIUS (GLOB.max_explosion_range*1.5)
+#define BOMBCAP_DVSTN_RADIUS (global.max_explosion_range/4)
+#define BOMBCAP_HEAVY_RADIUS (global.max_explosion_range/2)
+#define BOMBCAP_LIGHT_RADIUS global.max_explosion_range
+#define BOMBCAP_FLASH_RADIUS (global.max_explosion_range*1.5)
 
 
 // Special return values from bullet_act(). Positive return values are already used to indicate the blocked level of the projectile.
 #define PROJECTILE_CONTINUE   -1 //if the projectile should continue flying after calling bullet_act()
 #define PROJECTILE_FORCE_MISS -2 //if the projectile should treat the attack as a miss (suppresses attack and admin logs) - only applies to mobs.
-
-//Camera capture modes
-#define CAPTURE_MODE_REGULAR 0 //Regular polaroid camera mode
-#define CAPTURE_MODE_ALL 1 //Admin camera mode
-#define CAPTURE_MODE_PARTIAL 3 //Simular to regular mode, but does not do dummy check
 
 //objectives
 #define CONFIG_OBJECTIVE_NONE 2
@@ -162,8 +154,6 @@
 
 #define PIXEL_MULTIPLIER WORLD_ICON_SIZE/32
 
-#define DEFAULT_SPAWNPOINT_ID "Default"
-
 #define MIDNIGHT_ROLLOVER		864000	//number of deciseconds in a day
 
 //Error handler defines
@@ -175,8 +165,6 @@
 #define RAD_LEVEL_VERY_HIGH 100
 
 #define RADIATION_THRESHOLD_CUTOFF 0.1	// Radiation will not affect a tile when below this value.
-
-#define LEGACY_RECORD_STRUCTURE(X, Y) GLOBAL_LIST_EMPTY(##X);/datum/computer_file/data/##Y/var/list/fields[0];/datum/computer_file/data/##Y/New(){..();GLOB.##X.Add(src);}/datum/computer_file/data/##Y/Destroy(){. = ..();GLOB.##X.Remove(src);}
 
 #define SUPPLY_SECURITY_ELEVATED 1
 #define SUPPLY_SECURITY_HIGH 2
@@ -236,37 +224,65 @@
 #endif
 
 // Surgery candidate flags.
-#define SURGERY_NO_ROBOTIC        1
-#define SURGERY_NO_CRYSTAL        2
-#define SURGERY_NO_STUMP          4
-#define SURGERY_NO_FLESH          8
-#define SURGERY_NEEDS_INCISION   16
-#define SURGERY_NEEDS_RETRACTED  32
-#define SURGERY_NEEDS_ENCASEMENT 64
-
-// Structure interaction flags
-#define TOOL_INTERACTION_ANCHOR      1
-#define TOOL_INTERACTION_DECONSTRUCT 2
-#define TOOL_INTERACTION_WIRING      4
-#define TOOL_INTERACTION_ALL         (TOOL_INTERACTION_ANCHOR | TOOL_INTERACTION_DECONSTRUCT | TOOL_INTERACTION_WIRING)
+#define SURGERY_NO_ROBOTIC       BITFLAG(0)
+#define SURGERY_NO_CRYSTAL       BITFLAG(1)
+#define SURGERY_NO_FLESH         BITFLAG(2)
+#define SURGERY_NEEDS_INCISION   BITFLAG(3)
+#define SURGERY_NEEDS_RETRACTED  BITFLAG(4)
+#define SURGERY_NEEDS_ENCASEMENT BITFLAG(5)
 
 //Inserts 'a' or 'an' before X in ways \a doesn't allow
-#define ADD_ARTICLE(X) "[(lowertext(copytext(X, 1, 2)) in list("a", "e", "i", "o", "u")) ? "an" : "a"] [X]"
+#define ADD_ARTICLE(X) "[(lowertext(X[1]) in global.vowels) ? "an" : "a"] [X]"
 
 #define SOULSTONE_CRACKED -1
 #define SOULSTONE_EMPTY 0
 #define SOULSTONE_ESSENCE 1
 
-#define INCREMENT_WORLD_Z_SIZE world.maxz++; global.connected_z_cache.Cut(); if (SSzcopy.zstack_maximums.len) { SSzcopy.calculate_zstack_limits() }
-#define ARE_Z_CONNECTED(ZA, ZB) (ZA > 0 && ZB > 0 && ZA <= world.maxz && ZB <= world.maxz && ((ZA == ZB) || ((global.connected_z_cache.len >= ZA && global.connected_z_cache[ZA]) ? global.connected_z_cache[ZA][ZB] : AreConnectedZLevels(ZA, ZB))))
+#define INCREMENT_WORLD_Z_SIZE world.maxz++; global.connected_z_cache.Cut(); if (SSzcopy.zlev_maximums.len) { SSzcopy.calculate_zstack_limits() }
+#define ARE_Z_CONNECTED(ZA, ZB) (ZA > 0 && ZB > 0 && ZA <= world.maxz && ZB <= world.maxz && ((ZA == ZB) || ((length(global.connected_z_cache) >= ZA && global.connected_z_cache[ZA] && length(global.connected_z_cache[ZA]) >= ZB) ? global.connected_z_cache[ZA][ZB] : AreConnectedZLevels(ZA, ZB))))
 
 //Request Console Department Types
 #define RC_ASSIST 1		//Request Assistance
 #define RC_SUPPLY 2		//Request Supplies
 #define RC_INFO   4		//Relay Info
 
-#define WORTH_TO_SUPPLY_POINTS_CONSTANT       0.0075
+#define WORTH_TO_SUPPLY_POINTS_CONSTANT       0.03
 #define WORTH_TO_SUPPLY_POINTS_ROUND_CONSTANT 5
 
-#define  ICON_STATE_WORLD  "world"
-#define  ICON_STATE_INV  "inventory"
+#define ICON_STATE_WORLD "world"
+#define ICON_STATE_INV   "inventory"
+
+#define hex2num(X) text2num(X, 16)
+
+#define Z_ALL_TURFS(Z) block(locate(1, 1, Z), locate(world.maxx, world.maxy, Z))
+
+//NOTE: INTENT_HOTKEY_* defines are not actual intents!
+//they are here to support hotkeys
+#define INTENT_HOTKEY_LEFT  "left"
+#define INTENT_HOTKEY_RIGHT "right"
+
+//Turf/area values for 'this space is outside' checks
+#define OUTSIDE_AREA null
+#define OUTSIDE_NO   FALSE
+#define OUTSIDE_YES  TRUE
+
+// Weather exposure values for being rained on or hailed on.
+#define WEATHER_IGNORE   -1
+#define WEATHER_EXPOSED   0
+#define WEATHER_ROOFED    1
+#define WEATHER_PROTECTED 2
+
+// Literacy check constants.
+#define WRITTEN_SKIP     0
+#define WRITTEN_PHYSICAL 1
+#define WRITTEN_DIGITAL  2
+
+// arbitrary low pressure bound for wind weather effects
+#define MIN_WIND_PRESSURE 10
+
+#define TYPE_IS_ABSTRACT(D) (initial(D.abstract_type) == D)
+#define TYPE_IS_SPAWNABLE(D) (!TYPE_IS_ABSTRACT(D) && initial(D.is_spawnable_type))
+#define INSTANCE_IS_ABSTRACT(D) (D.abstract_type == D.type)
+
+//Damage stuff
+#define ITEM_HEALTH_NO_DAMAGE -1

@@ -1,5 +1,7 @@
 /obj/machinery/network/router
 	name = "network router"
+	icon = 'icons/obj/machines/tcomms/comm_server.dmi'
+	icon_state = "comm_server"
 	network_device_type =  /datum/extension/network_device/broadcaster/router
 	main_template = "network_router.tmpl"
 	construct_state = /decl/machine_construction/default/panel_closed
@@ -20,13 +22,17 @@
 	var/datum/computer_network/net = R.get_network()
 	if(net)
 		data["is_router"] = R.is_router()
+	data["wifi"] = R.allow_wifi
 	return data
 
-/obj/machinery/network/router/on_update_icon()
-	if(operable())
-		icon_state = panel_open ? "comm_server_o" : "comm_server"
-	else
-		icon_state = panel_open ? "comm_server_o_off" : "comm_server_off"
+/obj/machinery/network/router/OnTopic(mob/user, href_list, datum/topic_state/state)
+	if(href_list["toggle_wifi"])
+		var/datum/extension/network_device/broadcaster/router/R = get_extension(src, /datum/extension/network_device)
+		if(R)
+			R.allow_wifi = !R.allow_wifi
+			return TOPIC_REFRESH
+	
+	. = ..()
 
 /obj/machinery/network/router/update_network_status()
 	..()

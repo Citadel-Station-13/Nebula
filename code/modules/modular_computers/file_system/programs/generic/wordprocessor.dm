@@ -6,158 +6,167 @@
 	program_key_state = "atmos_key"
 	size = 4
 	available_on_network = 1
-	nanomodule_path = /datum/nano_module/program/computer_wordprocessor/
-	var/browsing
-	var/open_file
-	var/loaded_data
-	var/error
-	var/is_edited
+
 	usage_flags = PROGRAM_ALL
 	category = PROG_OFFICE
 
-/datum/computer_file/program/wordprocessor/proc/open_file(var/filename)
-	var/datum/computer_file/data/F = get_file(filename)
+	var/open_file		// Name of the file currently open.
+	var/file_directory	// Directory of the file currently open.
+
+	var/loaded_data
+	var/error
+	var/is_edited
+
+/datum/computer_file/program/wordprocessor/on_shutdown(forced)
+	. = ..()
+	open_file = null
+	file_directory = null
+	loaded_data = null
+	error = null
+	is_edited = FALSE
+
+/datum/computer_file/program/wordprocessor/on_file_select(datum/file_storage/disk, datum/computer_file/directory/dir, datum/computer_file/selected, selecting_key, mob/user)
+	var/datum/computer_file/data/text/T = selected
+	loaded_data = T.stored_data
+	open_file = T.filename
+	file_directory = disk.get_dir_path(dir, TRUE)
+	is_edited = FALSE
+	. = ..()
+
+/datum/computer_file/program/wordprocessor/proc/open_file(var/openingfile, var/list/accesses, var/mob/user)
+	var/datum/computer_file/data/F = get_file(openingfile)
 	if(F)
+		if(!(F.get_file_perms(accesses, user) & OS_READ_ACCESS))
+			error = "I/O error: You do not have permission to read file '[openingfile]'."
+			return FALSE
 		open_file = F.filename
 		loaded_data = F.stored_data
-		return 1
+		return TRUE
+	error = "I/O error: Unable to open file '[openingfile]'."
 
-/datum/computer_file/program/wordprocessor/proc/save_file(var/filename)
-	. = computer.save_file(filename, loaded_data, /datum/computer_file/data/text)
-	if(.)
-		is_edited = 0
+/datum/computer_file/program/wordprocessor/proc/save_file(mob/user)
+	var/datum/computer_file/result = computer.save_file(open_file, file_directory, loaded_data, /datum/computer_file/data/text, null, computer.get_access(user), user)
+	. = FALSE
+	if(istype(result))
+		to_chat(user, SPAN_NOTICE("Successfully saved file '[open_file]'."))
+		is_edited = FALSE
+		return TRUE
+	// Errored!
+	switch(result)
+		if(OS_BAD_NAME)
+			error = "I/O error: Invalid file name '[open_file]'."
+		if(OS_FILE_NOT_FOUND)
+			error = "I/O error: Directory not found."
+		if(OS_FILE_NO_WRITE)
+			error = "I/O error: You do not have permission to modify file '[open_file]'"
+		else
+			error = "I/O error: Harddrive may be non-functional."
+
+#define MAX_FIELDS_NUM 50
 
 /datum/computer_file/program/wordprocessor/Topic(href, href_list)
 	if(..())
 		return 1
 
-	if(href_list["PRG_txtrpeview"])
+	if(href_list["PRG_txtpreview"])
 		show_browser(usr,"<HTML><HEAD><TITLE>[open_file]</TITLE></HEAD>[digitalPencode2html(loaded_data)]</BODY></HTML>", "window=[open_file]")
-		return 1
+		return TOPIC_HANDLED
 
 	if(href_list["PRG_taghelp"])
 		var/datum/codex_entry/entry = SScodex.get_codex_entry("pen")
 		if(entry)
 			SScodex.present_codex_entry(usr, entry)
-		return 1
-
-	if(href_list["PRG_closebrowser"])
-		browsing = 0
-		return 1
+		return TOPIC_HANDLED
 
 	if(href_list["PRG_backtomenu"])
 		error = null
-		return 1
-
-	if(href_list["PRG_loadmenu"])
-		browsing = 1
-		return 1
+		return TOPIC_REFRESH
 
 	if(href_list["PRG_openfile"])
-		. = 1
 		if(is_edited)
 			if(alert("Would you like to save your changes first?",,"Yes","No") == "Yes")
-				save_file(open_file)
-		browsing = 0
-		if(!open_file(href_list["PRG_openfile"]))
-			error = "I/O error: Unable to open file '[href_list["PRG_openfile"]]'."
+				if(!save_file(usr))
+					return TOPIC_HANDLED
+		var/browser_desc = "Select a file to open"
+		view_file_browser(usr, "open_file", /datum/computer_file/data/text, OS_READ_ACCESS, browser_desc)
+		return TOPIC_HANDLED
 
 	if(href_list["PRG_newfile"])
-		. = 1
 		if(is_edited)
 			if(alert("Would you like to save your changes first?",,"Yes","No") == "Yes")
-				save_file(open_file)
+				if(!save_file(usr))
+					return TOPIC_HANDLED
 
-		var/newname = sanitize(input(usr, "Enter file name:", "New File") as text|null)
-		if(!newname)
-			return 1
-		var/datum/computer_file/data/F = create_file(newname, "", /datum/computer_file/data/text)
-		if(F)
-			open_file = F.filename
-			loaded_data = ""
-			return 1
-		else
-			error = "I/O error: Unable to create file '[href_list["PRG_saveasfile"]]'."
+		var/browser_desc = "Create new file"
+		var/datum/computer_file/data/text/saving = new()
+		view_file_browser(usr, "create_file", /datum/computer_file/data/text, OS_WRITE_ACCESS, browser_desc, saving)
+		return TOPIC_HANDLED
 
 	if(href_list["PRG_saveasfile"])
-		. = 1
-		var/newname = sanitize(input(usr, "Enter file name:", "Save As") as text|null)
-		if(!newname)
-			return 1
-		var/datum/computer_file/data/F = create_file(newname, loaded_data, /datum/computer_file/data/text)
-		if(F)
-			open_file = F.filename
-		else
-			error = "I/O error: Unable to create file '[href_list["PRG_saveasfile"]]'."
-		return 1
+		var/browser_desc = "Save file as"
+		var/datum/computer_file/data/text/saving = new()
+		saving.filename = open_file ? open_file :  "NewFile"
+		saving.stored_data = loaded_data
+		view_file_browser(usr, "saveas_file", /datum/computer_file/data/text, OS_WRITE_ACCESS, browser_desc, saving)
+		return TOPIC_HANDLED
 
 	if(href_list["PRG_savefile"])
-		. = 1
 		if(!open_file)
-			open_file = sanitize(input(usr, "Enter file name:", "Save As") as text|null)
-			if(!open_file)
-				return 0
-		if(!save_file(open_file))
-			error = "I/O error: Unable to save file '[open_file]'."
-		return 1
+			var/browser_desc = "Save file as"
+			var/datum/computer_file/data/text/saving = new()
+			saving.stored_data = loaded_data
+			view_file_browser(usr, "saveas_file", /datum/computer_file/data/text, OS_WRITE_ACCESS, browser_desc, saving)
+			return TOPIC_HANDLED
+		
+		save_file(usr)
+		return TOPIC_REFRESH
 
 	if(href_list["PRG_editfile"])
 		var/oldtext = html_decode(loaded_data)
 		oldtext = replacetext(oldtext, "\[br\]", "\n")
-
+		if(open_file)
+			var/datum/computer_file/data/F = get_file(open_file, file_directory, computer.get_access(usr), usr)
+			if(istype(F) && !(F.get_file_perms(computer.get_access(usr), usr) & OS_WRITE_ACCESS))
+				error = "I/O error: You do not have permission to edit this file."
+				return TOPIC_REFRESH
 		var/newtext = sanitize(replacetext(input(usr, "Editing file '[open_file]'. You may use most tags used in paper formatting:", "Text Editor", oldtext) as message|null, "\n", "\[br\]"), MAX_TEXTFILE_LENGTH)
 		if(!newtext)
 			return
+
+		//Count the fields
+		var/fields = 0
+		var/regex/re = regex(@"\[field\]","g")
+		while(re.Find(newtext))
+			fields++
+
+		if(fields > MAX_FIELDS_NUM)
+			to_chat(usr, SPAN_WARNING("Too many fields. Sorry, you can't do this."))
+			return
+
 		loaded_data = newtext
 		is_edited = 1
-		return 1
+		return TOPIC_REFRESH
 
 	if(href_list["PRG_printfile"])
-		. = 1
 		if(!computer.print_paper(digitalPencode2html(loaded_data)))
 			error = "Hardware error: Printer missing or out of paper."
-			return 1
+		return TOPIC_HANDLED
 
-/datum/nano_module/program/computer_wordprocessor
-	name = "Word Processor"
+#undef MAX_FIELDS_NUM
 
-/datum/nano_module/program/computer_wordprocessor/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
-	var/list/data = host.initial_data()
-	var/datum/computer_file/program/wordprocessor/PRG
-	PRG = program
+/datum/computer_file/program/wordprocessor/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
+	. = ..()
+	if(!.)
+		return
+	var/list/data = computer.initial_data()
 
-	if(PRG.error)
-		data["error"] = PRG.error
-	if(PRG.browsing)
-		data["browsing"] = PRG.browsing
-		if(!PRG.computer || !PRG.computer.has_component(PART_HDD))
-			data["error"] = "I/O ERROR: Unable to access hard drive."
-		else
-			var/list/files[0]
-			for(var/datum/computer_file/F in PRG.computer.get_all_files())
-				if(F.filetype == "TXT")
-					files.Add(list(list(
-						"name" = F.filename,
-						"size" = F.size
-					)))
-			data["files"] = files
-
-			var/obj/item/stock_parts/computer/drive_slot/RHDD = PRG.computer.get_component(PART_D_SLOT)
-			if(istype(RHDD) && istype(RHDD.stored_drive))
-				data["usbconnected"] = 1
-				var/list/usbfiles[0]
-				for(var/datum/computer_file/F in PRG.computer.get_all_files(RHDD.stored_drive))
-					if(F.filetype == "TXT")
-						usbfiles.Add(list(list(
-							"name" = F.filename,
-							"size" = F.size,
-						)))
-				data["usbfiles"] = usbfiles
-	else if(PRG.open_file)
-		data["filedata"] = digitalPencode2html(PRG.loaded_data)
-		data["filename"] = PRG.is_edited ? "[PRG.open_file]*" : PRG.open_file
+	if(error)
+		data["error"] = error
+	if(open_file)
+		data["filedata"] = digitalPencode2html(loaded_data)
+		data["filename"] = is_edited ? "[open_file]*" : open_file
 	else
-		data["filedata"] = digitalPencode2html(PRG.loaded_data)
+		data["filedata"] = digitalPencode2html(loaded_data)
 		data["filename"] = "UNNAMED"
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)

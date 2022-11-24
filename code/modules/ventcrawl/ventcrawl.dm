@@ -1,4 +1,4 @@
-var/list/ventcrawl_machinery = list(
+var/global/list/ventcrawl_machinery = list(
 	/obj/machinery/atmospherics/unary/vent_scrubber,
 	/obj/machinery/atmospherics/unary/vent_pump
 	)
@@ -14,11 +14,10 @@ var/list/ventcrawl_machinery = list(
 	/obj/item/clothing/suit/cultrobes,
 	/obj/item/book/tome,
 	/obj/item/paper/,
-	/obj/item/material/sword/cultblade
+	/obj/item/sword/cultblade
 	)
 
 /mob/living/var/list/icon/pipes_shown = list()
-/mob/living/var/last_played_vent
 /mob/living/var/is_ventcrawling = 0
 /mob/var/next_play_vent = 0
 
@@ -33,35 +32,23 @@ var/list/ventcrawl_machinery = list(
 		return FALSE
 	return ventcrawl_carry()
 
-/mob/living/Login()
-	. = ..()
-	//login during ventcrawl
-	if(is_ventcrawling && istype(loc, /obj/machinery/atmospherics)) //attach us back into the pipes
-		remove_ventcrawl()
-		add_ventcrawl(loc)
-
-/mob/living/carbon/slime/can_ventcrawl()
-	if(Victim)
-		to_chat(src, SPAN_WARNING("You cannot ventcrawl while feeding."))
-		return FALSE
-	. = ..()
-
 /mob/living/proc/is_allowed_vent_crawl_item(var/obj/item/carried_item)
 	if(is_type_in_list(carried_item, can_enter_vent_with))
 		return !get_inventory_slot(carried_item)
 
 /mob/living/carbon/is_allowed_vent_crawl_item(var/obj/item/carried_item)
-	return (carried_item in internal_organs) || ..()
+	return (carried_item in get_internal_organs()) || ..()
 
 /mob/living/carbon/human/is_allowed_vent_crawl_item(var/obj/item/carried_item)
-	var/obj/item/organ/internal/stomach/stomach = internal_organs_by_name[BP_STOMACH]
+	var/obj/item/organ/internal/stomach = GET_INTERNAL_ORGAN(src, BP_STOMACH)
 	if(stomach && (carried_item in stomach.contents))
 		return TRUE
-	if(carried_item in organs)
+	if(carried_item in get_external_organs())
 		return TRUE
-	if(carried_item in list(w_uniform, gloves, glasses, wear_mask, l_ear, r_ear, belt, l_store, r_store))
-		return TRUE
-	if(carried_item in list(l_hand,r_hand))
+	for(var/slot in list(slot_w_uniform_str, slot_glasses_str, slot_glasses_str, slot_wear_mask_str, slot_l_ear_str, slot_r_ear_str, slot_belt_str, slot_l_store_str, slot_r_store_str))
+		if(get_equipped_item(slot) == carried_item)
+			return TRUE
+	if(carried_item in get_held_items())
 		return carried_item.w_class <= ITEM_SIZE_NORMAL
 	return ..()
 
@@ -119,7 +106,8 @@ var/list/ventcrawl_machinery = list(
 				break
 
 	if(vent_found)
-		if(vent_found.network && (vent_found.network.normal_members.len || vent_found.network.line_members.len))
+		var/datum/pipe_network/network = vent_found.network_in_dir(vent_found.dir)
+		if(network && (network.normal_members.len || network.line_members.len))
 
 			to_chat(src, "You begin climbing into the ventilation system...")
 			if(vent_found.air_contents && !issilicon(src))
@@ -165,9 +153,7 @@ var/list/ventcrawl_machinery = list(
 	for(var/datum/pipeline/pipeline in network.line_members)
 		for(var/obj/machinery/atmospherics/A in (pipeline.members || pipeline.edges))
 			if(!A.pipe_image)
-				A.pipe_image = image(A, A.loc, dir = A.dir)
-			A.pipe_image.layer = ABOVE_LIGHTING_LAYER
-			A.pipe_image.plane = EFFECTS_ABOVE_LIGHTING_PLANE
+				A.pipe_image = emissive_overlay(icon = A, loc = A.loc, dir = A.dir)
 			pipes_shown += A.pipe_image
 			client.images += A.pipe_image
 

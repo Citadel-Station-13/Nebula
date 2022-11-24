@@ -11,7 +11,7 @@
 	if(href_list["global_toggle"])
 		if(!lan || !fuel_injectors)
 			return TOPIC_NOACTION
-			
+
 		for(var/obj/machinery/fusion_fuel_injector/F in fuel_injectors)
 			if(F.injecting)
 				F.StopInjecting()
@@ -37,7 +37,7 @@
 			if(!new_injection_rate)
 				to_chat(user, SPAN_WARNING("That's not a valid injection rate."))
 				return TOPIC_NOACTION
-			I.injection_rate = Clamp(new_injection_rate, 0, 100) / 100
+			I.injection_rate = clamp(new_injection_rate, 0, 100) / 100
 		return TOPIC_REFRESH
 
 /obj/machinery/computer/fusion/fuel_control/build_ui_data()
@@ -53,7 +53,7 @@
 			injector["id"] =       "#[i]"
 			injector["ref"] =       "\ref[I]"
 			injector["injecting"] =  I.injecting
-			injector["fueltype"] =  "[I.cur_assembly ? capitalize(I.cur_assembly.material.solid_name) : "No Fuel Inserted"]"
+			injector["fueltype"] =  "[I.cur_assembly ? capitalize(I.cur_assembly.material_name) : "No Fuel Inserted"]"
 			injector["depletion"] = "[I.cur_assembly ? (I.cur_assembly.percent_depleted * 100) : 100]%"
 			injector["injection_rate"] = "[I.injection_rate * 100]%"
 			injectors += list(injector)

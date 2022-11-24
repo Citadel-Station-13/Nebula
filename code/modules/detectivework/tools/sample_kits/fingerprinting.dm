@@ -8,6 +8,9 @@
 	possible_evidence_types = list(
 		/datum/forensics/fingerprints
 	)
+	item_flags = ITEM_FLAG_HOLLOW
+	material = /decl/material/solid/glass
+	matter = list(/decl/material/solid/metal/aluminium = MATTER_AMOUNT_SECONDARY)
 
 // Fingerprint card
 
@@ -18,10 +21,14 @@
 	icon_state = "fingerprint0"
 	item_state = "paper"
 	possible_evidence_types = list(/datum/forensics/fingerprints)
+	material = /decl/material/solid/cardboard
 
 /obj/item/forensics/sample/print/on_update_icon()
+	. = ..()
 	if(length(evidence))
 		icon_state = "fingerprint1"
+	else
+		icon_state = "fingerprint0"
 
 /obj/item/forensics/sample/print/merge_evidence_list(var/list/new_evidence)
 	for(var/datum/fingerprint/newprint in new_evidence)
@@ -42,7 +49,7 @@
 	F.full_print = M.get_full_print()
 	F.completeness = 100
 	var/datum/forensics/fingerprints/FP = new()
-	FP.data = F
+	FP.data = list(F)
 	merge_evidence_list(list(FP))
 	SetName("[initial(name)] (\the [M])")
 	update_icon()
@@ -54,14 +61,14 @@
 	if(!istype(H))
 		return
 
-	var/cover = H.get_covering_equipped_item(HAND_LEFT|HAND_RIGHT)
+	var/cover = H.get_covering_equipped_item(SLOT_HAND_LEFT|SLOT_HAND_RIGHT)
 	if(cover)
 		to_chat(user, SPAN_WARNING("\The [H]'s [cover] is in the way."))
 		return
 
-	for(var/tag in list(BP_R_HAND,BP_L_HAND))
-		var/obj/item/organ/external/O = H.organs_by_name[tag]
-		if(istype(O) && !O.is_stump())
+	for(var/tag in list(BP_R_HAND,BP_L_HAND)) //#FIXME: Alien prints??
+		var/obj/item/organ/external/O = GET_EXTERNAL_ORGAN(H, tag)
+		if(O)
 			return TRUE
 	to_chat(user, SPAN_WARNING("They don't have any hands."))
 

@@ -2,10 +2,7 @@
 /mob/living/simple_animal/hostile/bear
 	name = "space bear"
 	desc = "RawrRawr!!"
-	icon_state = "bear"
-	icon_living = "bear"
-	icon_dead = "bear_dead"
-	icon_gib = "bear_gib"
+	icon = 'icons/mob/simple_animal/bear_space.dmi'
 	speak = list("RAWR!","Rawr!","GRR!","Growl!")
 	speak_emote = list("growls", "roars")
 	emote_hear = list("rawrs","grumbles","grawls")
@@ -13,26 +10,25 @@
 	speak_chance = 1
 	turns_per_move = 5
 	see_in_dark = 6
-	response_help  = "pets"
-	response_disarm = "gently pushes aside"
-	response_harm   = "pokes"
+	response_harm = "pokes"
 	stop_automated_movement_when_pulled = 0
 	maxHealth = 60
 	health = 60
 	natural_weapon = /obj/item/natural_weapon/claws/strong
 	can_escape = TRUE
 	faction = "russian"
+	base_animal_type = /mob/living/simple_animal/hostile/bear
 
 	//Space bears aren't affected by atmos.
 	min_gas = null
 	max_gas = null
 	minbodytemp = 0
 
-	meat_type = /obj/item/chems/food/snacks/bearmeat
+	meat_type = /obj/item/chems/food/bearmeat
 	meat_amount = 10
 	bone_amount = 20
 	skin_amount = 20
-	skin_material = MAT_SKIN_FUR_HEAVY
+	skin_material = /decl/material/solid/skin/fur/heavy
 
 	var/stance_step = 0
 
@@ -40,16 +36,12 @@
 /mob/living/simple_animal/hostile/bear/Hudson
 	name = "Hudson"
 	desc = ""
-	response_help  = "pets"
-	response_disarm = "gently pushes aside"
-	response_harm   = "pokes"
+	response_harm = "pokes"
 
 /mob/living/simple_animal/hostile/bear/do_delayed_life_action()
 	..()
-	if(loc && istype(loc,/turf/space))
-		icon_state = "bear"
-	else
-		icon_state = "bearfloor"
+	if(isspaceturf(loc))
+		icon_state += "-space"
 
 	switch(stance)
 
@@ -101,12 +93,12 @@
 		target_mob = user
 	..()
 
-/mob/living/simple_animal/hostile/bear/attack_hand(mob/living/carbon/human/M)
+/mob/living/simple_animal/hostile/bear/attack_hand(mob/user)
 	if(stance != HOSTILE_STANCE_ATTACK && stance != HOSTILE_STANCE_ATTACKING)
 		stance = HOSTILE_STANCE_ALERT
 		stance_step = 6
-		target_mob = M
-	..()
+		target_mob = user
+	. = ..()
 
 /mob/living/simple_animal/hostile/bear/FindTarget()
 	. = ..()
@@ -127,7 +119,7 @@
 	if(ishuman(target_mob))
 		var/mob/living/carbon/human/H = target_mob
 		var/dam_zone = pick(BP_CHEST, BP_L_HAND, BP_R_HAND, BP_L_LEG, BP_R_LEG)
-		var/obj/item/organ/external/affecting = H.get_organ(ran_zone(dam_zone))
+		var/obj/item/organ/external/affecting = GET_EXTERNAL_ORGAN(H, ran_zone(dam_zone, target = H))
 		H.apply_damage(damage, BRUTE, affecting, DAM_SHARP|DAM_EDGE) //TODO damage_flags var on simple_animals, maybe?
 		return H
 	else if(isliving(target_mob))

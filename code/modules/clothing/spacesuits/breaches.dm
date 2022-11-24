@@ -8,7 +8,7 @@
 	var/damtype = BURN                      // Punctured or melted
 	var/patched = FALSE
 	var/obj/item/clothing/suit/space/holder // Suit containing the list of breaches holding this instance.
-	var/global/list/breach_brute_descriptors = list(
+	var/static/list/breach_brute_descriptors = list(
 		"tiny puncture",
 		"ragged tear",
 		"large split",
@@ -16,7 +16,7 @@
 		"gaping wound"
 		)
 
-	var/global/list/breach_burn_descriptors = list(
+	var/static/list/breach_burn_descriptors = list(
 		"small burn",
 		"melted patch",
 		"sizable burn",
@@ -36,7 +36,7 @@
 /datum/breach/proc/update_descriptor()
 
 	//Sanity...
-	class = between(1, round(class), 5)
+	class = clamp(1, round(class), 5)
 	//Apply the correct descriptor.
 	if(damtype == BURN)
 		descriptor = breach_burn_descriptors[class]
@@ -48,7 +48,7 @@
 //Repair a certain amount of brute or burn damage to the suit.
 /obj/item/clothing/suit/space/proc/repair_breaches(var/damtype, var/amount, var/mob/user)
 
-	if(!can_breach || !breaches || !breaches.len || !damage)
+	if(!can_breach || !breaches || !breaches.len)
 		to_chat(user, "There are no breaches to repair on \the [src].")
 		return
 
@@ -75,7 +75,10 @@
 			amount_left = 0
 			B.update_descriptor()
 
-	user.visible_message("<b>[user]</b> patches some of the damage on \the [src].")
+	user.visible_message(
+		SPAN_NOTICE("\The [user] patches some of the damage on \the [src]."),
+		SPAN_NOTICE("You patch some of the damage on \the [src].")
+	)
 	calc_breach_damage()
 
 /obj/item/clothing/suit/space/proc/create_breaches(var/damtype, var/amount)
@@ -109,9 +112,11 @@
 				amount -= needs
 
 			if(existing.damtype == BRUTE)
-				visible_message("<span class = 'warning'>\The [existing.descriptor] on [src] gapes wider[existing.patched ? ", tearing the patch" : ""]!</span>")
+				var/message = "\The [existing.descriptor] on \the [src] gapes wider[existing.patched ? ", tearing the patch" : ""]!"
+				visible_message(SPAN_WARNING(message))
 			else if(existing.damtype == BURN)
-				visible_message("<span class = 'warning'>\The [existing.descriptor] on [src] widens[existing.patched ? ", ruining the patch" : ""]!</span>")
+				var/message = "\The [existing.descriptor] on \the [src] widens[existing.patched ? ", ruining the patch" : ""]!"
+				visible_message(SPAN_WARNING(message))
 
 			existing.patched = FALSE
 
@@ -127,9 +132,9 @@
 		B.holder = src
 
 		if(B.damtype == BRUTE)
-			visible_message("<span class = 'warning'>\A [B.descriptor] opens up on [src]!</span>")
+			visible_message(SPAN_WARNING("\A [B.descriptor] opens up on \the [src]!"))
 		else if(B.damtype == BURN)
-			visible_message("<span class = 'warning'>\A [B.descriptor] marks the surface of [src]!</span>")
+			visible_message(SPAN_WARNING("\A [B.descriptor] marks the surface of \the [src]!"))
 
 	calc_breach_damage()
 
@@ -179,18 +184,18 @@
 	if(istype(W,/obj/item/stack/material))
 		var/repair_power = 0
 		switch(W.get_material_type())
-			if(MAT_STEEL)
+			if(/decl/material/solid/metal/steel)
 				repair_power = 2
-			if(MAT_PLASTIC)
+			if(/decl/material/solid/plastic)
 				repair_power = 1
 
 		if(!repair_power)
 			return
 
-		if(istype(src.loc,/mob/living/carbon/human))
-			var/mob/living/carbon/human/H = src.loc
-			if(H.wear_suit == src)
-				to_chat(user, "<span class='warning'>You cannot repair \the [src] while it is being worn.</span>")
+		if(istype(loc,/mob/living/carbon/human))
+			var/mob/living/carbon/human/H = loc
+			if(H.get_equipped_item(slot_wear_suit_str) == src)
+				to_chat(user, SPAN_WARNING("You cannot repair \the [src] while it is being worn."))
 				return
 
 		if(burn_damage <= 0)
@@ -203,12 +208,12 @@
 			repair_breaches(BURN, use_amt * repair_power, user)
 		return
 
-	else if(isWelder(W))
+	else if(IS_WELDER(W))
 
-		if(istype(src.loc,/mob/living/carbon/human))
-			var/mob/living/carbon/human/H = src.loc
-			if(H.wear_suit == src)
-				to_chat(user, "<span class='warning'>You cannot repair \the [src] while it is being worn.</span>")
+		if(istype(loc,/mob/living/carbon/human))
+			var/mob/living/carbon/human/H = loc
+			if(H.get_equipped_item(slot_wear_suit_str) == src)
+				to_chat(user, SPAN_WARNING("You cannot repair \the [src] while it is being worn."))
 				return
 
 		if (brute_damage <= 0)
@@ -216,14 +221,14 @@
 			return
 
 		var/obj/item/weldingtool/WT = W
-		if(!WT.remove_fuel(5))
-			to_chat(user, "<span class='warning'>You need more welding fuel to repair this suit.</span>")
+		if(!WT.weld(5))
+			to_chat(user, SPAN_WARNING("You need more welding fuel to repair this suit."))
 			return
 
 		repair_breaches(BRUTE, 3, user)
 		return
 
-	else if(istype(W, /obj/item/tape_roll))
+	else if(istype(W, /obj/item/stack/tape_roll/duct_tape))
 		var/datum/breach/target_breach		//Target the largest unpatched breach.
 		for(var/datum/breach/B in breaches)
 			if(B.patched)
@@ -233,12 +238,24 @@
 
 		if(!target_breach)
 			to_chat(user, "There are no open breaches to seal with \the [W].")
-		else 
-			playsound(src, 'sound/effects/tape.ogg',25)
+		else
 			var/mob/living/carbon/human/H = user
-			if(!istype(H)) return
-			if(do_after(user, H.wear_suit == src? 60 : 30, istype(src.loc,/mob/living)? src.loc : null)) //Sealing a breach on your own suit is awkward and time consuming
-				user.visible_message("<b>[user]</b> uses \the [W] to seal \the [target_breach.descriptor] on \the [src].")
+			if(!istype(H))
+				return
+
+			var/obj/item/stack/tape_roll/duct_tape/D = W
+			var/amount_needed = CEILING(target_breach.class * 2)
+			if(!D.can_use(amount_needed))
+				to_chat(user, SPAN_WARNING("There's not enough [D.plural_name] in your [src] to seal \the [target_breach.descriptor] on \the [src]! You need at least [amount_needed] [D.plural_name]."))
+				return
+
+			if(do_after(user, H.get_equipped_item(slot_wear_suit_str) == src? 60 : 30, istype(loc,/mob/living)? loc : null)) //Sealing a breach on your own suit is awkward and time consuming
+				D.use(amount_needed)
+				playsound(src, 'sound/effects/tape.ogg',25)
+				user.visible_message(
+					SPAN_NOTICE("\The [user] uses some [D.plural_name] to seal \the [target_breach.descriptor] on \the [src]."),
+					SPAN_NOTICE("You use [amount_needed] [D.plural_name] of \the [W] to seal \the [target_breach.descriptor] on \the [src].")
+				)
 				target_breach.patched = TRUE
 				target_breach.update_descriptor()
 				calc_breach_damage()
@@ -250,7 +267,7 @@
 	. = ..()
 	if(can_breach && breaches && breaches.len)
 		for(var/datum/breach/B in breaches)
-			to_chat(user, "<span class='danger'>It has \a [B.descriptor].</span>")
+			to_chat(user, SPAN_DANGER("It has \a [B.descriptor]."))
 
 /obj/item/clothing/suit/space/get_pressure_weakness(pressure)
 	. = ..()

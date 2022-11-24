@@ -31,6 +31,12 @@
 	. = ..()
 	set_frequency(frequency)
 
+/obj/machinery/computer/air_control/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(input_tag, map_hash)
+	ADJUST_TAG_VAR(output_tag, map_hash)
+	ADJUST_TAG_VAR(sensor_tag, map_hash)
+
 /obj/machinery/computer/air_control/Destroy()
 	if(radio_controller)
 		radio_controller.remove_object(src, frequency)
@@ -66,9 +72,9 @@
 			temp += list("pressure" = sensor_info["pressure"])
 		if(sensor_info["temperature"])
 			temp += list("temperature" = sensor_info["temperature"])
-		
+
 		data["gasses"] = list()
-		
+
 		if(sensor_info["gas"])
 			data["gasses"] = sensor_info["gas"]
 
@@ -135,7 +141,7 @@
 /obj/machinery/computer/air_control/OnTopic(mob/user, href_list, datum/topic_state/state)
 	if(..())
 		return TOPIC_HANDLED
-		
+
 	var/datum/signal/signal = new
 	signal.transmission_method = 1 //radio signal
 	signal.source = src
@@ -156,7 +162,7 @@
 		input_info = null
 		refreshing_input = TRUE
 		input_flow_setting = input("What would you like to set the rate limit to?", "Set Volume", input_flow_setting) as num|null
-		input_flow_setting = between(0, input_flow_setting, ATMOS_DEFAULT_VOLUME_PUMP+500)
+		input_flow_setting = clamp(0, input_flow_setting, ATMOS_DEFAULT_VOLUME_PUMP+500)
 		signal.data = list ("tag" = input_tag, "set_volume_rate" = input_flow_setting)
 		. = 1
 
@@ -183,15 +189,15 @@
 		output_info = null
 		refreshing_output = TRUE
 		pressure_setting = input("How much pressure would you like to output?", "Set Pressure", pressure_setting) as num|null
-		pressure_setting = between(0, pressure_setting, MAX_PUMP_PRESSURE)
+		pressure_setting = clamp(0, pressure_setting, MAX_PUMP_PRESSURE)
 		signal.data = list ("tag" = output_tag, "set_internal_pressure" = "[pressure_setting]", "status" = 1)
 		. = 1
-	
+
 	if(href_list["s_out_set_pressure"])
 		output_info = null
 		refreshing_output = TRUE
 		pressure_setting = input("How much pressure would you like to maintain inside the core?", "Set Core Pressure", pressure_setting) as num|null
-		pressure_setting = between(0, pressure_setting, MAX_PUMP_PRESSURE)
+		pressure_setting = clamp(0, pressure_setting, MAX_PUMP_PRESSURE)
 		signal.data = list ("tag" = output_tag, "set_external_pressure" = pressure_setting, "checks" = 1, "status" = 1)
 		. = 1
 
@@ -216,32 +222,32 @@
 		return TOPIC_REFRESH
 
 	if(href_list["set_input_tag"])
-		var/t = sanitizeSafe(input(usr, "Enter the input ID tag.", src.name, src.input_tag), MAX_NAME_LEN)
-		t = sanitizeSafe(t, MAX_NAME_LEN)
+		var/t = sanitize_safe(input(usr, "Enter the input ID tag.", src.name, src.input_tag), MAX_NAME_LEN)
+		t = sanitize_safe(t, MAX_NAME_LEN)
 		if (t)
 			src.input_tag = t
 			set_frequency(frequency)
 		return TOPIC_REFRESH
 
 	if(href_list["set_output_tag"])
-		var/t = sanitizeSafe(input(usr, "Enter the output ID tag.", src.name, src.output_tag), MAX_NAME_LEN)
-		t = sanitizeSafe(t, MAX_NAME_LEN)
+		var/t = sanitize_safe(input(usr, "Enter the output ID tag.", src.name, src.output_tag), MAX_NAME_LEN)
+		t = sanitize_safe(t, MAX_NAME_LEN)
 		if (t)
 			src.output_tag = t
 			set_frequency(frequency)
 		return TOPIC_REFRESH
 
 	if(href_list["set_sensor_tag"])
-		var/t = sanitizeSafe(input(usr, "Enter the sensor ID tag.", src.name, src.sensor_tag))
-		t = sanitizeSafe(t, MAX_NAME_LEN)
+		var/t = sanitize_safe(input(usr, "Enter the sensor ID tag.", src.name, src.sensor_tag))
+		t = sanitize_safe(t, MAX_NAME_LEN)
 		if(t)
 			src.sensor_tag = t
 			set_frequency(frequency)
 		return TOPIC_REFRESH
-	
+
 	if(href_list["set_sensor_name"])
-		var/t = sanitizeSafe(input(usr, "Enter the sensor name.", src.name, src.sensor_name))
-		t = sanitizeSafe(t, MAX_NAME_LEN)
+		var/t = sanitize_safe(input(usr, "Enter the sensor name.", src.name, src.sensor_name))
+		t = sanitize_safe(t, MAX_NAME_LEN)
 		if(t)
 			src.sensor_name = t
 		return TOPIC_REFRESH
@@ -253,7 +259,7 @@
 	if(href_list["set_screen"])
 		data["screen"] = text2num(href_list["set_screen"])
 		return TOPIC_REFRESH
-	
+
 	if(!radio_connection)
 		return TOPIC_HANDLED
 

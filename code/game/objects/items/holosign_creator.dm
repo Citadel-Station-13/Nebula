@@ -1,16 +1,16 @@
 /obj/item/holosign_creator
 	name = "holographic sign projector"
 	desc = "A handy-dandy holographic projector that displays a janitorial sign."
-	icon = 'icons/obj/janitor.dmi'
-	icon_state = "signmaker"
-	item_state = "electronic"
+	icon = 'icons/obj/items/holosign_projector.dmi'
+	icon_state = ICON_STATE_WORLD
 	force = 0
 	w_class = ITEM_SIZE_SMALL
 	throwforce = 0
 	throw_speed = 3
 	throw_range = 7
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
+	origin_tech = "{'engineering':5,'exoticmatter':4,'powerstorage':4}"
 
 	var/list/signs = list()
 	var/max_signs = 10

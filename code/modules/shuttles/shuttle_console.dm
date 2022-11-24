@@ -10,6 +10,9 @@
 
 	var/ui_template = "shuttle_control_console.tmpl"
 
+/obj/machinery/computer/shuttle_control/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(shuttle_tag, map_hash)
 
 /obj/machinery/computer/shuttle_control/interface_interact(mob/user)
 	ui_interact(user)
@@ -49,6 +52,7 @@
 		"can_launch" = shuttle.can_launch(),
 		"can_cancel" = shuttle.can_cancel(),
 		"can_force" = shuttle.can_force(),
+		"timeleft" = max(round((shuttle.arrive_time - world.time) / 10, 1), 0),
 		"docking_codes" = shuttle.docking_codes
 	)
 
@@ -85,7 +89,7 @@
 
 	if(href_list["set_codes"])
 		var/newcode = input("Input new docking codes", "Docking codes", shuttle.docking_codes) as text|null
-		if (newcode && CanInteract(usr, GLOB.default_state))
+		if (newcode && CanInteract(usr, global.default_topic_state))
 			shuttle.set_docking_codes(uppertext(newcode))
 		return TOPIC_REFRESH
 
@@ -99,7 +103,7 @@
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if(!ui)
-		ui = new(user, src, ui_key, ui_template, "[shuttle_tag] Shuttle Control", 470, 450)
+		ui = new(user, src, ui_key, ui_template, "[shuttle.display_name] Shuttle Control", 470, 450)
 		ui.set_initial_data(data)
 		ui.open()
 		ui.set_auto_update(1)

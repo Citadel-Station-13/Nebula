@@ -2,25 +2,32 @@
 	name = "power loader"
 	desc = "An ancient, but well-liked cargo handling exosuit."
 
-/mob/living/exosuit/premade/powerloader/Initialize()
-	if(!arms) 
-		arms = new /obj/item/mech_component/manipulators/powerloader(src)
-		arms.color = "#ffbc37"
-	if(!legs) 
-		legs = new /obj/item/mech_component/propulsion/powerloader(src)
-		legs.color = "#ffbc37"
-	if(!head) 
-		head = new /obj/item/mech_component/sensors/powerloader(src)
-		head.color = "#ffbc37"
-	if(!body) 
-		body = new /obj/item/mech_component/chassis/powerloader(src)
-		body.color = "#ffdc37"
+/obj/item/mech_component/manipulators/powerloader/painted
+	color = "#ffbc37"
 
+/obj/item/mech_component/propulsion/powerloader/painted
+	color = "#ffbc37"
+
+/obj/item/mech_component/sensors/powerloader/painted
+	color = "#ffbc37"
+
+/obj/item/mech_component/chassis/powerloader/painted
+	color = "#ffdc37"
+
+/mob/living/exosuit/premade/powerloader/Initialize()
+	if(!arms)
+		arms = new /obj/item/mech_component/manipulators/powerloader/painted(src)
+	if(!legs)
+		legs = new /obj/item/mech_component/propulsion/powerloader/painted(src)
+	if(!head)
+		head = new /obj/item/mech_component/sensors/powerloader/painted(src)
+	if(!body)
+		body = new /obj/item/mech_component/chassis/powerloader/painted(src)
 	. = ..()
 
 /mob/living/exosuit/premade/powerloader/spawn_mech_equipment()
 	..()
-	install_system(new /obj/item/mech_equipment/drill(src), HARDPOINT_LEFT_HAND)
+	install_system(new /obj/item/mech_equipment/drill/steel(src), HARDPOINT_LEFT_HAND)
 	install_system(new /obj/item/mech_equipment/clamp(src), HARDPOINT_RIGHT_HAND)
 
 /obj/item/mech_component/manipulators/powerloader
@@ -38,7 +45,7 @@
 	move_delay = 4
 	turn_delay = 4
 	power_use = 10
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 
 /obj/item/mech_component/sensors/powerloader
 	name = "exosuit sensors"
@@ -84,6 +91,22 @@
 	)
 	. = ..()
 
+/mob/living/exosuit/premade/powerloader/mechete/Initialize()
+	. = ..()
+
+	if (arms)
+		arms.color = "#6c8aaf"
+	if (legs)
+		legs.color = "#6c8aaf"
+	if (head)
+		head.color = "#6c8aaf"
+	if (body)
+		body.color = "#6c8aaf"
+
+/mob/living/exosuit/premade/powerloader/mechete/spawn_mech_equipment()
+	install_system(new /obj/item/mech_equipment/ballistic_shield(src), HARDPOINT_LEFT_HAND)
+	install_system(new /obj/item/mech_equipment/mounted_system/melee/mechete(src), HARDPOINT_RIGHT_HAND)
+
 /mob/living/exosuit/premade/powerloader/flames_red
 	name = "APLU \"Firestarter\""
 	desc = "An ancient, but well-liked cargo handling exosuit. This one has cool red flames."
@@ -101,20 +124,20 @@
 
 /mob/living/exosuit/premade/firefighter/Initialize()
 	. = ..()
-	if(!arms) 
+	if(!arms)
 		arms = new /obj/item/mech_component/manipulators/powerloader(src)
 		arms.color = "#385b3c"
-	if(!legs) 
+	if(!legs)
 		legs = new /obj/item/mech_component/propulsion/powerloader(src)
 		legs.color = "#385b3c"
-	if(!head) 
+	if(!head)
 		head = new /obj/item/mech_component/sensors/powerloader(src)
 		head.color = "#385b3c"
-	if(!body) 
+	if(!body)
 		body = new /obj/item/mech_component/chassis/heavy(src)
 		body.color = "#385b3c"
 
-	material = decls_repository.get_decl(MAT_OSMIUM_CARBIDE_PLASTEEL)
+	material = GET_DECL(/decl/material/solid/metal/plasteel/ocp)
 
 /mob/living/exosuit/premade/firefighter/spawn_mech_equipment()
 	..()
@@ -148,3 +171,14 @@
 	install_system(new /obj/item/mech_equipment/light(src), HARDPOINT_HEAD)
 	install_system(new /obj/item/mech_equipment/clamp(src), HARDPOINT_LEFT_HAND)
 	install_system(new /obj/item/mech_equipment/clamp(src), HARDPOINT_RIGHT_HAND)
+
+/obj/structure/mech_wreckage/powerloader
+	name = "powerloader wrecakge"
+	loot_pool = list(
+		/obj/item/mech_component/manipulators/powerloader/painted = 40,
+		/obj/item/mech_component/propulsion/powerloader/painted =   40,
+		/obj/item/mech_component/sensors/powerloader/painted =      40,
+		/obj/item/mech_component/chassis/powerloader/painted =      40,
+		/obj/item/mech_equipment/drill/steel =                      80,
+		/obj/item/mech_equipment/clamp =                            80
+	)

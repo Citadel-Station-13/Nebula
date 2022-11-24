@@ -2,7 +2,7 @@
 /obj/machinery/shieldwallgen
 	name = "Shield Generator"
 	desc = "A shield generator."
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/machines/shieldgen.dmi'
 	icon_state = "Shield_Gen"
 	anchored = 0
 	density = 1
@@ -19,12 +19,12 @@
 	use_power = POWER_USE_OFF	//Draws directly from power net. Does not use APC power.
 	active_power_usage = 1200
 
-/obj/machinery/shieldwallgen/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.default_state)
+/obj/machinery/shieldwallgen/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.default_topic_state)
 	var/list/data = list()
 	data["draw"] = round(power_draw)
 	data["power"] = round(storedpower)
 	data["maxpower"] = round(max_stored_power)
-	data["current_draw"] = ((between(500, max_stored_power - storedpower, power_draw)) + power ? active_power_usage : 0)
+	data["current_draw"] = ((clamp(500, max_stored_power - storedpower, power_draw)) + power ? active_power_usage : 0)
 	data["online"] = active == 2 ? 1 : 0
 
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
@@ -108,7 +108,7 @@
 	if(C)	PN = C.powernet		// find the powernet of the connected cable
 
 	if(PN)
-		var/shieldload = between(500, max_stored_power - storedpower, power_draw)	//what we try to draw
+		var/shieldload = clamp(500, max_stored_power - storedpower, power_draw)	//what we try to draw
 		shieldload = PN.draw_power(shieldload) //what we actually get
 		storedpower += shieldload
 
@@ -149,7 +149,7 @@
 	if(src.active >= 1)
 		if(src.power == 0)
 			src.visible_message("<span class='warning'>The [src.name] shuts down due to lack of power!</span>", \
-				"You hear heavy droning fade out")
+				"You hear heavy droning fade away.")
 			src.active = 0
 			update_icon()
 			for(var/dir in list(1,2,4,8)) src.cleanup(dir)
@@ -200,7 +200,7 @@
 
 
 /obj/machinery/shieldwallgen/attackby(obj/item/W, mob/user)
-	if(isWrench(W))
+	if(IS_WRENCH(W))
 		if(active)
 			to_chat(user, "Turn off the field generator first.")
 			return
@@ -265,19 +265,15 @@
 	anchored = 1
 	density = 1
 	unacidable = 1
-	light_outer_range = 3
+	light_range = 3
 	var/needs_power = 0
-	var/active = 1
-	var/delay = 5
-	var/last_active
-	var/mob/U
 	var/obj/machinery/shieldwallgen/gen_primary
 	var/obj/machinery/shieldwallgen/gen_secondary
 	var/power_usage = 800	//how much power it takes to sustain the shield
 	var/generate_power_usage = 5000	//how much power it takes to start up the shield
 
 /obj/machinery/shieldwall/Initialize(mapload, obj/machinery/shieldwallgen/A, obj/machinery/shieldwallgen/B)
-	. = ..()
+	. = ..(mapload)
 	update_nearby_tiles()
 	gen_primary = A
 	gen_secondary = B

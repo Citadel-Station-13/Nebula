@@ -12,7 +12,6 @@
 	mouse_opacity = 0
 	animate_movement = 0
 	var/amount = 3
-	var/expand = 1
 	var/metal = 0
 
 /obj/effect/effect/foam/Initialize(mapload, var/ismetal = 0)
@@ -45,7 +44,7 @@
 	if(--amount < 0)
 		return
 
-	for(var/direction in GLOB.cardinal)
+	for(var/direction in global.cardinal)
 		var/turf/T = get_step(src, direction)
 		if(!T)
 			continue
@@ -124,11 +123,12 @@
 /obj/structure/foamedmetal
 	icon = 'icons/effects/effects.dmi'
 	icon_state = "metalfoam"
-	density = 1
-	opacity = 1 // changed in New()
-	anchored = 1
+	density =  TRUE
+	opacity =  TRUE
+	anchored = TRUE
 	name = "foamed metal"
 	desc = "A lightweight foamed metal wall."
+	atmos_canpass = CANPASS_DENSITY
 	var/metal = 1 // 1 = aluminium, 2 = iron
 
 /obj/structure/foamedmetal/Initialize()
@@ -138,9 +138,10 @@
 /obj/structure/foamedmetal/Destroy()
 	set_density(0)
 	update_nearby_tiles(1)
-	..()
+	return ..()
 
 /obj/structure/foamedmetal/on_update_icon()
+	..()
 	if(metal == 1)
 		icon_state = "metalfoam"
 	else
@@ -149,14 +150,14 @@
 /obj/structure/foamedmetal/explosion_act(severity)
 	..()
 	if(!QDELETED(src))
-		physically_destroyed(src)
+		physically_destroyed()
 
 /obj/structure/foamedmetal/bullet_act()
 	if(metal == 1 || prob(50))
 		qdel(src)
 
 /obj/structure/foamedmetal/attack_hand(var/mob/user)
-	if ((MUTATION_HULK in user.mutations) || (prob(75 - metal * 25)))
+	if (prob(75 - metal * 25))
 		user.visible_message("<span class='warning'>[user] smashes through the foamed metal.</span>", "<span class='notice'>You smash through the metal foam wall.</span>")
 		qdel(src)
 	else
@@ -166,7 +167,7 @@
 /obj/structure/foamedmetal/attackby(var/obj/item/I, var/mob/user)
 	if(istype(I, /obj/item/grab))
 		var/obj/item/grab/G = I
-		G.affecting.loc = src.loc
+		G.affecting.forceMove(loc)
 		visible_message("<span class='warning'>[G.assailant] smashes [G.affecting] through the foamed metal wall.</span>")
 		qdel(I)
 		qdel(src)
@@ -177,8 +178,3 @@
 		qdel(src)
 	else
 		to_chat(user, "<span class='notice'>You hit the metal foam to no effect.</span>")
-
-/obj/structure/foamedmetal/CanPass(atom/movable/mover, turf/target, height=1.5, air_group = 0)
-	if(air_group)
-		return 0
-	return !density

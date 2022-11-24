@@ -5,8 +5,6 @@
 	name = "large asteroid"
 	desc = "Sensor array is reading an artificial structure inside the asteroid."
 	icon_state = "object"
-	known = 0
-
 	initial_generic_waypoints = list(
 		"nav_slavers_base_1",
 		"nav_slavers_base_2",
@@ -19,7 +17,6 @@
 
 /datum/map_template/ruin/away_site/slavers
 	name = "Slavers' Base"
-	id = "awaysite_slavers"
 	description = "Asteroid with slavers base inside."
 	suffixes = list("slavers/slavers_base.dmm")
 	cost = 1
@@ -59,15 +56,12 @@
 
 /decl/hierarchy/outfit/corpse
 	name = "Corpse Clothing"
-
-/decl/hierarchy/outfit/corpse/Initialize()
-	..()
-	hierarchy_type = type
+	abstract_type = /decl/hierarchy/outfit/corpse
 
 /decl/hierarchy/outfit/corpse/slavers_base
 	name = "Basic slaver output"
 
-/obj/effect/landmark/corpse/slavers_base/slaver1
+/obj/abstract/landmark/corpse/slavers_base/slaver1
 	name = "Slaver"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slaver1)
 
@@ -77,16 +71,16 @@
 	shoes = /obj/item/clothing/shoes/color/black
 	glasses = /obj/item/clothing/glasses/sunglasses
 
-/obj/effect/landmark/corpse/slavers_base/slaver2
+/obj/abstract/landmark/corpse/slavers_base/slaver2
 	name = "Slaver"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slaver2)
 
 /decl/hierarchy/outfit/corpse/slavers_base/slaver2
 	name = "Dead Slaver 2"
-	uniform = /obj/item/clothing/under/rank/corp/grayson
+	uniform = /obj/item/clothing/under/johnny
 	shoes = /obj/item/clothing/shoes/color/blue
 
-/obj/effect/landmark/corpse/slavers_base/slaver3
+/obj/abstract/landmark/corpse/slavers_base/slaver3
 	name = "Slaver"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slaver3)
 
@@ -95,7 +89,7 @@
 	uniform = /obj/item/clothing/under/pirate
 	shoes = /obj/item/clothing/shoes/color/brown
 
-/obj/effect/landmark/corpse/slavers_base/slaver4
+/obj/abstract/landmark/corpse/slavers_base/slaver4
 	name = "Slaver"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slaver4)
 
@@ -104,7 +98,7 @@
 	uniform = /obj/item/clothing/under/redcoat
 	shoes = /obj/item/clothing/shoes/color/brown
 
-/obj/effect/landmark/corpse/slavers_base/slaver5
+/obj/abstract/landmark/corpse/slavers_base/slaver5
 	name = "Slaver"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slaver5)
 
@@ -114,7 +108,7 @@
 	shoes = /obj/item/clothing/shoes/color/orange
 	mask = /obj/item/clothing/mask/surgical
 
-/obj/effect/landmark/corpse/slavers_base/slaver6
+/obj/abstract/landmark/corpse/slavers_base/slaver6
 	name = "Slaver"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slaver6)
 
@@ -123,7 +117,7 @@
 	uniform = /obj/item/clothing/under/frontier
 	shoes = /obj/item/clothing/shoes/color/orange
 
-/obj/effect/landmark/corpse/slavers_base/slave
+/obj/abstract/landmark/corpse/slavers_base/slave
 	name = "Slave"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/slavers_base/slave)
 
@@ -135,15 +129,9 @@
 /mob/living/simple_animal/hostile/abolition_extremist
 	name = "abolition extremist"
 	desc = "Vigiliant fighter against slavery."
-	icon = 'maps/away/slavers/slavers_base_sprites.dmi'
-	icon_state = "extremist"
-	icon_living = "extremist"
-	icon_dead = "extremist_dead"
+	icon = 'maps/away/slavers/icons/abolitionist.dmi'
 	speak_chance = 0
 	turns_per_move = 5
-	response_help = "pushes"
-	response_disarm = "shoves"
-	response_harm = "hits"
 	speed = 4
 	stop_automated_movement_when_pulled = 0
 	maxHealth = 100
@@ -151,7 +139,7 @@
 	natural_weapon = /obj/item/natural_weapon/punch
 	can_escape = TRUE
 	unsuitable_atmos_damage = 15
-	var/corpse = /obj/effect/landmark/corpse/abolitionist
+	var/corpse = /obj/abstract/landmark/corpse/abolitionist
 	var/weapon = /obj/item/gun/energy/laser
 	projectilesound = 'sound/weapons/laser.ogg'
 	ranged = 1
@@ -166,7 +154,7 @@
 		new weapon(loc)
 	qdel(src)
 
-/obj/effect/landmark/corpse/abolitionist
+/obj/abstract/landmark/corpse/abolitionist
 	name = "abolitionist"
 	corpse_outfits = list(/decl/hierarchy/outfit/corpse/abolitionist)
 
@@ -179,10 +167,8 @@
 /obj/item/clothing/under/abol_uniform
 	name = "abolitionist combat suit"
 	desc = "Lightly armored suit worn by abolition extremists during raids. It has green patches on the right sleeve and the chest. There is big green \"A\" on the back."
-	icon = 'maps/away/slavers/slavers_base_sprites.dmi'
-	icon_state = "abol_suit"
-	item_icons = list(slot_w_uniform_str = 'maps/away/slavers/slavers_base_sprites.dmi')
-	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	icon = 'maps/away/slavers/icons/uniform.dmi'
+	body_parts_covered = SLOT_UPPER_BODY|SLOT_LOWER_BODY|SLOT_LEGS|SLOT_ARMS
 	armor = list(
 		melee = ARMOR_MELEE_KNIVES, 
 		bullet = ARMOR_BALLISTIC_PISTOL, 

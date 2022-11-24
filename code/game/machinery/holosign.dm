@@ -8,6 +8,8 @@
 	idle_power_usage = 2
 	active_power_usage = 70
 	anchored = 1
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
+	directional_offset = "{'NORTH':{'y':-32}, 'SOUTH':{'y':32}, 'EAST':{'x':32}, 'WEST':{'x':-32}}"
 	var/lit = 0
 	var/on_icon = "sign_on"
 
@@ -28,7 +30,6 @@
 		return
 	lit = !lit
 	update_use_power(lit ? POWER_USE_ACTIVE : POWER_USE_IDLE)
-	update_icon()
 
 /obj/machinery/holosign/on_update_icon()
 	if (!lit || inoperable())
@@ -36,7 +37,7 @@
 		set_light(0)
 	else
 		icon_state = on_icon
-		set_light(0.5, 0.5, 1, l_color = COLOR_CYAN_BLUE)
+		set_light(1, 0.5, COLOR_CYAN_BLUE)
 
 /decl/public_access/public_variable/holosign_on
 	expected_type = /obj/machinery/holosign

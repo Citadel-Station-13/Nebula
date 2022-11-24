@@ -55,10 +55,10 @@
 	engage_string = "Cycle Visor Mode"
 	activate_string = "Enable Visor"
 	deactivate_string = "Disable Visor"
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 	var/datum/rig_vision/vision
@@ -124,11 +124,11 @@
 	interface_desc = "An integrated night vision system."
 
 	vision_modes = list(/datum/rig_vision/nvg)
-	material = MAT_PLASTIC
+	material = /decl/material/solid/plastic
 	matter = list(
-		MAT_STEEL = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_GLASS = MATTER_AMOUNT_TRACE,
-		MAT_URANIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/steel = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/glass = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/uranium = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/rig_module/vision/sechud
@@ -172,7 +172,7 @@
 
 	// Don't cycle if this engage() is being called by activate().
 	if(starting_up)
-		to_chat(holder.wearer, "<font color='blue'>You activate your visual sensors.</font>")
+		to_chat(holder.wearer, SPAN_NOTICE("You activate your visual sensors."))
 		return 1
 
 	if(vision_modes.len > 1)
@@ -181,9 +181,9 @@
 			vision_index = 1
 		vision = vision_modes[vision_index]
 
-		to_chat(holder.wearer, "<font color='blue'>You cycle your sensors to <b>[vision.mode]</b> mode.</font>")
+		to_chat(holder.wearer, SPAN_NOTICE("You cycle your sensors to <b>[vision.mode]</b> mode."))
 	else
-		to_chat(holder.wearer, "<font color='blue'>Your sensors only have one mode.</font>")
+		to_chat(holder.wearer, SPAN_WARNING("Your sensors only have one mode."))
 	return 1
 
 /obj/item/rig_module/vision/Initialize()

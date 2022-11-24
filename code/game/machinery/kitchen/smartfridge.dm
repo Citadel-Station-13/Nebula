@@ -11,12 +11,13 @@
 	idle_power_usage = 5
 	active_power_usage = 100
 	atom_flags = ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_NO_REACT
+	obj_flags = OBJ_FLAG_ANCHORABLE | OBJ_FLAG_ROTATABLE
 	atmos_canpass = CANPASS_NEVER
-	var/global/max_n_of_items = 999 // Sorry but the BYOND infinite loop detector doesn't look things over 1000.
+	required_interaction_dexterity = DEXTERITY_SIMPLE_MACHINES
+
 	var/icon_base = "fridge_sci"
 	var/icon_contents = "chem"
 	var/list/item_records = list()
-	var/datum/stored_items/currently_vending = null	//What we're putting out of the machine.
 	var/seconds_electrified = 0;
 	var/shoot_inventory = 0
 	var/locked = 0
@@ -50,7 +51,7 @@
 	return ..()
 
 /obj/machinery/smartfridge/proc/accept_check(var/obj/item/O)
-	if(istype(O,/obj/item/chems/food/snacks/grown/) || istype(O,/obj/item/seeds/))
+	if(istype(O,/obj/item/chems/food/grown/) || istype(O,/obj/item/seeds/))
 		return 1
 	return 0
 
@@ -60,17 +61,6 @@
 
 /obj/machinery/smartfridge/seeds/accept_check(var/obj/item/O)
 	if(istype(O,/obj/item/seeds/))
-		return 1
-	return 0
-
-/obj/machinery/smartfridge/secure/extract
-	name = "\improper Slime Extract Storage"
-	desc = "A refrigerated storage unit for slime extracts."
-	icon_contents = "slime"
-	initial_access = list(access_research)
-
-/obj/machinery/smartfridge/secure/extract/accept_check(var/obj/item/O)
-	if(istype(O,/obj/item/slime_extract))
 		return 1
 	return 0
 
@@ -107,7 +97,7 @@
 	icon_contents = "drink"
 
 /obj/machinery/smartfridge/drinks/accept_check(var/obj/item/O)
-	if(istype(O,/obj/item/chems/glass) || istype(O,/obj/item/chems/food/drinks) || istype(O,/obj/item/chems/food/condiment))
+	if(istype(O,/obj/item/chems/glass) || istype(O,/obj/item/chems/drinks) || istype(O,/obj/item/chems/condiment))
 		return 1
 
 /obj/machinery/smartfridge/foods
@@ -118,7 +108,7 @@
 	icon_contents = "food"
 
 /obj/machinery/smartfridge/foods/accept_check(var/obj/item/O)
-	if(istype(O,/obj/item/chems/food/snacks) || istype(O,/obj/item/material/kitchen/utensil))
+	if(istype(O,/obj/item/chems/food) || istype(O,/obj/item/kitchen/utensil))
 		return 1
 
 /obj/machinery/smartfridge/drying_rack
@@ -127,9 +117,9 @@
 	icon_state = "drying_rack"
 
 /obj/machinery/smartfridge/drying_rack/accept_check(var/obj/item/O)
-	if(istype(O, /obj/item/chems/food/snacks/))
-		var/obj/item/chems/food/snacks/S = O
-		return S.dried_type
+	if(istype(O, /obj/item/chems/food/))
+		var/obj/item/chems/food/S = O
+		return !!S.dried_type
 	else if(istype(O, /obj/item/stack/material))
 		return istype(O.material, /decl/material/solid/skin)
 	return 0
@@ -160,21 +150,16 @@
 	for(var/datum/stored_items/I in item_records)
 		for(var/thing in I.instances)
 			var/remove_thing = FALSE
-			if(istype(thing, /obj/item/chems/food/snacks))
-				var/obj/item/chems/food/snacks/S = thing
+			if(istype(thing, /obj/item/chems/food))
+				var/obj/item/chems/food/S = thing
 				if(S.dry || !I.get_specific_product(get_turf(src), S))
 					continue
-				if(S.dried_type == S.type)
-					S.dry = 1
-					S.SetName("dried [S.name]")
-					S.color = "#a38463"
-					stock_item(S)
+				var/result = S.on_dry(get_turf(src))
+				if(result != S)
+					remove_thing = TRUE
+				else
 					I.instances -= thing
 					I.amount--
-				else
-					var/D = S.dried_type
-					new D(get_turf(src))
-					remove_thing = TRUE
 
 			else if(istype(thing, /obj/item/stack/material))
 				var/obj/item/stack/material/skin = thing
@@ -183,8 +168,8 @@
 				var/decl/material/solid/skin/skin_mat = skin.material
 				if(!skin_mat.tans_to)
 					continue
-				var/decl/material/leather_mat = decls_repository.get_decl(skin_mat.tans_to)
-				stock_item(new leather_mat.stack_type(get_turf(src), skin.amount, skin_mat.tans_to))
+				for(var/atom/item_to_stock in SSmaterials.create_object(skin_mat.tans_to, get_turf(src), skin.amount))
+					stock_item(item_to_stock)
 				remove_thing = TRUE
 
 			if(remove_thing)
@@ -255,18 +240,15 @@
 	update_icon()
 
 /obj/machinery/smartfridge/attackby(var/obj/item/O, var/mob/user)
-	if(stat & NOPOWER)
-		to_chat(user, "<span class='notice'>\The [src] is unpowered and useless.</span>")
-		return
-
 	if(accept_check(O))
 		if(!user.unEquip(O))
 			return
 		stock_item(O)
 		user.visible_message("<span class='notice'>\The [user] has added \the [O] to \the [src].</span>", "<span class='notice'>You add \the [O] to \the [src].</span>")
 		update_icon()
+		return TRUE
 
-	else if(istype(O, /obj/item/storage))
+	if(istype(O, /obj/item/storage))
 		var/obj/item/storage/bag/P = O
 		var/plants_loaded = 0
 		for(var/obj/G in P.contents)
@@ -279,10 +261,8 @@
 			user.visible_message("<span class='notice'>\The [user] loads \the [src] with the contents of \the [P].</span>", "<span class='notice'>You load \the [src] with the contents of \the [P].</span>")
 			if(P.contents.len > 0)
 				to_chat(user, "<span class='notice'>Some items were refused.</span>")
-
-	else
-		to_chat(user, "<span class='notice'>\The [src] smartly refuses [O].</span>")
-	return 1
+		return TRUE
+	return ..()
 
 /obj/machinery/smartfridge/secure/emag_act(var/remaining_charges, var/mob/user)
 	if(!emagged)
@@ -376,11 +356,10 @@
 
 	for(var/datum/stored_items/I in src.item_records)
 		throw_item = I.get_product(loc)
-		if (!throw_item)
-			continue
-		break
+		if(!QDELETED(throw_item))
+			break
 
-	if(!throw_item)
+	if(QDELETED(throw_item))
 		return 0
 	spawn(0)
 		throw_item.throw_at(target,16,3)

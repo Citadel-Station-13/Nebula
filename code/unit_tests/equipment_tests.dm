@@ -1,7 +1,3 @@
-#define SUCCESS 1
-#define FAILURE 0
-
-
 /datum/unit_test/vision_glasses
 	name = "EQUIPMENT: Vision Template"
 	template = /datum/unit_test/vision_glasses
@@ -11,31 +7,25 @@
 	async = 1
 
 /datum/unit_test/vision_glasses/start_test()
-	spawn(0)
-		var/list/test = create_test_mob_with_mind(get_safe_turf(), /mob/living/carbon/human)
-		if(isnull(test))
-			fail("Check Runtimed in Mob creation")
+	var/list/test = create_test_mob_with_mind(get_safe_turf(), /mob/living/carbon/human)
+	if(isnull(test))
+		fail("Check Runtimed in Mob creation")
 
-		if(test["result"] == FAILURE)
-			fail(test["msg"])
-			async = 0
+	if(test["result"] == FAILURE)
+		fail(test["msg"])
+		async = 0
+		return 0
 
-			return 0
-
-		H = locate(test["mobref"])
-
-		var/obj/item/clothing/glasses/G = new glasses_type()
-		H.glasses = G
-
+	H = locate(test["mobref"])
+	H.equip_to_slot(new glasses_type(H), slot_glasses_str)
 	return 1
-
 
 /datum/unit_test/vision_glasses/check_result()
 
 	if(isnull(H) || H.life_tick < 2)
 		return 0
 
-	if(isnull(H.glasses))
+	if(isnull(H.get_equipped_item(slot_glasses_str)))
 		fail("Mob doesn't have glasses on")
 
 	H.handle_vision()	// Because Life has a client check that bypasses updating vision
@@ -103,7 +93,3 @@
 		bad_tests++
 
 	return bad_tests
-
-#undef SUCCESS
-#undef FAILURE
-

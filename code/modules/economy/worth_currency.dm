@@ -6,9 +6,11 @@
 	var/marked_value
 	var/image/overlay
 	var/rotate_icon = TRUE
+	var/decl/currency/currency
 
-/datum/denomination/New(var/decl/currency/currency, var/value, var/value_name, var/colour = COLOR_PALE_BTL_GREEN)
+/datum/denomination/New(var/decl/currency/_currency, var/value, var/value_name, var/colour = COLOR_PALE_BTL_GREEN)
 	..()
+	currency = _currency
 	name = "[value_name] [currency.name_singular] [name || "piece"]"
 	state = state || "cash"
 	marked_value = value
@@ -43,21 +45,46 @@
 	var/name_prefix
 	var/name_suffix
 	var/icon = 'icons/obj/items/money.dmi'
-	var/material = MAT_PLASTIC
+	var/material = /decl/material/solid/plastic
 	var/absolute_value = 1 // Divisor for cash pile worth. Should never be <1 or non-integer (think of it like cents).
 	var/list/denominations = list()
 	var/list/denominations_by_value = list()
+	abstract_type = /decl/currency
 
-/decl/currency/New()
+/decl/currency/Initialize()
+	. = ..()
 	if(!name_singular)
 		name_singular = name
 	if(!name_prefix && !name_suffix)
 		name_suffix = uppertext(copytext(name, 1, 1))
 	build_denominations()
-	..()
+
+/decl/currency/validate()
+	. = ..()
+	if(absolute_value < 1)
+		. += "Absolute currency value is less than 1."
+	if(!name)
+		. += "No name set."
+	if(!name_prefix && !name_suffix)
+		. += "No name modifiers set."
+	if(!name_singular)
+		. += "No singular name set."
+
+	var/list/coinage_states = icon_states(icon)
+	for(var/datum/denomination/denomination in denominations)
+		if(!istext(denomination.name))
+			. += "Non-text name found for '[denomination.type]'."
+		else if(!(denomination.state in coinage_states))
+			. += "State '[denomination.state]' not found in icon file for '[denomination.type]'."
+		else if(denomination.mark && !(denomination.mark in coinage_states))
+			. += "Mark state '[denomination.mark]' not found in icon file for '[denomination.type]'."
+		else if(!isnum(denomination.marked_value))
+			. += "Non-numerical denomination marked value found for '[denomination]'."
+		else if(!denomination.overlay)
+			. += "Null overlay found for '[denomination]'."
 
 /decl/currency/proc/format_value(var/amt)
-	. = "[name_prefix][Floor(amt / absolute_value)][name_suffix]"
+	. = "[name_prefix][FLOOR(amt / absolute_value)][name_suffix]"
 
 /decl/currency/proc/build_denominations()
 	for(var/datum/denomination/denomination in denominations)
@@ -90,9 +117,9 @@
 	state = "coin_large"
 
 /decl/currency/trader
-	name =     "scrip"
+	name = "scrip"
 	name_prefix = "$"
-	material = MAT_COPPER
+	material = /decl/material/solid/metal/copper
 
 /decl/currency/trader/build_denominations()
 	denominations = list(
@@ -106,7 +133,7 @@
 	name = "scavbucks"
 	name_singular = "scavbuck"
 	name_suffix = "sb"
-	material = MAT_WASTE
+	material = /decl/material/solid/slag
 
 /datum/denomination/trash
 	name = "wiggly string"

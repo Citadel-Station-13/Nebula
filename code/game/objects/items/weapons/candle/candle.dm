@@ -11,10 +11,8 @@
 	var/wax
 	var/last_lit
 	var/icon_set = "candle"
-	var/candle_max_bright = 0.3
-	var/candle_inner_range = 0.1
-	var/candle_outer_range = 4
-	var/candle_falloff = 2
+	var/candle_range = CANDLE_LUM
+	var/candle_power
 
 /obj/item/flame/candle/Initialize()
 	wax = rand(27 MINUTES, 33 MINUTES) / SSobj.wait // Enough for 27-33 minutes. 30 minutes on average, adjusted for subsystem tickrate.
@@ -23,6 +21,8 @@
 	. = ..()
 
 /obj/item/flame/candle/on_update_icon()
+	SHOULD_CALL_PARENT(FALSE)
+	//#FIXME: Candles handle their lit overlays weirdly
 	switch(wax)
 		if(1500 to INFINITY)
 			icon_state = "[icon_set]1"
@@ -33,18 +33,18 @@
 
 	if(lit != last_lit)
 		last_lit = lit
-		overlays.Cut()
+		cut_overlays()
 		if(lit)
-			overlays += overlay_image(icon, "[icon_state]_lit", flags=RESET_COLOR)
+			add_overlay(overlay_image(icon, "[icon_state]_lit", flags = RESET_COLOR))
 
 /obj/item/flame/candle/attackby(obj/item/W, mob/user)
 	..()
-	if(isflamesource(W) || is_hot(W))
+	if(W.isflamesource() || W.get_heat() > T100C)
 		light(user)
 
 /obj/item/flame/candle/resolve_attackby(var/atom/A, mob/user)
 	. = ..()
-	if(istype(A, /obj/item/flame/candle/) && is_hot(src))
+	if(istype(A, /obj/item/flame/candle) && lit)
 		var/obj/item/flame/candle/other_candle = A
 		other_candle.light()
 
@@ -52,7 +52,7 @@
 	if(!lit)
 		lit = 1
 		visible_message("<span class='notice'>\The [user] lights the [name].</span>")
-		set_light(candle_max_bright, candle_inner_range, candle_outer_range, candle_falloff)
+		set_light(candle_range, candle_power)
 		START_PROCESSING(SSobj, src)
 
 /obj/item/flame/candle/Process()
@@ -65,7 +65,7 @@
 		qdel(src)
 		return
 	update_icon()
-	if(istype(loc, /turf)) //start a fire if possible
+	if(isturf(loc)) //start a fire if possible
 		var/turf/T = loc
 		T.hotspot_expose(700, 5)
 
@@ -85,6 +85,8 @@
 	w_class = ITEM_SIZE_SMALL
 	max_w_class = ITEM_SIZE_TINY
 	max_storage_space = 7
-	slot_flags = SLOT_BELT
-
-	startswith = list(/obj/item/flame/candle = 7)
+	slot_flags = SLOT_LOWER_BODY
+	material = /decl/material/solid/cardboard
+	
+/obj/item/storage/candle_box/WillContain()
+	return list(/obj/item/flame/candle = 7)

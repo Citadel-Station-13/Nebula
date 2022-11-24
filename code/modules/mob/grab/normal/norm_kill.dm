@@ -20,13 +20,12 @@
 	var/mob/living/affecting = G.get_affecting_mob()
 	if(!istype(affecting))
 		return
-	affecting.drop_l_hand()
-	affecting.drop_r_hand()
+	affecting.drop_held_items()
 	if(affecting.lying)
-		affecting.Weaken(4)
+		SET_STATUS_MAX(affecting, STAT_WEAK, 4)
 	affecting.adjustOxyLoss(1)
 	affecting.apply_effect(STUTTER, 5) //It will hamper your voice, being choked and all.
-	affecting.Weaken(5)	//Should keep you down unless you get help.
+	SET_STATUS_MAX(affecting, STAT_WEAK, 5)	//Should keep you down unless you get help.
 	if(iscarbon(affecting))
 		var/mob/living/carbon/C = affecting
 		C.losebreath = max(C.losebreath + 2, 3)

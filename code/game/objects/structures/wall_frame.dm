@@ -6,7 +6,8 @@
 	desc = "A low wall section which serves as the base of windows, amongst other things."
 	icon = 'icons/obj/structures/wall_frame.dmi'
 	icon_state = "frame"
-	atom_flags = ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_CLIMBABLE
+	atom_flags = ATOM_FLAG_NO_TEMP_CHANGE | ATOM_FLAG_CLIMBABLE | ATOM_FLAG_CAN_BE_PAINTED | ATOM_FLAG_ADJACENT_EXCEPTION
+	obj_flags = OBJ_FLAG_MOVES_UNSUPPORTED
 	anchored = 1
 	density = 1
 	throwpass = 1
@@ -15,13 +16,15 @@
 	material = DEFAULT_WALL_MATERIAL
 	handle_generic_blending = TRUE
 	tool_interaction_flags = (TOOL_INTERACTION_ANCHOR | TOOL_INTERACTION_DECONSTRUCT)
-	maxhealth = 100
+	maxhealth = 40
+	parts_amount = 2
+	parts_type = /obj/item/stack/material/strut
 
 	var/paint_color
 	var/stripe_color
 	var/list/connections
 	var/list/other_connections
-	
+
 /obj/structure/wall_frame/clear_connections()
 	connections = null
 	other_connections = null
@@ -56,7 +59,6 @@
 		to_chat(user, SPAN_DANGER("It's nearly falling to pieces."))
 
 /obj/structure/wall_frame/attackby(var/obj/item/W, var/mob/user)
-
 	. = ..()
 	if(!.)
 		//grille placing
@@ -93,38 +95,35 @@
 	if(istype(mover) && mover.checkpass(PASS_FLAG_TABLE))
 		return 1
 
-// icon related
-
 /obj/structure/wall_frame/on_update_icon()
-	overlays.Cut()
+	..()
 	var/image/I
-
-	var/new_color = (paint_color ? paint_color : material.color)
-	color = new_color
+	var/new_color = stripe_color ? stripe_color : material.color
 
 	for(var/i = 1 to 4)
 		var/conn = connections ? connections[i] : "0"
 		if(other_connections && other_connections[i] != "0")
-			I = image(icon, "frame_other[conn]", dir = 1<<(i-1))
+			I = image(icon, "frame_other[conn]", dir = BITFLAG(i-1))
 		else
-			I = image(icon, "frame[conn]", dir = 1<<(i-1))
-		overlays += I
+			I = image(icon, "frame[conn]", dir = BITFLAG(i-1))
+		I.color = new_color
+		add_overlay(I)
 
-	if(stripe_color)
-		for(var/i = 1 to 4)
-			var/conn = connections ? connections[i] : "0"
-			if(other_connections && other_connections[i] != "0")
-				I = image(icon, "stripe_other[conn]", dir = 1<<(i-1))
-			else
-				I = image(icon, "stripe[conn]", dir = 1<<(i-1))
-			I.color = stripe_color
-			overlays += I
+/obj/structure/wall_frame/proc/paint_wall_frame(var/new_paint_color)
+	paint_color = new_paint_color
+	update_icon()
+
+
+/obj/structure/wall_frame/proc/stripe_wall_frame(var/new_paint_color)
+	stripe_color = new_paint_color
+	update_icon()
+
 
 /obj/structure/wall_frame/hull/Initialize()
 	. = ..()
 	if(prob(40))
 		var/spacefacing = FALSE
-		for(var/direction in GLOB.cardinal)
+		for(var/direction in global.cardinal)
 			var/turf/T = get_step(src, direction)
 			var/area/A = get_area(T)
 			if(A && (A.area_flags & AREA_FLAG_EXTERNAL))
@@ -154,12 +153,21 @@
 		return
 	take_damage(tforce)
 
+/obj/structure/wall_frame/get_color()
+	return paint_color
+
+/obj/structure/wall_frame/set_color(new_color)
+	paint_color = new_color
+	update_icon()
+
 //Subtypes
 /obj/structure/wall_frame/standard
 	paint_color = COLOR_WALL_GUNMETAL
+	stripe_color = COLOR_GUNMETAL
 
 /obj/structure/wall_frame/titanium
-	material = MAT_TITANIUM
+	material = /decl/material/solid/metal/titanium
 
 /obj/structure/wall_frame/hull
 	paint_color = COLOR_HULL
+	stripe_color = COLOR_HULL

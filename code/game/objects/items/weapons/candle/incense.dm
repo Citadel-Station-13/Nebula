@@ -5,10 +5,7 @@
 
 	available_colours = null
 	icon_set = "incense"
-	candle_max_bright = 0.1
-	candle_inner_range = 0.1
-	candle_outer_range = 1
-	candle_falloff = 2
+	candle_range = 1
 
 	scent_types = list(/decl/scent_type/rose,
 					   /decl/scent_type/citrus,
@@ -25,4 +22,5 @@
 	icon_state = "incensebox"
 	max_storage_space = 9
 
-	startswith = list(/obj/item/flame/candle/scented/incense = 9)
+/obj/item/storage/candle_box/incense/WillContain()
+	return list(/obj/item/flame/candle/scented/incense = 9)

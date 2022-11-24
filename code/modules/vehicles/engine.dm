@@ -3,6 +3,7 @@
 	desc = "An engine used to power a small vehicle."
 	icon = 'icons/obj/objects.dmi'
 	w_class = ITEM_SIZE_HUGE
+	material = /decl/material/solid/metal/steel
 	var/stat = 0
 	var/trail_type
 	var/cost_per_move = 5
@@ -41,7 +42,7 @@
 			user.drop_from_inventory(I)
 			I.forceMove(src)
 		return 1
-	else if(isCrowbar(I))
+	else if(IS_CROWBAR(I))
 		if(cell)
 			to_chat(user, "You pry out \the [cell].")
 			cell.dropInto(loc)
@@ -90,7 +91,7 @@
 
 /obj/item/engine/thermal/attackby(var/obj/item/I, var/mob/user)
 	if(istype(I,/obj/item/chems) && ATOM_IS_OPEN_CONTAINER(I))
-		if(istype(I,/obj/item/chems/food/snacks) || istype(I,/obj/item/chems/pill))
+		if(istype(I,/obj/item/chems/food) || istype(I,/obj/item/chems/pill))
 			return 0
 		var/obj/item/chems/C = I
 		C.standard_pour_into(user,src)
@@ -109,7 +110,7 @@
 	var/actually_flameable = 0
 	for(var/rtype in temp_reagents_holder.reagents.reagent_volumes)
 		var/new_multiplier = 1
-		var/decl/material/R = decls_repository.get_decl(rtype)
+		var/decl/material/R = GET_DECL(rtype)
 		if(istype(R,/decl/material/liquid/ethanol))
 			var/decl/material/liquid/ethanol/E = R
 			new_multiplier = (10/E.strength)
@@ -118,9 +119,6 @@
 			new_multiplier = 1.25
 			actually_flameable = 1
 		else if(istype(R,/decl/material/liquid/fuel))
-			actually_flameable = 1
-		else if(istype(R,/decl/material/solid/phoron))
-			new_multiplier = 2
 			actually_flameable = 1
 		else if(istype(R,/decl/material/liquid/frostoil))
 			new_multiplier = 0.1

@@ -7,14 +7,14 @@
 	item_state = "cell"
 	origin_tech = "{'powerstorage':1}"
 	force = 5.0
-	throwforce = 5.0
+	throwforce = 5
 	throw_speed = 3
 	throw_range = 5
 	w_class = ITEM_SIZE_NORMAL
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 	var/charge			                // Current charge
 	var/maxcharge = 1000 // Capacity in Wh
@@ -39,7 +39,7 @@
 	return use(cell_amt) / CELLRATE
 
 /obj/item/cell/on_update_icon()
-
+	. = ..()
 	var/new_overlay_state = null
 	switch(percent())
 		if(95 to 100)
@@ -51,9 +51,8 @@
 
 	if(new_overlay_state != overlay_state)
 		overlay_state = new_overlay_state
-		overlays.Cut()
 		if(overlay_state)
-			overlays += image('icons/obj/power.dmi', overlay_state)
+			add_overlay(overlay_state)
 
 /obj/item/cell/proc/percent()		// return % charge of cell
 	return maxcharge && (100.0*charge/maxcharge)
@@ -88,8 +87,8 @@
 
 /obj/item/cell/examine(mob/user)
 	. = ..()
-	to_chat(user, "The label states it's capacity is [maxcharge] Wh")
-	to_chat(user, "The charge meter reads [round(src.percent(), 0.1)]%")
+	to_chat(user, "The label states it's capacity is [maxcharge] Wh.")
+	to_chat(user, "The charge meter reads [round(src.percent(), 0.1)]%.")
 
 /obj/item/cell/emp_act(severity)
 	//remove this once emp changes on dev are merged in
@@ -134,8 +133,8 @@
 	throw_speed = 5
 	throw_range = 7
 	maxcharge = 100
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
 
 /obj/item/cell/device/variable/Initialize(mapload, charge_amount)
 	maxcharge = charge_amount
@@ -150,18 +149,19 @@
 	desc = "A small power cell designed to power more energy-demanding devices."
 	icon_state = "hdevice"
 	maxcharge = 100
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
+	origin_tech = "{'powerstorage':2}"
 
 /obj/item/cell/crap
 	name = "old power cell"
 	desc = "A cheap old power cell. It's probably been in use for quite some time now."
 	origin_tech = "{'powerstorage':1}"
 	maxcharge = 100
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/cell/crap/empty
@@ -172,10 +172,10 @@
 	desc = "A standard and relatively cheap power cell, commonly used."
 	origin_tech = "{'powerstorage':1}"
 	maxcharge = 250
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/cell/apc
@@ -183,10 +183,10 @@
 	desc = "A special power cell designed for heavy-duty use in area power controllers."
 	origin_tech = "{'powerstorage':1}"
 	maxcharge = 500
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 
@@ -196,10 +196,10 @@
 	origin_tech = "{'powerstorage':2}"
 	icon_state = "hcell"
 	maxcharge = 1000
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_PLASTIC = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/plastic = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/cell/high/empty
@@ -211,10 +211,10 @@
 	origin_tech = "{'powerstorage':3}"
 	icon_state = "hcell"
 	maxcharge = 1500
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_ALUMINIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_TRACE
 	)
 
 
@@ -224,10 +224,10 @@
 	origin_tech = "{'powerstorage':5}"
 	icon_state = "scell"
 	maxcharge = 2000
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_ALUMINIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/cell/super/empty
@@ -239,12 +239,12 @@
 	origin_tech = "{'powerstorage':6}"
 	icon_state = "hpcell"
 	maxcharge = 3000
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GOLD = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_SILVER = MATTER_AMOUNT_TRACE,
-		MAT_GLASS = MATTER_AMOUNT_TRACE,
-		MAT_ALUMINIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/metal/gold = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_TRACE,
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_TRACE
 	)
 
 /obj/item/cell/hyper/empty
@@ -252,37 +252,61 @@
 
 /obj/item/cell/infinite
 	name = "experimental power cell"
-	desc = "This special experimental power cell has both very large capacity, and ability to recharge itself by draining power from contained bluespace pocket."
+	desc = "This special experimental power cell has both very large capacity, and ability to recharge itself with zero-point energy."
 	icon_state = "icell"
 	origin_tech =  null
 	maxcharge = 3000
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_ALUMINIUM = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_TRACE
 	)
 
-/obj/item/cell/infinite/check_charge()
-	return 1
+/obj/item/cell/infinite/percent()
+	return 100
 
-/obj/item/cell/infinite/use()
-	return 1
+/obj/item/cell/infinite/fully_charged()
+	return TRUE
 
+/obj/item/cell/infinite/check_charge(var/amount)
+	return (maxcharge >= amount)
+
+/obj/item/cell/infinite/use(var/amount)
+	return min(maxcharge, amount)
+
+/obj/item/cell/infinite/checked_use(var/amount)
+	return check_charge(amount)
+
+/obj/item/cell/infinite/give()
+	return 0
+
+/obj/item/cell/infinite/get_electrocute_damage()
+	charge = maxcharge
+	return ..()
 
 /obj/item/cell/potato
 	name = "potato battery"
 	desc = "A rechargable starch based power cell."
 	origin_tech = "{'powerstorage':1}"
-	icon = 'icons/obj/power.dmi' //'icons/obj/harvest.dmi'
-	icon_state = "potato_cell" //"potato_battery"
+	icon = 'icons/obj/power.dmi'
+	icon_state = "potato_cell"
 	maxcharge = 20
 
+//Generic battery cell for guns with rechargable batteries.
+/obj/item/cell/gun
+	name = "weapon energy cell"
+	desc = "A military grade high-density battery, expected to deplete after tens of thousands of complete charge cycles."
+	origin_tech = "{'combat':2,'materials':2,'powerstorage': 2}"
+	icon_state = "gunbattery"
+	maxcharge = 500
+	w_class = ITEM_SIZE_SMALL //Perhaps unwise.
 
-/obj/item/cell/slime
-	name = "charged slime core"
-	desc = "A yellow slime core infused with phoron, it crackles with power."
-	origin_tech = "{'powerstorage':2,'biotech':4}"
-	icon = 'icons/mob/simple_animal/slimes.dmi' //'icons/obj/harvest.dmi'
-	icon_state = "yellow slime extract" //"potato_battery"
-	maxcharge = 200
-	matter = null
+#if DM_VERSION < 514
+/proc/gradient(var/colour_one, var/colour_two, var/percentage)
+	return colour_two
+#endif
+
+/obj/item/cell/gun/on_update_icon()
+	. = ..()
+	 //Color the battery charging overlay against the percentage of the battery capacity. However the index of gradient() is set to 1, instead of 100, so we divide it by 100. Colors were chosen by the sprite artist.
+	add_overlay(overlay_image(icon, "gunbattery_charge", gradient("#fa6a0a", "#9cdb43", clamp(percent(), 0, 100) )))

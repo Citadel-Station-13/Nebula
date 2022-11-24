@@ -1,18 +1,10 @@
-GLOBAL_DATUM_INIT(godcult, /datum/antagonist/godcultist, new)
-
-/datum/antagonist/godcultist
-	id = MODE_GODCULTIST
-	role_text = "God Cultist"
-	role_text_plural = "God Cultists"
-	blacklisted_jobs = list(/datum/job/ai, /datum/job/cyborg, /datum/job/submap)
-	feedback_tag = "godcult_objective"
+/decl/special_role/godcultist
+	name = "God Cultist"
+	name_plural = "God Cultists"
+	blacklisted_jobs = list(/datum/job/submap)
 	antag_indicator = "hudcultist"
 	faction_verb = /mob/living/proc/dpray
 	welcome_text = "You are under the guidance of a powerful otherwordly being. Spread its will and keep your faith.<br>Use dpray to communicate directly with your master!<br>Ask your master for spells to start building!"
-	victory_text = "The cult wins! It has succeeded in serving its dark masters!"
-	loss_text = "The staff managed to stop the cult!"
-	victory_feedback_tag = "win - cult win"
-	loss_feedback_tag = "loss - staff stopped the cult"
 	flags = ANTAG_SUSPICIOUS | ANTAG_RANDSPAWN | ANTAG_VOTABLE
 	hard_cap = 5
 	hard_cap_round = 6
@@ -20,8 +12,9 @@ GLOBAL_DATUM_INIT(godcult, /datum/antagonist/godcultist, new)
 	initial_spawn_target = 3
 	antaghud_indicator = "hudcultist"
 	skill_setter = /datum/antag_skill_setter/station
+	blocked_job_event_categories = list(ASSIGNMENT_ROBOT, ASSIGNMENT_COMPUTER)
 
-/datum/antagonist/godcultist/add_antagonist_mind(var/datum/mind/player, var/ignore_role, var/nonstandard_role_type, var/nonstandard_role_msg, var/mob/living/deity/specific_god)
+/decl/special_role/godcultist/add_antagonist_mind(var/datum/mind/player, var/ignore_role, var/nonstandard_role_type, var/nonstandard_role_msg, var/mob/living/deity/specific_god)
 	if(!..())
 		return 0
 
@@ -30,44 +23,45 @@ GLOBAL_DATUM_INIT(godcult, /datum/antagonist/godcultist, new)
 
 	return 1
 
-/datum/antagonist/godcultist/post_spawn()
-	if(!GLOB.deity || !GLOB.deity.current_antagonists.len)
+/decl/special_role/godcultist/post_spawn()
+	var/decl/special_role/deity = GET_DECL(/decl/special_role/deity)
+	if(!deity.current_antagonists.len)
 		return
-
 	var/count = 1
 	var/deity_count = 1
 	while(count <= current_antagonists.len)
-		if(deity_count > GLOB.deity.current_antagonists.len)
+		if(deity_count > deity.current_antagonists.len)
 			deity_count = 1
-		var/datum/mind/deity_mind = GLOB.deity.current_antagonists[deity_count]
+		var/datum/mind/deity_mind = deity.current_antagonists[deity_count]
 		var/datum/mind/mind = current_antagonists[count]
 		add_cultist(mind, deity_mind.current)
 		count++
 		deity_count++
 
 
-/datum/antagonist/godcultist/remove_antagonist(var/datum/mind/player, var/show_message, var/implanted)
+/decl/special_role/godcultist/remove_antagonist(var/datum/mind/player, var/show_message, var/implanted)
 	var/mob/living/deity/god = get_deity(player)
 	if(!..())
 		return 0
 	remove_cultist(player, god)
 	return 1
 
-/datum/antagonist/godcultist/get_extra_panel_options(var/datum/mind/player)
+/decl/special_role/godcultist/get_extra_panel_options(var/datum/mind/player)
 	return "<a href='?src=\ref[src];selectgod=\ref[player]'>\[Select Deity\]</a>"
 
-/datum/antagonist/godcultist/Topic(href, href_list)
+/decl/special_role/godcultist/Topic(href, href_list)
 	if(..())
 		return 1
 	if(href_list["selectgod"])
 		var/list/god_list = list()
-		if(GLOB.deity && GLOB.deity.current_antagonists.len)
-			for(var/m in GLOB.deity.current_antagonists)
+		var/decl/special_role/deity = GET_DECL(/decl/special_role/deity)
+		if(length(deity.current_antagonists))
+			for(var/m in deity.current_antagonists)
 				var/datum/mind/mind = m
 				god_list += mind.current
 		else
-			for(var/mob/living/deity/deity in GLOB.player_list)
-				god_list += deity
+			for(var/mob/living/deity/specific_deity in global.player_list)
+				god_list += specific_deity
 		if(god_list.len)
 			var/mob/living/deity/D = input(usr, "Select a deity for this cultist.") in null|god_list
 			if(D)
@@ -79,16 +73,17 @@ GLOBAL_DATUM_INIT(godcult, /datum/antagonist/godcultist, new)
 			to_chat(usr, "<span class='warning'>There are no deities to be linked to.</span>")
 		return 1
 
-/datum/antagonist/godcultist/proc/add_cultist(var/datum/mind/player, var/mob/living/deity/deity)
+/decl/special_role/godcultist/proc/add_cultist(var/datum/mind/player, var/mob/living/deity/deity)
 	deity.add_follower(player.current)
 	player.current.add_language(/decl/language/cultcommon)
 
-/datum/antagonist/godcultist/proc/remove_cultist(var/datum/mind/player, var/mob/living/deity/god)
+/decl/special_role/godcultist/proc/remove_cultist(var/datum/mind/player, var/mob/living/deity/god)
 	god.remove_follower(player.current)
 	player.current.remove_language(/decl/language/cultcommon)
 
-/datum/antagonist/godcultist/proc/get_deity(var/datum/mind/player)
-	for(var/m in GLOB.deity.current_antagonists)
+/decl/special_role/godcultist/proc/get_deity(var/datum/mind/player)
+	var/decl/special_role/deity = GET_DECL(/decl/special_role/deity)
+	for(var/m in deity.current_antagonists)
 		var/datum/mind/mind = m
 		var/mob/living/deity/god = mind.current
 		if(god && god.is_follower(player.current,1))
@@ -97,10 +92,11 @@ GLOBAL_DATUM_INIT(godcult, /datum/antagonist/godcultist, new)
 /mob/living/proc/dpray(var/msg as text)
 	set category = "Abilities"
 
-	if(!src.mind || !GLOB.godcult || !GLOB.godcult.is_antagonist(mind))
+	var/decl/special_role/godcultist/godcult = GET_DECL(/decl/special_role/godcultist)
+	if(!src.mind || !godcult.is_antagonist(mind))
 		return
 	msg = sanitize(msg)
-	var/mob/living/deity/D = GLOB.godcult.get_deity(mind)
+	var/mob/living/deity/D = godcult.get_deity(mind)
 	if(!D || !msg)
 		return
 

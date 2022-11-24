@@ -29,15 +29,14 @@
 		LAZYSET(A.reagents.reagent_data, /decl/material/liquid/water, list("holy" = FALSE))
 
 /mob/proc/make_rune(var/rune, var/cost = 5, var/tome_required = 0)
-	var/has_tome = 0
 	var/has_robes = 0
 	var/cult_ground = 0
-	if(istype(get_active_hand(), /obj/item/book/tome) || istype(get_inactive_hand(), /obj/item/book/tome))
-		has_tome = 1
-	else if(tome_required && mob_needs_tome())
+
+	var/has_tome = locate(/obj/item/book/tome) in get_held_items()
+	if(tome_required && mob_needs_tome() && !has_tome)
 		to_chat(src, "<span class='warning'>This rune is too complex to draw by memory, you need to have a tome in your hand to draw it.</span>")
 		return
-	if(istype(get_equipped_item(slot_head), /obj/item/clothing/head/culthood) && istype(get_equipped_item(slot_wear_suit), /obj/item/clothing/suit/cultrobes) && istype(get_equipped_item(slot_shoes), /obj/item/clothing/shoes/cult))
+	if(istype(get_equipped_item(slot_head_str), /obj/item/clothing/head/culthood) && istype(get_equipped_item(slot_wear_suit_str), /obj/item/clothing/suit/cultrobes) && istype(get_equipped_item(slot_shoes_str), /obj/item/clothing/shoes/cult))
 		has_robes = 1
 	var/turf/T = get_turf(src)
 	if(T.holy)
@@ -92,7 +91,7 @@
 			return
 		var/obj/effect/rune/R = new rune(T, get_rune_color(), get_blood_name())
 		var/area/A = get_area(R)
-		log_and_message_admins("created \an [R.cultname] rune at \the [A.name].")
+		log_and_message_admins("created \an [R.cultname] rune at \the [A.proper_name].")
 		R.add_fingerprint(src)
 		return 1
 	return 0
@@ -118,7 +117,7 @@
 
 /mob/living/carbon/human/get_blood_name()
 	if(species)
-		return species.get_blood_name()
+		return species.get_blood_name(src)
 	return "blood"
 
 /mob/living/simple_animal/construct/get_blood_name()
@@ -134,9 +133,9 @@
 	return "#c80000"
 
 /mob/living/carbon/human/get_rune_color()
-	return species.blood_color
+	return species.get_blood_color(src)
 
-var/list/Tier1Runes = list(
+var/global/list/Tier1Runes = list(
 	/mob/proc/convert_rune,
 	/mob/proc/teleport_rune,
 	/mob/proc/tome_rune,
@@ -150,7 +149,7 @@ var/list/Tier1Runes = list(
 	/mob/proc/reveal
 	)
 
-var/list/Tier2Runes = list(
+var/global/list/Tier2Runes = list(
 	/mob/proc/armor_rune,
 	/mob/proc/offering_rune,
 	/mob/proc/drain_rune,
@@ -158,7 +157,7 @@ var/list/Tier2Runes = list(
 	/mob/proc/massdefile_rune
 	)
 
-var/list/Tier3Runes = list(
+var/global/list/Tier3Runes = list(
 	/mob/proc/weapon_rune,
 	/mob/proc/shell_rune,
 	/mob/proc/bloodboil_rune,
@@ -166,7 +165,7 @@ var/list/Tier3Runes = list(
 	/mob/proc/revive_rune
 )
 
-var/list/Tier4Runes = list(
+var/global/list/Tier4Runes = list(
 	/mob/proc/tearreality_rune
 	)
 
@@ -305,7 +304,8 @@ var/list/Tier4Runes = list(
 
 	input = sanitize(input)
 	log_and_message_admins("used a communicate verb to say '[input]'")
-	for(var/datum/mind/H in GLOB.cult.current_antagonists)
+	var/decl/special_role/cult = GET_DECL(/decl/special_role/cultist)
+	for(var/datum/mind/H in cult.current_antagonists)
 		if(H.current && !H.current.stat)
 			to_chat(H.current, "<span class='cult'>[input]</span>")
 
@@ -319,7 +319,8 @@ var/list/Tier4Runes = list(
 	return
 
 /mob/living/carbon/human/message_cult_communicate()
-	visible_message("<span class='warning'>\The [src] cuts \his finger and starts drawing on the back of \his hand.</span>")
+	var/decl/pronouns/G = get_pronouns()
+	visible_message(SPAN_WARNING("\The [src] cuts [G.his] finger and starts drawing on the back of [G.his] hand."))
 
 /mob/proc/obscure()
 	set category = "Cult Magic"

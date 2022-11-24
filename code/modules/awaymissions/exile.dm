@@ -9,15 +9,15 @@
 	name = "exile"
 	desc = "Prevents you from returning from away missions."
 
-	get_data()
-		var/dat = {"
-<b>Implant Specifications:</b><BR>
-<b>Name:</b> [GLOB.using_map.company_name] Employee Exile Implant<BR>
-<b>Implant Details:</b> The onboard gateway system has been modified to reject entry by individuals containing this implant<BR>"}
-		return dat
+/obj/item/implant/exile/get_data()
+	var/dat = {"
+	<b>Implant Specifications:</b><BR>
+	<b>Name:</b> [global.using_map.company_name] Employee Exile Implant<BR>
+	<b>Implant Details:</b> The onboard gateway system has been modified to reject entry by individuals containing this implant<BR>"}
+	return dat
 
 /obj/item/implantcase/exile
-	name = "Glass Case- 'Exile'"
+	name = "glass case - 'Exile'"
 	desc = "A case containing an exile implant."
 	icon_state = "implantcase-r"
 	imp = /obj/item/implant/exile

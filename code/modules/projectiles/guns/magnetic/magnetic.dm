@@ -1,9 +1,8 @@
 /obj/item/gun/magnetic
 	name = "improvised coilgun"
 	desc = "A coilgun hastily thrown together out of a basic frame and advanced power storage components. Is it safe for it to be duct-taped together like that?"
-	on_mob_icon = 'icons/obj/guns/coilgun.dmi'
 	icon = 'icons/obj/guns/coilgun.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	one_hand_penalty = 5
 	fire_delay = 20
 	origin_tech = "{'combat':5,'materials':4,'esoteric':2,'magnets':4}"
@@ -24,8 +23,21 @@
 	var/power_cost = 950                                       // Cost per fire, should consume almost an entire basic cell.
 	var/power_per_tick                                         // Capacitor charge per process(). Updated based on capacitor rating.
 
+/obj/item/gun/magnetic/preloaded
+	cell = /obj/item/cell/high
+	capacitor = /obj/item/stock_parts/capacitor/adv
+
 /obj/item/gun/magnetic/Initialize()
 	START_PROCESSING(SSobj, src)
+
+	if (ispath(cell))
+		cell = new cell()
+	if (ispath(capacitor))
+		capacitor = new capacitor()
+		capacitor.charge = capacitor.max_charge
+	if (ispath(loaded))
+		loaded = new loaded(src, load_sheet_max)
+
 	if(capacitor)
 		power_per_tick = (power_cost*0.15) * capacitor.rating
 	update_icon()
@@ -85,12 +97,12 @@
 	if(capacitor)
 		to_chat(user, "<span class='notice'>The installed [capacitor.name] has a charge level of [round((capacitor.charge/capacitor.max_charge)*100)]%.</span>")
 	if(!cell || !capacitor)
-		to_chat(user, "<span class='notice'>The capacitor charge indicator is blinking <font color ='[COLOR_RED]'>red</font>. Maybe you should check the cell or capacitor.</span>")
+		to_chat(user, "<span class='notice'>The capacitor charge indicator is blinking [SPAN_RED("red")]. Maybe you should check the cell or capacitor.</span>")
 	else
 		if(capacitor.charge < power_cost)
-			to_chat(user, "<span class='notice'>The capacitor charge indicator is <font color ='[COLOR_ORANGE]'>amber</font>.</span>")
+			to_chat(user, "<span class='notice'>The capacitor charge indicator is [SPAN_ORANGE("amber")].</span>")
 		else
-			to_chat(user, "<span class='notice'>The capacitor charge indicator is <font color ='[COLOR_GREEN]'>green</font>.</span>")
+			to_chat(user, "<span class='notice'>The capacitor charge indicator is [SPAN_GREEN("green")].</span>")
 
 /obj/item/gun/magnetic/attackby(var/obj/item/thing, var/mob/user)
 
@@ -107,7 +119,7 @@
 			update_icon()
 			return
 
-		if(isScrewdriver(thing))
+		if(IS_SCREWDRIVER(thing))
 			if(!capacitor)
 				to_chat(user, "<span class='warning'>\The [src] has no capacitor installed.</span>")
 				return
@@ -178,7 +190,7 @@
 	. = ..()
 
 /obj/item/gun/magnetic/attack_hand(var/mob/user)
-	if(user.get_inactive_hand() == src)
+	if(user.is_holding_offhand(src))
 		var/obj/item/removing
 
 		if(loaded)

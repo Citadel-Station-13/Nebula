@@ -77,8 +77,8 @@ a creative player the means to solve many problems.  Circuits are held inside an
 	setup_io(outputs, /datum/integrated_io, outputs_default, IC_OUTPUT)
 	outputs_default = null
 	setup_io(activators, /datum/integrated_io/activate, null, IC_ACTIVATOR)
-	if(!matter[MAT_STEEL])
-		matter[MAT_STEEL] = w_class * SScircuit.cost_multiplier // Default cost.
+	if(!matter[/decl/material/solid/metal/steel])
+		matter[/decl/material/solid/metal/steel] = w_class * SScircuit.cost_multiplier // Default cost. //#TODO: Maybe move that stuff to the new material system that does essentially the same thing?
 	. = ..()
 
 /obj/item/integrated_circuit/proc/on_data_written() //Override this for special behaviour when new data gets pushed to the circuit.
@@ -112,7 +112,7 @@ a creative player the means to solve many problems.  Circuits are held inside an
 	if(!check_interactivity(M))
 		return
 
-	var/input = sanitizeName(input(M, "What do you want to name this?", "Rename", name) as null|text, allow_numbers = TRUE)
+	var/input = sanitize_name(input(M, "What do you want to name this?", "Rename", name) as null|text, allow_numbers = TRUE)
 	if(check_interactivity(M))
 		if(!input)
 			input = name
@@ -238,7 +238,7 @@ a creative player the means to solve many problems.  Circuits are held inside an
 
 	onclose(user, "assembly-\ref[src.assembly]")
 
-/obj/item/integrated_circuit/Topic(href, href_list, state = GLOB.physical_state)
+/obj/item/integrated_circuit/Topic(href, href_list, state = global.physical_topic_state)
 	if(..())
 		return 1
 
@@ -284,7 +284,8 @@ a creative player the means to solve many problems.  Circuits are held inside an
 		. = IC_TOPIC_REFRESH
 
 	else if(href_list["remove"] && assembly)
-		if(istype(held_item, /obj/item/screwdriver))
+		var/obj/item/held_item_obj = held_item
+		if(IS_SCREWDRIVER(held_item_obj))
 			disconnect_all()
 			dropInto(loc)
 			playsound(src, 'sound/items/Crowbar.ogg', 50, 1)

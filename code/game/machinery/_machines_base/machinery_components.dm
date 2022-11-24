@@ -1,6 +1,10 @@
 // Init optimization.
 
-GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
+var/global/list/machine_path_to_circuit_type
+/proc/get_circuit_by_build_path(var/circuit)
+	if(!global.machine_path_to_circuit_type)
+		global.machine_path_to_circuit_type = cache_circuits_by_build_path()
+	return global.machine_path_to_circuit_type[circuit]
 
 /proc/cache_circuits_by_build_path()
 	. = list()
@@ -18,7 +22,7 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 /obj/machinery/proc/populate_parts(var/full_populate) // Full populate creates a circuitboard and all needed components automatically.
 	if(full_populate)
 		var/path_to_check = base_type || type
-		var/board_path = GLOB.machine_path_to_circuit_type[path_to_check]
+		var/board_path = get_circuit_by_build_path(path_to_check)
 		if(board_path)
 			var/obj/item/stock_parts/circuitboard/board = install_component(board_path, refresh_parts = FALSE)
 			var/list/req_components = board.spawn_components || board.req_components
@@ -32,8 +36,8 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 		if(initial_access && length(initial_access) > 0)
 			for(var/access_list in initial_access)
 				// Each part is an AND component.
-				var/obj/item/stock_parts/network_lock/lock = install_component(/obj/item/stock_parts/network_lock/buildable, refresh_parts = FALSE)
-				lock.grants = access_list
+				var/obj/item/stock_parts/network_receiver/network_lock/lock = install_component(/obj/item/stock_parts/network_receiver/network_lock/buildable, refresh_parts = FALSE)
+				lock.groups = islist(access_list) ? access_list : list(access_list)
 
 	// Create the parts we are supposed to have. If not full_populate, this is only hard-baked parts, and more will be added later.
 	for(var/component_path in uncreated_component_parts)
@@ -52,7 +56,7 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 
 	var/list/processed_parts = list()
 	for(var/path in stock_part_presets)
-		var/decl/stock_part_preset/preset = decls_repository.get_decl(path)
+		var/decl/stock_part_preset/preset = GET_DECL(path)
 		var/number = stock_part_presets[path] || 1
 		for(var/obj/item/stock_parts/part in component_parts)
 			if(processed_parts[part])
@@ -69,7 +73,7 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 	if(!stock_part_presets)
 		return
 	for(var/path in stock_part_presets)
-		var/decl/stock_part_preset/preset = decls_repository.get_decl(path)
+		var/decl/stock_part_preset/preset = GET_DECL(path)
 		if(istype(part, preset.expected_part_type))
 			return preset
 
@@ -144,9 +148,11 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 		. = part
 
 	if(istype(part))
+		if(part in component_parts)
+			CRASH("Tried to insert \a '[part]' twice in \the [src] ([x], [y], [z])!")
 		LAZYADD(component_parts, part)
 		part.on_install(src)
-		GLOB.destroyed_event.register(part, src, .proc/component_destroyed)
+		events_repository.register(/decl/observ/destroyed, part, src, .proc/component_destroyed)
 	else if(ispath(part))
 		LAZYINITLIST(uncreated_component_parts)
 		uncreated_component_parts[part] += 1
@@ -174,7 +180,7 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 		if(QDELETED(part)) // unremovable stuff
 			return
 		part.dropInto(loc)
-		GLOB.destroyed_event.unregister(part, src)
+		events_repository.unregister(/decl/observ/destroyed, part, src)
 		return part
 
 /obj/machinery/proc/replace_part(mob/user, var/obj/item/storage/part_replacer/R, var/obj/item/stock_parts/old_part, var/obj/item/stock_parts/new_part)
@@ -189,7 +195,7 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 	to_chat(user, "<span class='notice'>[old_part.name] replaced with [new_part.name].</span>")
 
 /obj/machinery/proc/component_destroyed(var/obj/item/component)
-	GLOB.destroyed_event.unregister(component, src)
+	events_repository.unregister(/decl/observ/destroyed, component, src)
 	LAZYREMOVE(component_parts, component)
 	LAZYREMOVE(processing_parts, component)
 	power_components -= component
@@ -217,7 +223,7 @@ GLOBAL_LIST_INIT(machine_path_to_circuit_type, cache_circuits_by_build_path())
 
 // Use to block interactivity if panel is not open, etc.
 /obj/machinery/proc/components_are_accessible(var/path)
-	if(ispath(path, /obj/item/stock_parts/access_lock))
+	if(ispath(path, /obj/item/stock_parts/access_lock) || ispath(path, /obj/item/stock_parts/item_holder))
 		return TRUE
 	return panel_open
 
@@ -310,7 +316,7 @@ Standard helpers for users interacting with machinery parts.
 		var/obj/item/stock_parts/part = path
 		if(!(initial(part.part_flags) & PART_FLAG_HAND_REMOVE))
 			continue
-		var/obj/item/stock_parts/network_lock/lock = part
+		var/obj/item/stock_parts/network_receiver/network_lock/lock = part
 		if(istype(lock) && !allowed(user))
 			continue
 		if(components_are_accessible(path))

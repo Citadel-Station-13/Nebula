@@ -7,11 +7,10 @@
   *
  **/
 
-//This is the ABSOLUTE ONLY THING that should init globally like this
-GLOBAL_REAL(Master, /datum/controller/master) = new
+var/global/datum/controller/master/Master = new
 
 //THIS IS THE INIT ORDER
-//Master -> SSPreInit -> GLOB -> world -> config -> SSInit -> Failsafe
+//Master -> SSPreInit -> world -> config -> SSInit -> Failsafe
 //GOT IT MEMORIZED?
 
 /datum/controller/master
@@ -76,9 +75,6 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 			for(var/I in subsytem_types)
 				_subsystems += new I
 		Master = src
-
-	if(!GLOB)
-		new /datum/controller/global_vars
 
 /datum/controller/master/Destroy()
 	..()
@@ -145,7 +141,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 				msg = "The [BadBoy.name] subsystem seems to be destabilizing the MC and will be offlined."
 				BadBoy.flags |= SS_NO_FIRE
 		if(msg)
-			to_chat(GLOB.admins, "<span class='boldannounce'>[msg]</span>")
+			to_chat(global.admins, "<span class='boldannounce'>[msg]</span>")
 			log_world(msg)
 
 	if (istype(Master.subsystems))
@@ -243,6 +239,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 		Failsafe.defcon = 2
 
 // Main loop.
+#define RUNLEVEL_MAX 16
 /datum/controller/master/proc/Loop()
 	. = -1
 	//Prep the loop (most of this is because we want MC restarts to reset as much state as we can, and because
@@ -268,11 +265,11 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 
 		var/ss_runlevels = SS.runlevels
 		var/added_to_any = FALSE
-		for(var/I in 1 to GLOB.bitflags.len)
-			if(ss_runlevels & GLOB.bitflags[I])
-				while(runlevel_sorted_subsystems.len < I)
+		for(var/i in 1 to RUNLEVEL_MAX)
+			if(ss_runlevels & BITFLAG(i-1))
+				while(runlevel_sorted_subsystems.len < i)
 					runlevel_sorted_subsystems += list(list())
-				runlevel_sorted_subsystems[I] += SS
+				runlevel_sorted_subsystems[i] += SS
 				added_to_any = TRUE
 		if(!added_to_any)
 			WARNING("[SS.name] subsystem is not SS_NO_FIRE but also does not have any runlevels set!")
@@ -316,7 +313,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 			continue
 
 		//Byond resumed us late. assume it might have to do the same next tick
-		if (last_run + CEILING(world.tick_lag * (processing * sleep_delta), world.tick_lag) < world.time)
+		if (last_run + NONUNIT_CEILING(world.tick_lag * (processing * sleep_delta), world.tick_lag) < world.time)
 			sleep_delta += 1
 
 		sleep_delta = MC_AVERAGE_FAST(sleep_delta, 1) //decay sleep_delta
@@ -384,7 +381,7 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 		if (processing * sleep_delta <= world.tick_lag)
 			current_ticklimit -= (TICK_LIMIT_RUNNING * 0.25) //reserve the tail 1/4 of the next tick for the mc if we plan on running next tick
 		sleep(world.tick_lag * (processing * sleep_delta))
-
+#undef RUNLEVEL_MAX
 
 
 
@@ -590,8 +587,43 @@ GLOBAL_REAL(Master, /datum/controller/master) = new
 	if(!statclick)
 		statclick = new/obj/effect/statclick/debug(null, "Initializing...", src)
 
-	stat("Byond:", "(FPS:[world.fps]) (TickCount:[world.time/world.tick_lag]) (TickDrift:[round(Master.tickdrift,1)]([round((Master.tickdrift/(world.time/world.tick_lag))*100,0.1)]%))")
+	stat("Byond:", "(FPS:[world.fps]) (TickCount:[world.time/world.tick_lag]) (TickDrift:[round(Master.tickdrift,1)]([round((Master.tickdrift/(world.time/world.tick_lag))*100,0.1)]%)) (Internal Tick Usage: [round(MAPTICK_LAST_INTERNAL_TICK_USAGE,0.1)]%)")
 	stat("Master Controller:", statclick.update("(TickRate:[Master.processing]) (Iteration:[Master.iteration])"))
+
+/// Colors cpu number before output.
+/datum/controller/master/proc/format_color_cpu()
+	switch(world.cpu)
+		// 0-80 = green
+		if(0 to 80)
+			. = "<font color='#32a852'>[world.cpu]</font>"
+		// 80-90 = orange
+		if(80 to 90)
+			. = "<font color='#fcba03'>[world.cpu]</font>"
+		// 90-100 = red
+		if(90 to 100)
+			. = "<font color='#eb4034'>[world.cpu]</font>"
+		// >100 = bold red
+		if(100 to INFINITY)
+			. = "<font color='#eb4034'><b>[world.cpu]</b></font>"
+
+/// Colors map cpu number before output.
+/// Same as before, but specially for map cpu.
+/// It uses same colors, but need different number range.
+/datum/controller/master/proc/format_color_cpu_map()
+	var/current_map_cpu = MAPTICK_LAST_INTERNAL_TICK_USAGE
+	switch(current_map_cpu)
+		// 0-30 = green
+		if(0 to 30)
+			. = "<font color='#32a852'>[current_map_cpu]</font>"
+		// 30-60 = orange
+		if(30 to 60)
+			. = "<font color='#fcba03'>[current_map_cpu]</font>"
+		// 60-80 = red
+		if(60 to 80)
+			. = "<font color='#eb4034'>[current_map_cpu]</font>"
+		// >100 = bold red
+		if(80 to INFINITY)
+			. = "<font color='#eb4034'><b>[current_map_cpu]</b></font>"
 
 /datum/controller/master/StartLoadingMap()
 	//disallow more than one map to load at once, multithreading it will just cause race conditions

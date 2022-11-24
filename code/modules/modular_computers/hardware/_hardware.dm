@@ -10,18 +10,26 @@
 	var/usage_flags = PROGRAM_ALL
 	var/external_slot				// Whether attackby will be passed on it even with a closed panel
 
-/obj/item/stock_parts/computer/attackby(var/obj/item/W, var/mob/living/user)
+/obj/item/stock_parts/computer/attackby(var/obj/item/W, var/mob/user)
 	// Multitool. Runs diagnostics
-	if(isMultitool(W))
+	if(IS_MULTITOOL(W))
 		to_chat(user, "***** DIAGNOSTICS REPORT *****")
 		to_chat(user, jointext(diagnostics(), "\n"))
 		to_chat(user, "******************************")
 		return 1
 	return ..()
 
+/obj/item/stock_parts/computer/on_install(obj/machinery/machine)
+	. = ..()
+	do_after_install(machine, TRUE)
+
+/obj/item/stock_parts/computer/on_uninstall(obj/machinery/machine, temporary)
+	do_before_uninstall(machine, TRUE)
+	. = ..()
+
 // Called on multitool click, prints diagnostic information to the user.
 /obj/item/stock_parts/computer/proc/diagnostics()
-	return list("Hardware Integrity Test... (Corruption: [initial(health) - health]/[initial(health)])")
+	return list("Hardware Integrity Test... (Corruption: [max_health ? round((max_health - health)/max_health * 100) : 0]%)")
 
 /obj/item/stock_parts/computer/Initialize()
 	. = ..()
@@ -43,9 +51,13 @@
 
 // Called when component is disabled/enabled by the OS
 /obj/item/stock_parts/computer/proc/on_disable()
-/obj/item/stock_parts/computer/proc/on_enable(var/datum/extension/interactive/ntos/os)
+/obj/item/stock_parts/computer/proc/on_enable(var/datum/extension/interactive/os/os)
 
 /obj/item/stock_parts/computer/proc/update_power_usage()
-	var/datum/extension/interactive/ntos/os = get_extension(loc, /datum/extension/interactive/ntos)
+	var/datum/extension/interactive/os/os = get_extension(loc, /datum/extension/interactive/os)
 	if(os)
 		os.recalc_power_usage()
+
+/obj/item/stock_parts/computer/proc/do_after_install(atom/device, loud)
+
+/obj/item/stock_parts/computer/proc/do_before_uninstall(atom/device, loud)

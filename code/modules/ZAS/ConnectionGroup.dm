@@ -24,7 +24,7 @@ Class Vars:
 
 	connection_edge/unsimulated
 
-		B - This holds an unsimulated turf which has the gas values this edge is mimicing.
+		B - This holds an unsimulated turf which has the gas values this edge is mimicking.
 
 		air - Retrieved from B on creation and used as an argument for the legacy ShareSpace() proc.
 
@@ -58,13 +58,18 @@ Class Procs:
 */
 
 
-/connection_edge/var/zone/A
+/connection_edge
+	var/zone/A
 
-/connection_edge/var/list/connecting_turfs = list()
-/connection_edge/var/direct = 0
-/connection_edge/var/sleeping = 1
+	var/list/connecting_turfs = list()
+	var/direct = 0
+	var/sleeping = 1
+	var/coefficient = 0
 
-/connection_edge/var/coefficient = 0
+	#ifdef ZASDBG
+	///Set this to TRUE during testing to get verbose debug information.
+	var/tmp/verbose = FALSE
+	#endif
 
 /connection_edge/New()
 	CRASH("Cannot make connection edge without specifications.")
@@ -72,55 +77,42 @@ Class Procs:
 /connection_edge/proc/add_connection(connection/c)
 	coefficient++
 	if(c.direct()) direct++
-//	log_debug("Connection added: [type] Coefficient: [coefficient]")
+
+	#ifdef ZASDBG
+	if(verbose)
+		zas_log("Connection added: [type] Coefficient: [coefficient]")
+	#endif
 
 
 /connection_edge/proc/remove_connection(connection/c)
-//	log_debug("Connection removed: [type] Coefficient: [coefficient-1]")
-
 	coefficient--
 	if(coefficient <= 0)
 		erase()
 	if(c.direct()) direct--
 
+	#ifdef ZASDBG
+	if(verbose)
+		zas_log("Connection removed: [type] Coefficient: [coefficient-1]")
+	#endif
+
 /connection_edge/proc/contains_zone(zone/Z)
 
 /connection_edge/proc/erase()
 	SSair.remove_edge(src)
-//	log_debug("[type] Erased.")
 
+	#ifdef ZASDBG
+	if(verbose)
+		zas_log("[type] Erased.")
+	#endif
 
 /connection_edge/proc/tick()
 
 /connection_edge/proc/recheck()
 
 /connection_edge/proc/flow(list/movable, differential, repelled)
-	for(var/i = 1; i <= movable.len; i++)
-		var/atom/movable/M = movable[i]
-
+	for(var/atom/movable/M as anything in movable)
 		//If they're already being tossed, don't do it again.
-		if(M.last_airflow > world.time - vsc.airflow_delay) continue
-		if(M.airflow_speed) continue
-
-		//Check for knocking people over
-		if(ismob(M) && differential > vsc.airflow_stun_pressure)
-			if(M:status_flags & GODMODE) continue
-			M:airflow_stun()
-
-		if(M.check_airflow_movable(differential))
-			//Check for things that are in range of the midpoint turfs.
-			var/list/close_turfs = list()
-			for(var/turf/U in connecting_turfs)
-				if(get_dist(M,U) < world.view) close_turfs += U
-			if(!close_turfs.len) continue
-
-			M.airflow_dest = pick(close_turfs) //Pick a random midpoint to fly towards.
-
-			if(repelled) spawn if(M) M.RepelAirflowDest(differential/5)
-			else spawn if(M) M.GotoAirflowDest(differential/10)
-
-
-
+		M.handle_airflow(differential, connecting_turfs, repelled)
 
 /connection_edge/zone/var/zone/B
 
@@ -130,9 +122,11 @@ Class Procs:
 	src.B = B
 	A.edges.Add(src)
 	B.edges.Add(src)
-	//id = edge_id(A,B)
-//	log_debug("New edge between [A] and [B]")
 
+	#ifdef ZASDBG
+	if(verbose)
+		zas_log("New edge between [A] and [B]")
+	#endif
 
 /connection_edge/zone/add_connection(connection/c)
 	. = ..()
@@ -201,9 +195,11 @@ Class Procs:
 	src.B = B
 	A.edges.Add(src)
 	air = B.return_air()
-	//id = 52*A.id
-//	log_debug("New edge from [A] to [B].")
 
+	#ifdef ZASDBG
+	if(verbose)
+		zas_log("New edge from [A] to [B] ([B.x], [B.y], [B.z]).")
+	#endif
 
 /connection_edge/unsimulated/add_connection(connection/c)
 	. = ..()
@@ -231,8 +227,7 @@ Class Procs:
 
 	var/differential = A.air.return_pressure() - air.return_pressure()
 	if(abs(differential) >= vsc.airflow_lightest_pressure)
-		var/list/attracted = A.movables()
-		flow(attracted, abs(differential), differential < 0)
+		flow(A.movables(), abs(differential), differential < 0)
 
 	if(equiv)
 		A.air.copy_from(air)
@@ -247,7 +242,7 @@ Class Procs:
 	if(!A.air.compare(air, vacuum_exception = 1))
 		SSair.mark_edge_active(src)
 
-proc/ShareHeat(datum/gas_mixture/A, datum/gas_mixture/B, connecting_tiles)
+/proc/ShareHeat(datum/gas_mixture/A, datum/gas_mixture/B, connecting_tiles)
 	//This implements a simplistic version of the Stefan-Boltzmann law.
 	var/energy_delta = ((A.temperature - B.temperature) ** 4) * STEFAN_BOLTZMANN_CONSTANT * connecting_tiles * 2.5
 	var/maximum_energy_delta = max(0, min(A.temperature * A.heat_capacity() * A.group_multiplier, B.temperature * B.heat_capacity() * B.group_multiplier))

@@ -6,7 +6,6 @@
 	idle_power_usage = 10
 	var/uses = 20
 	var/disabled = 1
-	var/lethal = 0
 	var/locked = 1
 	var/cooldown_time = 0
 	var/cooldown_timeleft = 0
@@ -51,7 +50,7 @@
 	var/area/area = get_area(src)
 	if(!area || !isturf(loc))
 		return
-	var/t = "<TT><B>AI Liquid Dispenser</B> ([area.name])<HR>"
+	var/t = "<TT><B>AI Liquid Dispenser</B> ([area.proper_name])<HR>"
 
 	if(src.locked && (!istype(user, /mob/living/silicon)))
 		t += "<I>(Swipe ID card to unlock control panel.)</I><BR>"

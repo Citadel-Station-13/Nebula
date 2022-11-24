@@ -1,7 +1,7 @@
 /obj/structure/plasticflaps //HOW DO YOU CALL THOSE THINGS ANYWAY
-	name = "\improper plastic flaps"
+	name = "plastic flaps"
 	desc = "Completely impassable - or are they?"
-	icon = 'icons/obj/stationobjs.dmi' //Change this.
+	icon = 'icons/obj/structures/plastic_flaps.dmi'
 	icon_state = "plasticflaps"
 	density = 0
 	anchored = 1
@@ -12,7 +12,6 @@
 
 	var/list/mobs_can_pass = list(
 		/mob/living/bot,
-		/mob/living/carbon/slime,
 		/mob/living/simple_animal/mouse,
 		/mob/living/silicon/robot/drone
 		)
@@ -41,12 +40,12 @@
 	return ..()
 
 /obj/structure/plasticflaps/attackby(obj/item/W, mob/user)
-	if(isCrowbar(W) && !anchored)
+	if(IS_CROWBAR(W) && !anchored)
 		user.visible_message("<span class='notice'>\The [user] begins deconstructing \the [src].</span>", "<span class='notice'>You start deconstructing \the [src].</span>")
 		if(user.do_skilled(3 SECONDS, SKILL_CONSTRUCTION, src))
 			user.visible_message("<span class='warning'>\The [user] deconstructs \the [src].</span>", "<span class='warning'>You deconstruct \the [src].</span>")
 			qdel(src)
-	if(isScrewdriver(W) && anchored)
+	if(IS_SCREWDRIVER(W) && anchored)
 		airtight = !airtight
 		airtight ? become_airtight() : clear_airtight()
 		user.visible_message("<span class='warning'>\The [user] adjusts \the [src], [airtight ? "preventing" : "allowing"] air flow.</span>")
@@ -55,7 +54,7 @@
 /obj/structure/plasticflaps/explosion_act(severity)
 	..()
 	if(!QDELETED(src) && (severity == 1 || (severity == 2 && prob(50)) || (severity == 3 && prob(5))))
-		physically_destroyed(src)
+		physically_destroyed()
 
 /obj/structure/plasticflaps/Initialize()
 	. = ..()

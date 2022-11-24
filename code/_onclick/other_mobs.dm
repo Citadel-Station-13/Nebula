@@ -16,16 +16,28 @@
 	// Special glove functions:
 	// If the gloves do anything, have them return 1 to stop
 	// normal attack_hand() here.
-	var/obj/item/clothing/gloves/G = gloves // not typecast specifically enough in defines
+	var/obj/item/clothing/gloves/G = get_equipped_item(slot_gloves_str) // not typecast specifically enough in defines
 	if(istype(G) && G.Touch(A,1))
 		return
 
 	A.attack_hand(src)
 
-/atom/proc/attack_hand(mob/user)
-	. = FALSE
+/atom/proc/handle_grab_interaction(var/mob/user)
+	return FALSE
 
-/mob/proc/attack_empty_hand(var/bp_hand)
+/atom/proc/attack_hand(mob/user)
+
+	if(handle_grab_interaction(user))
+		return TRUE
+
+	if(LAZYLEN(climbers) && !(user in climbers))
+		user.visible_message(
+			SPAN_DANGER("\The [user] shakes \the [src]!"),
+			SPAN_DANGER("You shake \the [src]!"))
+		object_shaken()
+		return TRUE
+
+/mob/proc/attack_empty_hand()
 	return
 
 /mob/living/carbon/human/RestrainedClickOn(var/atom/A)
@@ -41,10 +53,9 @@
 	if((istype(A, /turf/simulated/floor) || istype(A, /turf/unsimulated/floor) || istype(A, /obj/structure/lattice) || istype(A, /obj/structure/catwalk)) && isturf(loc) && bound_overlay && !is_physically_disabled()) //Climbing through openspace
 		return climb_up(A)
 
-	if(gloves)
-		var/obj/item/clothing/gloves/G = gloves
-		if(istype(G) && G.Touch(A,0)) // for magic gloves
-			return TRUE
+	var/obj/item/clothing/gloves/G = get_equipped_item(slot_gloves_str)
+	if(istype(G) && G.Touch(A,0)) // for magic gloves
+		return TRUE
 
 	. = ..()
 
@@ -67,67 +78,6 @@
 	A.attack_generic(src,rand(5,6),"bites")
 
 /*
-	Slimes
-	Nothing happening here
-*/
-
-/mob/living/carbon/slime/RestrainedClickOn(var/atom/A)
-	return
-
-/mob/living/carbon/slime/UnarmedAttack(var/atom/A, var/proximity)
-
-	if(!..())
-		return
-
-	// Eating
-	if(Victim)
-		if (Victim == A)
-			Feedstop()
-		return
-
-	//should have already been set if we are attacking a mob, but it doesn't hurt and will cover attacking non-mobs too
-	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
-	var/mob/living/M = A
-	if(!istype(M))
-		A.attack_generic(src, (is_adult ? rand(20,40) : rand(5,25)), "glomped") // Basic attack.
-	else
-		var/power = max(0, min(10, (powerlevel + rand(0, 3))))
-
-		switch(src.a_intent)
-			if (I_HELP) // We just poke the other
-				M.visible_message("<span class='notice'>[src] gently pokes [M]!</span>", "<span class='notice'>[src] gently pokes you!</span>")
-			if (I_DISARM) // We stun the target, with the intention to feed
-				var/stunprob = 1
-
-				if (powerlevel > 0 && !istype(A, /mob/living/carbon/slime))
-					switch(power * 10)
-						if(0) stunprob *= 10
-						if(1 to 2) stunprob *= 20
-						if(3 to 4) stunprob *= 30
-						if(5 to 6) stunprob *= 40
-						if(7 to 8) stunprob *= 60
-						if(9) 	   stunprob *= 70
-						if(10) 	   stunprob *= 95
-
-				if(prob(stunprob))
-					var/shock_damage = max(0, powerlevel-3) * rand(6,10)
-					M.electrocute_act(shock_damage, src, 1.0, ran_zone())
-				else if(prob(40))
-					M.visible_message("<span class='danger'>[src] has pounced at [M]!</span>", "<span class='danger'>[src] has pounced at you!</span>")
-					M.Weaken(power)
-				else
-					M.visible_message("<span class='danger'>[src] has tried to pounce at [M]!</span>", "<span class='danger'>[src] has tried to pounce at you!</span>")
-				M.updatehealth()
-			if (I_GRAB) // We feed
-				Wrap(M)
-			if (I_HURT) // Attacking
-				if(iscarbon(M) && prob(15))
-					M.visible_message("<span class='danger'>[src] has pounced at [M]!</span>", "<span class='danger'>[src] has pounced at you!</span>")
-					M.Weaken(power)
-				else
-					A.attack_generic(src, (is_adult ? rand(20,40) : rand(5,25)), "glomped")
-
-/*
 	New Players:
 	Have no reason to click on anything at all.
 */
@@ -143,7 +93,7 @@
 		return
 	setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 	if(istype(A,/mob/living))
-		if(!istype(natural_weapon) || a_intent == I_HELP)
+		if(a_intent == I_HELP || !get_natural_weapon())
 			custom_emote(1,"[friendly] [A]!")
 			return
 		if(ckey)

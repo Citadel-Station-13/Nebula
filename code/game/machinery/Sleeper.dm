@@ -19,21 +19,24 @@
 	var/obj/item/chems/glass/beaker = null
 	var/filtering = 0
 	var/pump
+	var/lavage = FALSE // Are we rinsing reagents from the lungs?
 	var/list/stasis_settings = list(1, 2, 5, 10)
 	var/stasis = 1
 	var/pump_speed
 	var/stasis_power = 5 KILOWATTS
 	var/list/loaded_canisters
 	var/max_canister_capacity = 5
-	var/global/list/banned_chem_types = list(
+	var/static/list/banned_chem_types = list(
 		/decl/material/liquid/bromide,
 		/decl/material/liquid/mutagenics,
 		/decl/material/liquid/acid
 	)
+	var/open_sound = 'sound/machines/podopen.ogg'
+	var/close_sound = 'sound/machines/podclose.ogg'
 
 /obj/machinery/sleeper/standard/Initialize(mapload, d, populate_parts)
 	. = ..()
-	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/adrenaline()) 
+	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/stabilizer())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/sedatives())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/painkillers())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/antitoxins())
@@ -54,7 +57,7 @@
 		return FALSE
 	if(!emagged)
 		for(var/rid in canister.reagents?.reagent_volumes)
-			var/decl/material/reagent = decls_repository.get_decl(rid)
+			var/decl/material/reagent = GET_DECL(rid)
 			for(var/banned_type in banned_chem_types)
 				if(istype(reagent, banned_type))
 					to_chat(user, SPAN_WARNING("Automatic safety checking indicates the present of a prohibited substance in this canister."))
@@ -121,30 +124,49 @@
 						ingested.trans_to_obj(beaker, pump_speed * trans_amt)
 		else
 			toggle_pump()
+	if(lavage)
+		if(beaker?.reagents)
+			if (beaker.reagents.total_volume < beaker.reagents.maximum_volume)
+				var/datum/reagents/inhaled = occupant.get_inhaled_reagents()
+				var/trans_volume = LAZYLEN(inhaled?.reagent_volumes)
+				if(inhaled && trans_volume)
+					inhaled.trans_to_obj(beaker, pump_speed * trans_volume)
+		else
+			toggle_lavage()
+
 
 	if(iscarbon(occupant) && stasis > 1)
 		occupant.SetStasis(stasis)
 
 /obj/machinery/sleeper/on_update_icon()
-	overlays.Cut()
+	cut_overlays()
 	icon_state = "med_pod"
+
 	if(occupant)
-		var/image/pickle = new
-		pickle.appearance = occupant
+		var/mutable_appearance/pickle = new /mutable_appearance(occupant)
+		var/list/icon_scale_values = occupant.get_icon_scale_mult()
+		var/desired_scale_x = icon_scale_values[1]
+		var/desired_scale_y = icon_scale_values[2]
+
+		var/matrix/M = matrix()
+		M.Scale(desired_scale_x, desired_scale_y)
+		M.Translate(0, (1.5 * world.icon_size) * (desired_scale_y - 1))
+		pickle.transform = M
+
 		pickle.layer = FLOAT_LAYER
 		pickle.pixel_z = 12
-		overlays += pickle
-	var/image/I = image(icon, "med_lid[!!(occupant && !(stat & (BROKEN|NOPOWER)))]")
-	overlays += I
+		add_overlay(pickle)
+
+	add_overlay(image(icon, "med_lid[!!(occupant && !(stat & (BROKEN|NOPOWER)))]"))
 
 /obj/machinery/sleeper/DefaultTopicState()
-	return GLOB.outside_state
+	return global.outside_topic_state
 
 /obj/machinery/sleeper/interface_interact(var/mob/user)
 	ui_interact(user)
 	return TRUE
 
-/obj/machinery/sleeper/ui_interact(var/mob/user, var/ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.outside_state)
+/obj/machinery/sleeper/ui_interact(var/mob/user, var/ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.outside_topic_state)
 	var/data[0]
 
 	data["power"] = stat & (NOPOWER|BROKEN) ? 0 : 1
@@ -156,7 +178,11 @@
 			empties++
 			continue
 		var/list/reagent = list()
-		reagent["name"] =   canister.label || "unlabeled"
+		var/datum/extension/labels/lab = get_extension(canister, /datum/extension/labels)
+		if(length(lab?.labels))
+			reagent	["name"] = (lab.labels[1])
+		else
+			reagent	["name"] = "unlabeled"
 		reagent["id"] =     "\ref[canister]"
 		reagent["amount"] = canister.reagents.total_volume
 		loaded_reagents += list(reagent)
@@ -178,6 +204,7 @@
 		data["beaker"] = -1
 	data["filtering"] = filtering
 	data["pump"] = pump
+	data["lavage"] = lavage
 	data["stasis"] = stasis
 	data["skill_check"] = user.skill_check(SKILL_MEDICAL, SKILL_BASIC)
 	ui = SSnano.try_update_ui(user, src, ui_key, ui, data, force_open)
@@ -213,6 +240,10 @@
 	if(href_list["pump"])
 		if(filtering != text2num(href_list["pump"]))
 			toggle_pump()
+			return TOPIC_REFRESH
+	if(href_list["lavage"])
+		if(lavage != text2num(href_list["lavage"]))
+			toggle_lavage()
 			return TOPIC_REFRESH
 	if(href_list["chemical"])
 		var/obj/canister = locate(href_list["chemical"])
@@ -253,18 +284,17 @@
 		return TRUE
 	return ..()
 
-/obj/machinery/sleeper/MouseDrop_T(var/mob/target, var/mob/user)
-	if(!CanMouseDrop(target, user))
-		return
-	if(!istype(target))
-		return
-	if(target.buckled)
-		to_chat(user, SPAN_WARNING("Unbuckle the subject before attempting to move them."))
-		return
-	if(panel_open)
-		to_chat(user, SPAN_WARNING("Close the maintenance panel before attempting to place the subject in the sleeper."))
-		return
-	go_in(target, user)
+/obj/machinery/sleeper/receive_mouse_drop(var/atom/dropping, var/mob/user)
+	. = ..()
+	if(!. && ismob(dropping))
+		var/mob/target = dropping
+		if(target.buckled)
+			to_chat(user, SPAN_WARNING("Unbuckle the subject before attempting to move them."))
+		else if(panel_open)
+			to_chat(user, SPAN_WARNING("Close the maintenance panel before attempting to place the subject in the sleeper."))
+		else
+			go_in(target, user)
+		return TRUE
 
 /obj/machinery/sleeper/relaymove(var/mob/user)
 	..()
@@ -292,11 +322,24 @@
 	if(!occupant || !beaker)
 		pump = 0
 		return
-	to_chat(occupant, SPAN_WARNING("You feel a tube jammed down your throat."))
 	pump = !pump
+	if(pump)
+		to_chat(occupant, SPAN_WARNING("You feel a tube jammed down your throat."))
+	else
+		to_chat(occupant, SPAN_WARNING("You feel a tube retract from your throat."))
+
+/obj/machinery/sleeper/proc/toggle_lavage()
+	if(!occupant || !beaker)
+		lavage = FALSE
+		return
+	lavage = !lavage
+	if (lavage)
+		to_chat(occupant, SPAN_WARNING("You feel a tube jammed down your windpipe."))
+	else
+		to_chat(occupant, SPAN_NOTICE("You feel a tube retract from your windpipe."))
 
 /obj/machinery/sleeper/proc/go_in(var/mob/M, var/mob/user)
-	if(!M)
+	if(!M || M.anchored)
 		return
 	if(stat & (BROKEN|NOPOWER))
 		return
@@ -314,6 +357,8 @@
 			to_chat(user, SPAN_WARNING("\The [src] is already occupied."))
 			return
 		set_occupant(M)
+		if(close_sound)
+			playsound(src, close_sound, 40)
 
 /obj/machinery/sleeper/proc/go_out()
 	if(!occupant)
@@ -323,6 +368,8 @@
 		occupant.client.perspective = MOB_PERSPECTIVE
 	occupant.dropInto(loc)
 	set_occupant(null)
+	if(open_sound)
+		playsound(src, open_sound, 40)
 
 	for(var/obj/O in (contents - (component_parts + loaded_canisters))) // In case an object was dropped inside or something. Excludes the beaker and component parts.
 		if(O != beaker)
@@ -331,7 +378,6 @@
 
 /obj/machinery/sleeper/proc/set_occupant(var/mob/living/carbon/occupant)
 	src.occupant = occupant
-	update_icon()
 	if(!occupant)
 		SetName(initial(name))
 		update_use_power(POWER_USE_IDLE)
@@ -349,6 +395,7 @@
 		beaker = null
 		toggle_filter()
 		toggle_pump()
+		toggle_lavage()
 
 /obj/machinery/sleeper/proc/inject_chemical(var/mob/living/user, var/obj/canister, var/amount, var/target_transfer_type = CHEM_INJECT)
 	if(stat & (BROKEN|NOPOWER))
@@ -362,15 +409,17 @@
 	if(!occupant || !occupant.reagents)
 		to_chat(user, SPAN_WARNING("There's no suitable occupant in \the [src]."))
 		return
-	if(occupant.reagents.total_volume + amount > 20 && !emagged)
-		to_chat(user, SPAN_WARNING("Injecting more chemicals presents an overdose risk to the subject."))
-		return
+	if(!emagged && canister.reagents?.primary_reagent)
+		var/decl/material/chem = GET_DECL(canister.reagents.primary_reagent)
+		if(chem.overdose && REAGENT_VOLUME(occupant.reagents, canister.reagents.primary_reagent) + amount >= chem.overdose)
+			to_chat(user, SPAN_WARNING("Injecting more [chem.name] presents an overdose risk to the subject."))
+			return
 	canister.reagents.trans_to_mob(occupant, amount, target_transfer_type)
 	to_chat(user, SPAN_NOTICE("You use \the [src] to [target_transfer_type == CHEM_INJECT ? "inject" : "infuse"] [amount] unit\s from \the [canister] into \the [occupant]."))
 
 /obj/machinery/sleeper/RefreshParts()
 	..()
-	pump_speed = 2 + max(Clamp(total_component_rating_of_type(/obj/item/stock_parts/scanning_module), 1, 10), 1)
+	pump_speed = 2 + max(clamp(total_component_rating_of_type(/obj/item/stock_parts/scanning_module), 1, 10), 1)
 	max_canister_capacity = 5 + round(total_component_rating_of_type(/obj/item/stock_parts/manipulator)/2)
 
 /obj/machinery/sleeper/emag_act(var/remaining_charges, var/mob/user)

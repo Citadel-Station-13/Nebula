@@ -1,11 +1,10 @@
 //replaces our stun baton code with /tg/station's code
-/obj/item/melee/baton
+/obj/item/baton
 	name = "stunbaton"
 	desc = "A stun baton for incapacitating people with."
 	icon = 'icons/obj/items/weapon/stunbaton.dmi'
-	icon_state = "stunbaton"
-	item_state = "baton"
-	slot_flags = SLOT_BELT
+	icon_state = ICON_STATE_WORLD
+	slot_flags = SLOT_LOWER_BODY
 	force = 15
 	sharp = 0
 	edge = 0
@@ -14,36 +13,42 @@
 	origin_tech = "{'combat':2}"
 	attack_verb = list("beaten")
 	base_parry_chance = 30
+	material = /decl/material/solid/metal/aluminium
+	matter = list(
+		/decl/material/solid/plastic      = MATTER_AMOUNT_SECONDARY,
+		/decl/material/solid/metal/copper = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/silicon      = MATTER_AMOUNT_REINFORCEMENT,
+	)
 	var/stunforce = 0
 	var/agonyforce = 30
 	var/status = 0		//whether the thing is on or not
 	var/obj/item/cell/bcell
 	var/hitcost = 7
 
-/obj/item/melee/baton/loaded
+/obj/item/baton/loaded
 	bcell = /obj/item/cell/device/high
 
-/obj/item/melee/baton/Initialize(var/ml)
+/obj/item/baton/Initialize(var/ml)
 	. = ..(ml)
 	if(ispath(bcell))
 		bcell = new bcell(src)
 		update_icon()
 
-/obj/item/melee/baton/Destroy()
+/obj/item/baton/Destroy()
 	if(bcell && !ispath(bcell))
 		qdel(bcell)
 		bcell = null
 	return ..()
 
-/obj/item/melee/baton/get_cell()
+/obj/item/baton/get_cell()
 	return bcell
 
-/obj/item/melee/baton/proc/update_status()
+/obj/item/baton/proc/update_status()
 	if(bcell.charge < hitcost)
 		status = 0
 		update_icon()
 
-/obj/item/melee/baton/proc/deductcharge(var/chrgdeductamt)
+/obj/item/baton/proc/deductcharge(var/chrgdeductamt)
 	if(bcell)
 		if(bcell.checked_use(chrgdeductamt))
 			update_status()
@@ -54,32 +59,29 @@
 			return 0
 	return null
 
-/obj/item/melee/baton/on_update_icon()
+/obj/item/baton/on_update_icon()
+	. = ..()
 	if(status)
-		icon_state = "[initial(name)]_active"
-	else if(!bcell)
-		icon_state = "[initial(name)]_nocell"
+		add_overlay("[icon_state]-active")
+		set_light(1.5, 2, "#ff6a00")
 	else
-		icon_state = "[initial(name)]"
-
-	if(icon_state == "[initial(name)]_active")
-		set_light(0.4, 0.1, 1, 2, "#ff6a00")
-	else
+		if(!bcell)
+			add_overlay("[icon_state]-nocell")
 		set_light(0)
 
-/obj/item/melee/baton/examine(mob/user, distance)
+/obj/item/baton/examine(mob/user, distance)
 	. = ..()
 	if(distance <= 1)
 		examine_cell(user)
 
 // Addition made by Techhead0, thanks for fullfilling the todo!
-/obj/item/melee/baton/proc/examine_cell(mob/user)
+/obj/item/baton/proc/examine_cell(mob/user)
 	if(bcell)
 		to_chat(user, "<span class='notice'>The baton is [round(bcell.percent())]% charged.</span>")
 	if(!bcell)
 		to_chat(user, "<span class='warning'>The baton does not have a power source installed.</span>")
 
-/obj/item/melee/baton/attackby(obj/item/W, mob/user)
+/obj/item/baton/attackby(obj/item/W, mob/user)
 	if(istype(W, /obj/item/cell/device))
 		if(!bcell && user.unEquip(W))
 			W.forceMove(src)
@@ -88,7 +90,7 @@
 			update_icon()
 		else
 			to_chat(user, "<span class='notice'>[src] already has a cell.</span>")
-	else if(isScrewdriver(W))
+	else if(IS_SCREWDRIVER(W))
 		if(bcell)
 			bcell.update_icon()
 			bcell.dropInto(loc)
@@ -99,17 +101,11 @@
 	else
 		..()
 
-/obj/item/melee/baton/attack_self(mob/user)
+/obj/item/baton/attack_self(mob/user)
 	set_status(!status, user)
 	add_fingerprint(user)
 
-/obj/item/melee/baton/throw_impact(atom/hit_atom, var/datum/thrownthing/TT)
-	if(istype(hit_atom,/mob/living))
-		apply_hit_effect(hit_atom, hit_zone = ran_zone(TT.target_zone, 30))//more likely to hit the zone you target!
-	else
-		..()
-
-/obj/item/melee/baton/proc/set_status(var/newstatus, mob/user)
+/obj/item/baton/proc/set_status(var/newstatus, mob/user)
 	if(bcell && bcell.charge >= hitcost)
 		if(status != newstatus)
 			change_status(newstatus)
@@ -125,20 +121,20 @@
 // Proc to -actually- change the status, and update the icons as well.
 // Also exists to ease "helpful" admin-abuse in case an bug prevents attack_self
 // to occur would appear. Hopefully it wasn't necessary.
-/obj/item/melee/baton/proc/change_status(var/s)
+/obj/item/baton/proc/change_status(var/s)
 	if (status != s)
 		status = s
 		update_icon()
 
-/obj/item/melee/baton/attack(mob/M, mob/user)
+/obj/item/baton/attack(mob/M, mob/user)
 	if(status && (MUTATION_CLUMSY in user.mutations) && prob(50))
 		to_chat(user, "<span class='danger'>You accidentally hit yourself with the [src]!</span>")
-		user.Weaken(30)
+		SET_STATUS_MAX(user, STAT_WEAK, 30)
 		deductcharge(hitcost)
 		return
 	return ..()
 
-/obj/item/melee/baton/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
+/obj/item/baton/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
 	if(isrobot(target))
 		return ..()
 
@@ -147,7 +143,7 @@
 	var/obj/item/organ/external/affecting = null
 	if(ishuman(target))
 		var/mob/living/carbon/human/H = target
-		affecting = H.get_organ(hit_zone)
+		affecting = GET_EXTERNAL_ORGAN(H, hit_zone)
 	var/abuser =  user ? "" : "by [user]"
 	if(user && user.a_intent == I_HURT)
 		. = ..()
@@ -181,29 +177,29 @@
 
 		if(ishuman(target))
 			var/mob/living/carbon/human/H = target
-			H.forcesay(GLOB.hit_appends)
+			H.forcesay(global.hit_appends)
 
 	return 1
 
-/obj/item/melee/baton/emp_act(severity)
+/obj/item/baton/emp_act(severity)
 	if(bcell)
 		bcell.emp_act(severity)	//let's not duplicate code everywhere if we don't have to please.
 	..()
 
 // Stunbaton module for Security synthetics
-/obj/item/melee/baton/robot
+/obj/item/baton/robot
 	bcell = null
 	hitcost = 20
 
 // Addition made by Techhead0, thanks for fullfilling the todo!
-/obj/item/melee/baton/robot/examine_cell(mob/user)
+/obj/item/baton/robot/examine_cell(mob/user)
 	to_chat(user, "<span class='notice'>The baton is running off an external power supply.</span>")
 
 // Override proc for the stun baton module, found in PC Security synthetics
 // Refactored to fix #14470 - old proc defination increased the hitcost beyond
 // usability without proper checks.
 // Also hard-coded to be unuseable outside their righteous synthetic owners.
-/obj/item/melee/baton/robot/attack_self(mob/user)
+/obj/item/baton/robot/attack_self(mob/user)
 	var/mob/living/silicon/robot/R = isrobot(user) ? user : null // null if the user is NOT a robot
 	update_cell(R) // takes both robots and null
 	if (R)
@@ -213,16 +209,16 @@
 		add_fingerprint(user)
 	return 0
 
-/obj/item/melee/baton/robot/attackby(obj/item/W, mob/user)
+/obj/item/baton/robot/attackby(obj/item/W, mob/user)
 	return
 
-/obj/item/melee/baton/robot/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
+/obj/item/baton/robot/apply_hit_effect(mob/living/target, mob/living/user, var/hit_zone)
 	update_cell(isrobot(user) ? user : null) // update the status before we apply the effects
 	return ..()
 
 // Updates the baton's cell to use user's own cell
 // Otherwise, if null (when the user isn't a robot), render it unuseable
-/obj/item/melee/baton/robot/proc/update_cell(mob/living/silicon/robot/user)
+/obj/item/baton/robot/proc/update_cell(mob/living/silicon/robot/user)
 	if (!user)
 		bcell = null
 		set_status(0)
@@ -230,21 +226,22 @@
 		bcell = user.cell // if it is null, nullify it anyway
 
 // Traitor variant for Engineering synthetics.
-/obj/item/melee/baton/robot/electrified_arm
+/obj/item/baton/robot/electrified_arm
 	name = "electrified arm"
 	icon = 'icons/obj/items/borg_module/electrified_arm.dmi'
 	icon_state = "electrified_arm"
 
-/obj/item/melee/baton/robot/electrified_arm/on_update_icon()
+/obj/item/baton/robot/electrified_arm/on_update_icon()
+	. = ..()
 	if(status)
 		icon_state = "electrified_arm_active"
-		set_light(0.4, 0.1, 1, 2, "#006aff")
+		set_light(1.5, 2, "#006aff")
 	else
 		icon_state = "electrified_arm"
 		set_light(0)
 
 //Makeshift stun baton. Replacement for stun gloves.
-/obj/item/melee/baton/cattleprod
+/obj/item/baton/cattleprod
 	name = "stunprod"
 	desc = "An improvised stun baton."
 	icon = 'icons/obj/items/weapon/stunprod.dmi'
@@ -257,3 +254,4 @@
 	hitcost = 25
 	attack_verb = list("poked")
 	slot_flags = null
+	matter = list(/decl/material/solid/plastic = MATTER_AMOUNT_TRACE, /decl/material/solid/metal/copper = MATTER_AMOUNT_TRACE)

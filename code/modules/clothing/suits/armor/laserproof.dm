@@ -1,12 +1,10 @@
 /obj/item/clothing/suit/armor/laserproof
 	name = "ablative vest"
 	desc = "An armored vest with advanced shielding to protect against energy weapons."
-	icon = 'icons/obj/clothing/obj_suit_modular_armor.dmi'
-	item_icons = list(slot_wear_suit_str = 'icons/mob/onmob/onmob_modular_armor.dmi')
-	icon_state = "ablative"
+	icon = 'icons/clothing/suit/armor/reflective.dmi'
 	valid_accessory_slots = list(ACCESSORY_SLOT_INSIGNIA, ACCESSORY_SLOT_ARMOR_A, ACCESSORY_SLOT_ARMOR_L)
 	restricted_accessory_slots = list(ACCESSORY_SLOT_INSIGNIA, ACCESSORY_SLOT_ARMOR_A, ACCESSORY_SLOT_ARMOR_L)
-	body_parts_covered = UPPER_TORSO|LOWER_TORSO
+	body_parts_covered = SLOT_UPPER_BODY|SLOT_LOWER_BODY
 	armor = list(
 		melee = ARMOR_MELEE_KNIVES,
 		bullet = ARMOR_BALLISTIC_PISTOL,
@@ -39,7 +37,7 @@
 /obj/item/clothing/accessory/armguards/ablative
 	name = "ablative arm guards"
 	desc = "A pair of armored arm pads with advanced shielding to protect against energy weapons."
-	icon_state = "armguards_ablative"
+	icon = 'icons/clothing/accessories/armor/armguards_ablative.dmi'
 	armor = list(
 		melee = ARMOR_MELEE_KNIVES,
 		bullet = ARMOR_BALLISTIC_SMALL,
@@ -53,7 +51,7 @@
 /obj/item/clothing/accessory/legguards/ablative
 	name = "ablative leg guards"
 	desc = "A pair of armored leg pads with advanced shielding to protect against energy weapons. Looks like they might impair movement."
-	icon_state = "legguards_ablative"
+	icon = 'icons/clothing/accessories/armor/legguards_ablative.dmi'
 	color = null
 	armor = list(
 		melee = ARMOR_MELEE_KNIVES,

@@ -18,21 +18,19 @@
 	allow_quick_empty = 1
 	allow_quick_gather = 1
 	collection_mode = 1
+	material = /decl/material/solid/plastic
+	item_flags = ITEM_FLAG_HOLLOW
 	var/linked
-
 
 /obj/item/storage/laundry_basket/attack_hand(mob/user)
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
-		var/obj/item/organ/external/temp = H.get_organ(BP_R_HAND)
-		if (user.hand)
-			temp = H.get_organ(BP_L_HAND)
+		var/obj/item/organ/external/temp = GET_EXTERNAL_ORGAN(H, H.get_active_held_item_slot())
 		if(!temp)
-			to_chat(user, "<span class='warning'>You need two hands to pick this up!</span>")
+			to_chat(user, SPAN_WARNING("You need two hands to pick this up!"))
 			return
-
-	if(user.get_inactive_hand())
-		to_chat(user, "<span class='warning'>You need your other hand to be empty</span>")
+	if(!user.get_empty_hand_slot())
+		to_chat(user, SPAN_WARNING("You need a hand to be empty."))
 		return
 	return ..()
 
@@ -51,18 +49,16 @@
 	return
 
 /obj/item/storage/laundry_basket/on_update_icon()
+	. = ..()
 	if(contents.len)
 		icon_state = "laundry-full"
 	else
 		icon_state = "laundry-empty"
-	return
 
-
-/obj/item/storage/laundry_basket/MouseDrop(obj/over_object)
-	if(over_object == usr)
-		return
-	else
-		return ..()
+/obj/item/storage/laundry_basket/handle_mouse_drop(var/atom/over, var/mob/user)
+	if(over == user)
+		return TRUE
+	. = ..()
 
 /obj/item/storage/laundry_basket/dropped(mob/user)
 	qdel(linked)

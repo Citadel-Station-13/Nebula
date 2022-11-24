@@ -8,19 +8,18 @@ AI MODULES
 
 /obj/item/aiModule
 	name = "\improper AI module"
-	icon = 'icons/obj/module.dmi'
-	icon_state = "std_mod"
-	item_state = "electronic"
+	icon = 'icons/obj/modules/module_standard.dmi'
+	icon_state = ICON_STATE_WORLD
 	desc = "An AI Module for transmitting encrypted instructions to the AI."
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	force = 5.0
 	w_class = ITEM_SIZE_SMALL
-	throwforce = 5.0
+	throwforce = 5
 	throw_speed = 3
 	throw_range = 15
 	origin_tech = "{'programming':3}"
-	material = MAT_GLASS
-	matter = list(MAT_GOLD = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/fiberglass
+	matter = list(/decl/material/solid/metal/gold = MATTER_AMOUNT_REINFORCEMENT)
 	var/datum/ai_laws/laws = null
 
 /obj/item/aiModule/proc/install(obj/machinery/computer/upload/comp, mob/user)
@@ -73,7 +72,7 @@ AI MODULES
 
 /obj/item/aiModule/proc/log_law_changes(mob/living/silicon/target, mob/sender)
 	var/time = time2text(world.realtime,"hh:mm:ss")
-	GLOB.lawchanges.Add("[time] <B>:</B> [sender.name]([sender.key]) used [src.name] on [target.name]([target.key])")
+	global.lawchanges.Add("[time] <B>:</B> [sender.name]([sender.key]) used [src.name] on [target.name]([target.key])")
 	log_and_message_admins("used [src.name] on [target.name]([target.key])")
 
 /obj/item/aiModule/proc/addAdditionalLaws(var/mob/living/silicon/ai/target, var/mob/sender)
@@ -104,7 +103,7 @@ AI MODULES
 /obj/item/aiModule/safeguard/addAdditionalLaws(var/mob/living/silicon/ai/target, var/mob/sender)
 	var/law = text("Safeguard []. Anyone threatening or attempting to harm [] is no longer to be considered a crew member, and is a threat which must be neutralized.", targetName, targetName)
 	target.add_supplied_law(9, law)
-	GLOB.lawchanges.Add("The law specified [targetName]")
+	global.lawchanges.Add("The law specified [targetName]")
 
 
 /******************** OneMember ********************/
@@ -132,9 +131,9 @@ AI MODULES
 	if (!target.is_traitor()) // Makes sure the AI isn't a traitor before changing their law 0. --NeoFite
 		to_chat(target, law)
 		target.set_zeroth_law(law)
-		GLOB.lawchanges.Add("The law specified [targetName]")
+		global.lawchanges.Add("The law specified [targetName]")
 	else
-		GLOB.lawchanges.Add("The law specified [targetName], but the AI's existing law zero cannot be overriden.")
+		global.lawchanges.Add("The law specified [targetName], but the AI's existing law zero cannot be overriden.")
 
 /******************** ProtectStation ********************/
 
@@ -215,7 +214,7 @@ AI MODULES
 	if(!lawpos || lawpos < MIN_SUPPLIED_LAW_NUMBER)
 		lawpos = MIN_SUPPLIED_LAW_NUMBER
 	target.add_supplied_law(lawpos, law)
-	GLOB.lawchanges.Add("The law was '[newFreeFormLaw]'")
+	global.lawchanges.Add("The law was '[newFreeFormLaw]'")
 
 /obj/item/aiModule/freeform/install(obj/machinery/computer/C, mob/user)
 	if(!newFreeFormLaw)
@@ -227,7 +226,6 @@ AI MODULES
 
 /obj/item/aiModule/reset
 	name = "\improper 'Reset' AI module"
-	var/targetName = "name"
 	desc = "A 'reset' AI module: 'Clears all, except the inherent, laws.'."
 	origin_tech = "{'programming':3,'materials':4}"
 
@@ -310,7 +308,7 @@ AI MODULES
 /obj/item/aiModule/freeformcore/addAdditionalLaws(var/mob/living/silicon/ai/target, var/mob/sender)
 	var/law = "[newFreeFormLaw]"
 	target.add_inherent_law(law)
-	GLOB.lawchanges.Add("The law is '[newFreeFormLaw]'")
+	global.lawchanges.Add("The law is '[newFreeFormLaw]'")
 
 /obj/item/aiModule/freeformcore/install(obj/machinery/computer/C, mob/user)
 	if(!newFreeFormLaw)
@@ -335,7 +333,7 @@ AI MODULES
 	//	..()    //We don't want this module reporting to the AI who dun it. --NEO
 	log_law_changes(target, sender)
 
-	GLOB.lawchanges.Add("The law is '[newFreeFormLaw]'")
+	global.lawchanges.Add("The law is '[newFreeFormLaw]'")
 	to_chat(target, "<span class='danger'>BZZZZT</span>")
 	var/law = "[newFreeFormLaw]"
 	target.add_ion_law(law)

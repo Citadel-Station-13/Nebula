@@ -13,7 +13,7 @@
 	if(!QDELETED(src) && (severity == 1 || (severity == 2 && prob(50) || (severity == 3 && prob(5)))))
 		qdel(src)
 
-/obj/effect/spider/attack_hand(mob/living/user)
+/obj/effect/spider/attack_hand(mob/user)
 
 	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 	user.do_attack_animation(src)
@@ -47,10 +47,10 @@
 	if(W.edge)
 		damage += 5
 
-	if(isWelder(W))
+	if(IS_WELDER(W))
 		var/obj/item/weldingtool/WT = W
 
-		if(WT.remove_fuel(0, user))
+		if(WT.weld(0, user))
 			damage = 15
 			playsound(loc, 'sound/items/Welder.ogg', 100, 1)
 
@@ -108,22 +108,26 @@
 	STOP_PROCESSING(SSobj, src)
 	if(istype(loc, /obj/item/organ/external))
 		var/obj/item/organ/external/O = loc
-		O.implants -= src
+		LAZYREMOVE(O.implants, src)
 	. = ..()
 
 /obj/effect/spider/eggcluster/Process()
+
+	if(!loc)
+		qdel(src)
+		return
+
 	if(prob(80))
 		amount_grown += rand(0,2)
+
 	if(amount_grown >= 100)
 		var/num = rand(3,9)
-		var/obj/item/organ/external/O = null
 		if(istype(loc, /obj/item/organ/external))
-			O = loc
-
-		for(var/i=0, i<num, i++)
-			var/spiderling = new /obj/effect/spider/spiderling(loc, src)
-			if(O)
-				O.implants += spiderling
+			var/obj/item/organ/external/O = loc
+			for(var/i=0, i<num, i++)
+				LAZYADD(O.implants, new /obj/effect/spider/spiderling(O, src))
+		else
+			new /obj/effect/spider/spiderling(loc, src)
 		qdel(src)
 
 /obj/effect/spider/proc/disturbed()
@@ -137,7 +141,7 @@
 /obj/effect/spider/spiderling
 	name = "spiderling"
 	desc = "It never stays still for long."
-	icon_state = "guard"
+	icon_state = "lesser"
 	anchored = 0
 	layer = BELOW_OBJ_LAYER
 	health = 3
@@ -158,7 +162,7 @@
 
 /obj/effect/spider/spiderling/Initialize(var/mapload, var/atom/parent)
 	greater_form = pickweight(castes)
-	icon_state = initial(greater_form.icon_state)
+	icon = initial(greater_form.icon)
 	pixel_x = rand(-shift_range, shift_range)
 	pixel_y = rand(-shift_range, shift_range)
 
@@ -167,7 +171,7 @@
 		dormant = FALSE
 
 	if(dormant)
-		GLOB.moved_event.register(src, src, /obj/effect/spider/proc/disturbed)
+		events_repository.register(/decl/observ/moved, src, src, /obj/effect/spider/proc/disturbed)
 	else
 		START_PROCESSING(SSobj, src)
 
@@ -182,7 +186,7 @@
 
 /obj/effect/spider/spiderling/Destroy()
 	if(dormant)
-		GLOB.moved_event.unregister(src, src, /obj/effect/spider/proc/disturbed)
+		events_repository.unregister(/decl/observ/moved, src, src, /obj/effect/spider/proc/disturbed)
 	STOP_PROCESSING(SSobj, src)
 	walk(src, 0) // Because we might have called walk_to, we must stop the walk loop or BYOND keeps an internal reference to us forever.
 	. = ..()
@@ -200,7 +204,7 @@
 	if(!dormant)
 		return
 	dormant = FALSE
-	GLOB.moved_event.unregister(src, src, /obj/effect/spider/proc/disturbed)
+	events_repository.unregister(/decl/observ/moved, src, src, /obj/effect/spider/proc/disturbed)
 	START_PROCESSING(SSobj, src)
 
 /obj/effect/spider/spiderling/Bump(atom/user)
@@ -238,19 +242,20 @@
 
 	if(loc)
 		var/datum/gas_mixture/environment = loc.return_air()
-		if(environment && environment.gas[MAT_METHYL_BROMIDE] > 0)
+		if(environment && environment.gas[/decl/material/gas/methyl_bromide] > 0)
 			die()
 			return
 
 	if(travelling_in_vent)
-		if(istype(src.loc, /turf))
+		if(isturf(src.loc))
 			travelling_in_vent = 0
 			entry_vent = null
 	else if(entry_vent)
 		if(get_dist(src, entry_vent) <= 1)
-			if(entry_vent.network && entry_vent.network.normal_members.len)
+			var/datum/pipe_network/network = entry_vent.network_in_dir(entry_vent.dir)
+			if(network && network.normal_members.len)
 				var/list/vents = list()
-				for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in entry_vent.network.normal_members)
+				for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in network.normal_members)
 					vents.Add(temp_vent)
 				if(!vents.len)
 					entry_vent = null
@@ -280,8 +285,8 @@
 					var/min_y = pixel_y <= -shift_range ? 0 : -2
 					var/max_y = pixel_y >=  shift_range ? 0 :  2
 
-					pixel_x = Clamp(pixel_x + rand(min_x, max_x), -shift_range, shift_range)
-					pixel_y = Clamp(pixel_y + rand(min_y, max_y), -shift_range, shift_range)
+					pixel_x = clamp(pixel_x + rand(min_x, max_x), -shift_range, shift_range)
+					pixel_y = clamp(pixel_y + rand(min_y, max_y), -shift_range, shift_range)
 		else if(prob(5))
 			//vent crawl!
 			for(var/obj/machinery/atmospherics/unary/vent_pump/v in view(7,src))

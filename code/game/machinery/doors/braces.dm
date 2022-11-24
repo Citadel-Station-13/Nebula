@@ -8,7 +8,8 @@
 	force = 17.5 //It has a hammer head, should probably do some more damage. - Cirra
 	attack_cooldown = 2.5*DEFAULT_WEAPON_COOLDOWN
 	melee_accuracy_bonus = -25
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
+	origin_tech = "{'engineering':3,'materials':2}"
 
 // BRACE - Can be installed on airlock to reinforce it and keep it closed.
 /obj/item/airlock_brace
@@ -17,10 +18,11 @@
 	w_class = ITEM_SIZE_LARGE
 	icon = 'icons/obj/airlock_machines.dmi'
 	icon_state = "brace_open"
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
-
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT)
 	material_health_multiplier = 0.6
+	origin_tech = "{'engineering':3,'materials':2}"
+
 	var/obj/machinery/door/airlock/airlock = null
 	var/obj/item/stock_parts/circuitboard/airlock_electronics/brace/electronics
 
@@ -46,6 +48,7 @@
 
 
 /obj/item/airlock_brace/on_update_icon()
+	. = ..()
 	if(airlock)
 		icon_state = "brace_closed"
 	else
@@ -56,7 +59,6 @@
 	. = ..()
 	health = max_health
 	electronics = new (src)
-	update_access()
 
 /obj/item/airlock_brace/Destroy()
 	if(airlock)
@@ -64,8 +66,7 @@
 		airlock = null
 	qdel(electronics)
 	electronics = null
-	..()
-
+	return ..()
 
 // Interact with the electronics to set access requirements.
 /obj/item/airlock_brace/attack_self(mob/user)
@@ -80,7 +81,6 @@
 			return
 		else
 			var/obj/item/card/id/C = W.GetIdCard()
-			update_access()
 			if(check_access(C))
 				to_chat(user, "You swipe \the [C] through \the [src].")
 				if(do_after(user, 10, airlock))
@@ -100,12 +100,12 @@
 			unlock_brace(user)
 		return
 
-	if(isWelder(W))
+	if(IS_WELDER(W))
 		var/obj/item/weldingtool/C = W
 		if(health == max_health)
 			to_chat(user, "\The [src] does not require repairs.")
 			return
-		if(C.remove_fuel(0,user))
+		if(C.weld(0,user))
 			playsound(src, 'sound/items/Welder.ogg', 100, 1)
 			health = min(health + rand(20,30), max_health)
 			if(health == max_health)
@@ -114,8 +114,8 @@
 				to_chat(user, "You repair some dents on \the [src].")
 
 
-/obj/item/airlock_brace/proc/take_damage(var/amount)
-	health = between(0, health - amount, max_health)
+/obj/item/airlock_brace/take_damage(amount, damtype, silent)
+	health = clamp(health - amount, 0, max_health)
 	if(!health)
 		if(airlock)
 			airlock.visible_message("<span class='danger'>\The [src] breaks off of \the [airlock]!</span>")
@@ -141,10 +141,3 @@
 	if(!max_health)
 		return 0
 	return (health / max_health) * 100
-
-/obj/item/airlock_brace/proc/update_access()
-	if(!electronics)
-		return
-	req_access = electronics.conf_access
-	if(electronics.one_access)
-		req_access = list(req_access)

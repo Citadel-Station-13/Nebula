@@ -1,6 +1,11 @@
 /datum/extension/local_network_member
 	base_type = /datum/extension/local_network_member
 	var/id_tag
+	var/unique = FALSE // If set to true, other objects of the same type cannot be added to the local network
+
+/datum/extension/local_network_member/New(datum/holder, is_unique = FALSE)
+	unique = is_unique
+	. = ..()
 
 /datum/extension/local_network_member/Destroy()
 	if(holder)
@@ -15,19 +20,22 @@
 		return FALSE
 
 	if(id_tag)
-		var/datum/local_network/old_lan = GLOB.local_networks[id_tag]
+		var/datum/local_network/old_lan = global.local_networks[id_tag]
 		if(old_lan)
 			if(!old_lan.remove_device(holder))
 				to_chat(user, SPAN_WARNING("You encounter an error when trying to unregister \the [holder] from the [id_tag] local network."))
 				return FALSE
 			to_chat(user, SPAN_NOTICE("You unregister \the [holder] from the [id_tag] local network."))
 
-	var/datum/local_network/lan = GLOB.local_networks[new_ident]
+	var/datum/local_network/lan = global.local_networks[new_ident]
 	if(!lan)
 		lan = new(new_ident)
 		lan.add_device(holder)
 		to_chat(user, SPAN_NOTICE("You create a new [new_ident] local network and register \the [holder] with it."))
 	else if(lan.within_radius(holder))
+		if(unique && length(lan.network_entities[holder.type]))
+			to_chat(user, SPAN_WARNING("\A [holder] is already registered to the local network."))
+			return FALSE
 		lan.add_device(holder)
 		to_chat(user, SPAN_NOTICE("You register \the [holder] with the [new_ident] local network."))
 	else
@@ -37,7 +45,7 @@
 	return TRUE
 
 /datum/extension/local_network_member/proc/get_local_network()
-	var/datum/local_network/lan = id_tag ? GLOB.local_networks[id_tag] : null
+	var/datum/local_network/lan = id_tag ? global.local_networks[id_tag] : null
 	if(lan && !lan.within_radius(holder))
 		lan.remove_device(holder)
 		id_tag = null
@@ -62,19 +70,22 @@
 		return FALSE
 
 	if(id_tag)
-		var/datum/local_network/multilevel/old_lan = GLOB.multilevel_local_networks[id_tag]
+		var/datum/local_network/multilevel/old_lan = global.multilevel_local_networks[id_tag]
 		if(old_lan)
 			if(!old_lan.remove_device(holder))
 				to_chat(user, SPAN_WARNING("You encounter an error when trying to unregister \the [holder] from the [id_tag] local network."))
 				return FALSE
 			to_chat(user, SPAN_NOTICE("You unregister \the [holder] from the [id_tag] local network."))
 
-	var/datum/local_network/multilevel/lan = GLOB.multilevel_local_networks[new_ident]
+	var/datum/local_network/multilevel/lan = global.multilevel_local_networks[new_ident]
 	if(!lan)
 		lan = new(new_ident)
 		lan.add_device(holder)
 		to_chat(user, SPAN_NOTICE("You create a new [new_ident] local network and register \the [holder] with it."))
 	else if(lan.within_radius(holder))
+		if(unique && length(lan.network_entities[holder.type]))
+			to_chat(user, SPAN_WARNING("\A [holder] is already registered to the local network."))
+			return FALSE
 		lan.add_device(holder)
 		to_chat(user, SPAN_NOTICE("You register \the [holder] with the [new_ident] local network."))
 	else
@@ -84,7 +95,7 @@
 	return TRUE
 
 /datum/extension/local_network_member/multilevel/get_local_network()
-	var/datum/local_network/multilevel/lan = id_tag ? GLOB.multilevel_local_networks[id_tag] : null
+	var/datum/local_network/multilevel/lan = id_tag ? global.multilevel_local_networks[id_tag] : null
 	if(lan && !lan.within_radius(holder))
 		lan.remove_device(holder)
 		id_tag = null

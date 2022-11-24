@@ -17,6 +17,8 @@
 	var/obj/vehicle/train/lead
 	var/obj/vehicle/train/tow
 
+/obj/vehicle/train/user_buckle_mob(mob/living/M, mob/user)
+	return load(M)
 
 //-------------------------------------------
 // Standard procs
@@ -24,7 +26,15 @@
 /obj/vehicle/train/Initialize()
 	. = ..()
 	for(var/obj/vehicle/train/T in orange(1, src))
-		latch(T)
+		if(T.lead || T.is_train_head())
+			latch(T)
+
+/obj/vehicle/train/examine(mob/user)
+	. = ..()
+	if (lead)
+		to_chat(user, SPAN_NOTICE("It is hitched to \the [lead]."))
+	if (tow)
+		to_chat(user, SPAN_NOTICE("It is towing \the [tow]."))
 
 /obj/vehicle/train/Move()
 	var/old_loc = get_turf(src)
@@ -91,17 +101,21 @@
 	unload(user, direction)
 
 	to_chat(user, "<span class='notice'>You climb down from [src].</span>")
-
 	return 1
 
-/obj/vehicle/train/MouseDrop_T(var/atom/movable/C, mob/user)
-	if(!CanPhysicallyInteract(user) || !user.Adjacent(C) || !istype(C) || (user == C))
-		return
-	if(istype(C,/obj/vehicle/train))
-		latch(C, user)
-	else
-		if(!load(C))
-			to_chat(user, "<span class='warning'>You were unable to load [C] on [src].</span>")
+/obj/vehicle/train/handle_mouse_drop(atom/over, mob/user)
+	if(istype(over, /obj/vehicle/train))
+		var/obj/vehicle/train/beep = over
+		beep.latch(src, user)
+		return TRUE
+	. = ..()
+
+/obj/vehicle/train/receive_mouse_drop(var/atom/dropping, mob/user)
+	. = ..()
+	if(!. && istype(dropping, /atom/movable))
+		if(!load(dropping))
+			to_chat(user, SPAN_WARNING("You were unable to load \the [dropping] onto \the [src]."))
+		return TRUE
 
 /obj/vehicle/train/attack_hand(mob/user)
 	if(user.stat || user.restrained() || !Adjacent(user))
@@ -186,12 +200,7 @@
 	if(!istype(T) || !Adjacent(T))
 		return 0
 
-	var/T_dir = get_dir(src, T)	//figure out where T is wrt src
-
-	if(dir == T_dir) 	//if car is ahead
-		src.attach_to(T, user)
-	else if(GLOB.reverse_dir[dir] == T_dir)	//else if car is behind
-		T.attach_to(src, user)
+	T.attach_to(src, user)
 
 //returns 1 if this is the lead car of the train
 /obj/vehicle/train/proc/is_train_head()

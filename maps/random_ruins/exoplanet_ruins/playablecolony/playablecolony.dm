@@ -1,8 +1,7 @@
-#include "../../../mods/dionaea/_dionaea.dme"
+#include "../../../../mods/mobs/dionaea/_dionaea.dme"
 
 /datum/map_template/ruin/exoplanet/playablecolony
 	name = "established colony"
-	id = "playablecolony"
 	description = "a fully functional colony on the frontier of settled space"
 	suffixes = list("playablecolony/colony.dmm")
 	cost = 2
@@ -21,16 +20,32 @@
 	info = "You are a Colonist, living on the rim of explored, let alone inhabited, space in a reconstructed shelter made from the very ship that took you here."
 	total_positions = 6
 	outfit_type = /decl/hierarchy/outfit/job/colonist
+	min_skill = list(
+		SKILL_LITERACY = SKILL_BASIC,
+		SKILL_CONSTRUCTION = SKILL_BASIC,
+		SKILL_MEDICAL = SKILL_BASIC,
+		SKILL_BOTANY = SKILL_BASIC,
+		SKILL_EVA = SKILL_BASIC,
+		SKILL_ELECTRICAL = SKILL_BASIC
+	)
+	skill_points = 20
+	alt_titles = list(
+		"Colony Engineer",
+		"Colony Doctor",
+		"Colony Botanist",
+		"Colony Officer",
+		"Colony Miner"
+	)
 
 /decl/hierarchy/outfit/job/colonist
-	name = OUTFIT_JOB_NAME("Colonist")
+	name = "Job - Colonist"
 	id_type = null
 	pda_type = null
 
-/obj/effect/submap_landmark/spawnpoint/colonist_spawn
+/obj/abstract/submap_landmark/spawnpoint/colonist_spawn
 	name = "Colonist"
 
-/obj/effect/submap_landmark/joinable_submap/colony
+/obj/abstract/submap_landmark/joinable_submap/colony
 	name = "Established Colony"
 	archetype = /decl/submap_archetype/playablecolony
 

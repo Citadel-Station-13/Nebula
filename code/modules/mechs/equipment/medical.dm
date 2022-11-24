@@ -38,7 +38,7 @@
 	. = ..()
 	if(.)
 		if(ishuman(target) && !sleeper.occupant)
-			owner.visible_message(SPAN_NOTICE("\The [src] is lowered down to load [target]"))
+			owner.visible_message(SPAN_NOTICE("\The [src] is lowered down to load [target]."))
 			sleeper.go_in(target, user)
 		else to_chat(user, SPAN_WARNING("You cannot load that in!"))
 
@@ -58,13 +58,13 @@
 
 /obj/machinery/sleeper/mounted/standard/Initialize(mapload, d, populate_parts)
 	. = ..()
-	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/adrenaline()) 
+	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/adrenaline())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/sedatives())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/painkillers())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/antitoxins())
 	add_reagent_canister(null, new /obj/item/chems/chem_disp_cartridge/oxy_meds())
 
-/obj/machinery/sleeper/mounted/ui_interact(var/mob/user, var/ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.mech_state)
+/obj/machinery/sleeper/mounted/ui_interact(var/mob/user, var/ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = global.mech_topic_state)
 	. = ..()
 
 /obj/machinery/sleeper/mounted/nano_host()

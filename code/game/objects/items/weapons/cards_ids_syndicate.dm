@@ -5,10 +5,15 @@
 	var/mob/registered_user = null
 	color = COLOR_GRAY40
 	detail_color = COLOR_NT_RED
+	var/static/list/base_access = list(
+		access_maint_tunnels,
+		access_hacked,
+		access_external_airlocks
+	)
 
 /obj/item/card/id/syndicate/Initialize()
 	. = ..()
-	access = syndicate_access.Copy()
+	access = base_access.Copy()
 
 /obj/item/card/id/syndicate/station_access/Initialize()
 	. = ..() // Same as the normal Syndicate id, only already has all station access
@@ -50,9 +55,9 @@
 	entries[++entries.len] = list("name" = "Suffix", 			"value" = formal_name_suffix)
 	entries[++entries.len] = list("name" = "Appearance",		"value" = "Set")
 	entries[++entries.len] = list("name" = "Assignment",		"value" = assignment)
-	if(GLOB.using_map.flags & MAP_HAS_BRANCH)
+	if(global.using_map.flags & MAP_HAS_BRANCH)
 		entries[++entries.len] = list("name" = "Branch",		"value" = military_branch ? military_branch.name : "N/A")
-	if(military_branch && (GLOB.using_map.flags & MAP_HAS_RANK))
+	if(military_branch && (global.using_map.flags & MAP_HAS_RANK))
 		entries[++entries.len] = list("name" = "Rank",			"value" = military_rank ? military_rank.name : "N/A")
 	entries[++entries.len] = list("name" = "Blood Type",		"value" = blood_type)
 	entries[++entries.len] = list("name" = "DNA Hash", 			"value" = dna_hash)
@@ -76,13 +81,13 @@
 	unset_registered_user()
 	registered_user = user
 	user.set_id_info(src)
-	GLOB.destroyed_event.register(user, src, /obj/item/card/id/syndicate/proc/unset_registered_user)
+	events_repository.register(/decl/observ/destroyed, user, src, /obj/item/card/id/syndicate/proc/unset_registered_user)
 	return TRUE
 
 /obj/item/card/id/syndicate/proc/unset_registered_user(var/mob/user)
 	if(!registered_user || (user && user != registered_user))
 		return
-	GLOB.destroyed_event.unregister(registered_user, src)
+	events_repository.unregister(/decl/observ/destroyed, registered_user, src)
 	registered_user = null
 
 /obj/item/card/id/syndicate/CanUseTopic(var/mob/user, var/datum/topic_state/state, var/href_list)
@@ -110,13 +115,13 @@
 					to_chat(user, "<span class='notice'>Age has been set to '[age]'.</span>")
 					. = 1
 			if("Prefix")
-				var/new_prefix = sanitizeSafe(input(user,"What title prefix would you like to put on this card?","Agent Card Prefix", age) as text, MAX_NAME_LEN)
+				var/new_prefix = sanitize_safe(input(user,"What title prefix would you like to put on this card?","Agent Card Prefix", age) as text, MAX_NAME_LEN)
 				if(!isnull(new_prefix) && CanUseTopic(user, state))
 					formal_name_prefix = new_prefix
 					to_chat(user, "<span class='notice'>Title prefix has been set to '[formal_name_prefix]'.</span>")
 					. = 1
 			if("Suffix")
-				var/new_suffix = sanitizeSafe(input(user,"What title suffix would you like to put on this card?","Agent Card Suffix", age) as text, MAX_NAME_LEN)
+				var/new_suffix = sanitize_safe(input(user,"What title suffix would you like to put on this card?","Agent Card Suffix", age) as text, MAX_NAME_LEN)
 				if(!isnull(new_suffix) && CanUseTopic(user, state))
 					formal_name_suffix = new_suffix
 					to_chat(user, "<span class='notice'>Title suffix has been set to '[formal_name_suffix]'.</span>")
@@ -172,7 +177,7 @@
 					to_chat(user, "<span class='notice'>Fingerprint hash changed to '[new_fingerprint_hash]'.</span>")
 					. = 1
 			if("Name")
-				var/new_name = sanitizeName(input(user,"What name would you like to put on this card?","Agent Card Name", registered_name) as null|text, allow_numbers=TRUE)
+				var/new_name = sanitize_name(input(user,"What name would you like to put on this card?","Agent Card Name", registered_name) as null|text, allow_numbers=TRUE)
 				if(!isnull(new_name) && CanUseTopic(user, state))
 					src.registered_name = new_name
 					to_chat(user, "<span class='notice'>Name changed to '[new_name]'.</span>")
@@ -192,7 +197,7 @@
 					age = initial(age)
 					formal_name_prefix = initial(formal_name_prefix)
 					formal_name_suffix = initial(formal_name_suffix)
-					access = syndicate_access.Copy()
+					access = base_access.Copy()
 					assignment = initial(assignment)
 					blood_type = initial(blood_type)
 					dna_hash = initial(dna_hash)
@@ -226,7 +231,7 @@
 	// Always update the UI, or buttons will spin indefinitely
 	SSnano.update_uis(src)
 
-/var/global/list/id_card_states
+var/global/list/id_card_states
 /proc/id_card_states()
 	if(!id_card_states)
 		id_card_states = list()
@@ -257,7 +262,6 @@
 	var/item_state
 	var/color
 	var/detail_color
-	var/details
 	var/extra_details
 
 /datum/card_state/dd_SortValue()

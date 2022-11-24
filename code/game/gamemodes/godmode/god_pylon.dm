@@ -18,7 +18,7 @@
 		linked_god.leave_pylon()
 	return ..()
 
-/obj/structure/deity/pylon/attack_hand(var/mob/living/L)
+/obj/structure/deity/pylon/attack_hand(var/mob/L)
 	if(!linked_god)
 		return
 	if(L in intuned)
@@ -31,14 +31,14 @@
 		return
 	to_chat(L, "<span class='notice'>You place your hands on \the [src], feeling yourself intune to its vibrations.</span>")
 	intuned += L
-	GLOB.destroyed_event.register(L,src,/obj/structure/deity/pylon/proc/remove_intuned)
+	events_repository.register(/decl/observ/destroyed, L,src,/obj/structure/deity/pylon/proc/remove_intuned)
 
 /obj/structure/deity/pylon/proc/remove_intuned(var/mob/living/L)
 	if(!(L in intuned))
 		return
 	to_chat(L, "<span class='warning'>You no longer feel intuned to \the [src].</span>")
 	intuned -= L
-	GLOB.destroyed_event.unregister(L, src)
+	events_repository.unregister(/decl/observ/destroyed, L, src)
 
 /obj/structure/deity/pylon/OnTopic(var/mob/living/carbon/human/user, var/href_list)
 	if(href_list["vision_jump"])
@@ -65,9 +65,9 @@
 			if(P == src || linked_god.pylon == P)
 				continue
 			P.audible_message("<b>\The [P]</b> resonates, \"[text]\"")
-	to_chat(linked_god, "\icon[src] <span class='game say'><span class='name'>[M]</span> (<A href='?src=\ref[linked_god];jump=\ref[src];'>P</A>) [verb], [linked_god.pylon == src ? "<b>" : ""]<span class='message'><span class='body'>\"[text]\"</span></span>[linked_god.pylon == src ? "</b>" : ""]</span>")
+	to_chat(linked_god, "[html_icon(src)] <span class='game say'><span class='name'>[M]</span> (<A href='?src=\ref[linked_god];jump=\ref[src];'>P</A>) [verb], [linked_god.pylon == src ? "<b>" : ""]<span class='message'><span class='body'>\"[text]\"</span></span>[linked_god.pylon == src ? "</b>" : ""]</span>")
 	if(linked_god.minions.len)
 		for(var/minion in linked_god.minions)
 			var/datum/mind/mind = minion
 			if(mind.current && mind.current.eyeobj) //If it is currently having a vision of some sort
-				to_chat(mind.current,"\icon[src] <span class='game say'><span class='name'>[M]</span> (<A href='?src=\ref[src];vision_jump=\ref[src];'>J</A>) [verb], <span class='message'<span class='body'>\"[text]\"</span></span>")
+				to_chat(mind.current,"[html_icon(src)] <span class='game say'><span class='name'>[M]</span> (<A href='?src=\ref[src];vision_jump=\ref[src];'>J</A>) [verb], <span class='message'<span class='body'>\"[text]\"</span></span>")

@@ -1,4 +1,4 @@
-GLOBAL_DATUM_INIT(musical_config, /datum/musical_config, new)
+var/global/datum/musical_config/musical_config = new
 
 /datum/musical_config
 	var/highest_octave = 9
@@ -16,9 +16,6 @@ GLOBAL_DATUM_INIT(musical_config, /datum/musical_config, new)
 	var/max_line_length = 50
 	var/max_events = 2400
 	var/song_editor_lines_per_page = 20
-
-	var/usage_info_channel_resolution = 1
-	var/usage_info_event_resolution = 8
 
 	var/env_settings_available = 1
 

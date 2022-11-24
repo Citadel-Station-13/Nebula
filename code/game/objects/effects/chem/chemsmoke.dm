@@ -20,7 +20,7 @@
 	if(cached_icon)
 		icon = cached_icon
 
-	set_dir(pick(GLOB.cardinal))
+	set_dir(pick(global.cardinal))
 	pixel_x = -32 + rand(-8, 8)
 	pixel_y = -32 + rand(-8, 8)
 
@@ -136,16 +136,17 @@
 	var/contained = carry.get_reagents()
 	var/area/A = get_area(location)
 
-	var/where = "[A.name] | [location.x], [location.y]"
+	var/where = "[A.proper_name] | [location.x], [location.y]"
 	var/whereLink = "<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[location.x];Y=[location.y];Z=[location.z]'>[where]</a>"
 
 	if(show_log)
-		if(carry.my_atom.fingerprintslast)
-			var/mob/M = get_mob_by_key(carry.my_atom.fingerprintslast)
+		var/atom/location = carry?.get_reaction_loc()
+		if(location?.fingerprintslast)
+			var/mob/M = get_mob_by_key(location.fingerprintslast)
 			var/more = ""
 			if(M)
 				more = "(<A HREF='?_src_=holder;adminmoreinfo=\ref[M]'>?</a>)"
-			log_and_message_admins("A chemical smoke reaction has taken place in ([whereLink])[contained]. Last associated key is [carry.my_atom.fingerprintslast][more].")
+			log_and_message_admins("A chemical smoke reaction has taken place in ([whereLink])[contained]. Last associated key is [location.fingerprintslast][more].")
 		else
 			log_and_message_admins("A chemical smoke reaction has taken place in ([whereLink]). No associated key.")
 
@@ -159,10 +160,9 @@
 		return
 
 	if(LAZYLEN(chemholder.reagents.reagent_volumes))
-		for(var/turf/T in wallList)
+		for(var/turf/T in (wallList|targetTurfs))
 			chemholder.reagents.touch_turf(T)
 		for(var/turf/T in targetTurfs)
-			chemholder.reagents.touch_turf(T)
 			for(var/atom/A in T.contents)
 				if(istype(A, /obj/effect/effect/smoke/chem) || istype(A, /mob))
 					continue
@@ -183,7 +183,7 @@
 	var/pressure = 0
 	var/datum/gas_mixture/environment = location.return_air()
 	if(environment) pressure = environment.return_pressure()
-	smoke_duration = between(5, smoke_duration*pressure/(ONE_ATMOSPHERE/3), smoke_duration)
+	smoke_duration = clamp(5, smoke_duration*pressure/(ONE_ATMOSPHERE/3), smoke_duration)
 
 	var/const/arcLength = 2.3559 //distance between each smoke cloud
 
@@ -247,7 +247,7 @@
 
 	while(pending.len)
 		for(var/turf/current in pending)
-			for(var/D in GLOB.cardinal)
+			for(var/D in global.cardinal)
 				var/turf/target = get_step(current, D)
 				if(wallList)
 					if(istype(target, /turf/simulated/wall))

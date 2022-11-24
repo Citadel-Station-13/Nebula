@@ -13,7 +13,6 @@
 
 	var/overlay_icon = 'icons/obj/objects.dmi'
 	var/mob/living/occupant = null
-	var/charging = 0
 	var/last_overlay_state
 
 	var/charging_power			// W. Power rating used for charging the cyborg. 120 kW if un-upgraded
@@ -27,16 +26,22 @@
 	. = ..()
 	update_icon()
 
-/obj/machinery/recharge_station/MouseDrop_T(var/mob/living/target, var/mob/user)
-	if(!CanMouseDrop(target, user) || !istype(target))
-		return FALSE
-	user.visible_message(SPAN_NOTICE("\The [user] begins placing \the [target] into \the [src]."), SPAN_NOTICE("You start placing \the [target] into \the [src]."))
-	if(!do_after(user, 30, src))
-		return
-	if(target.buckled)
-		to_chat(user, SPAN_WARNING("Unbuckle the subject before attempting to move them."))
-		return FALSE	
-	go_in(target)
+/obj/machinery/recharge_station/receive_mouse_drop(var/atom/dropping, var/mob/user)
+	. = ..()
+	if(!. && isliving(dropping))
+		var/mob/living/M = dropping
+		if(M.anchored)
+			return FALSE
+		user.visible_message( \
+			SPAN_NOTICE("\The [user] begins placing \the [dropping] into \the [src]."), \
+			SPAN_NOTICE("You start placing \the [dropping] into \the [src]."))
+		if(do_after(user, 30, src))
+			var/mob/living/target = dropping
+			if(target.buckled)
+				to_chat(user, SPAN_WARNING("Unbuckle the subject before attempting to move them."))
+			else
+				go_in(target)
+		return TRUE
 
 /obj/machinery/recharge_station/Process()
 	if(stat & (BROKEN | NOPOWER))
@@ -78,13 +83,12 @@
 
 	if(ishuman(occupant))
 		var/mob/living/carbon/human/H = occupant
-		var/obj/item/organ/internal/cell/potato = H.internal_organs_by_name[BP_CELL]
+		var/obj/item/organ/internal/cell/potato = H.get_organ(BP_CELL, /obj/item/organ/internal/cell)
 		if(potato)
 			target = potato.cell
-		if((!target || target.percent() > 95) && istype(H.back,/obj/item/rig))
-			var/obj/item/rig/R = H.back
-			if(R.cell && !R.cell.fully_charged())
-				target = R.cell
+		var/obj/item/rig/R = H.get_equipped_item(slot_back_str)
+		if((!target || target.percent() > 95) && istype(R) && R.cell && !R.cell.fully_charged())
+			target = R.cell
 
 	if(target && !target.fully_charged())
 		var/diff = min(target.maxcharge - target.charge, charging_power * CELLRATE) // Capped by charging_power / tick
@@ -95,7 +99,7 @@
 	. = ..()
 	var/obj/item/cell/cell = get_cell()
 	if(cell)
-		to_chat(user, "The charge meter reads: [cell.percent()]%")
+		to_chat(user, "The charge meter reads: [cell.percent()]%.")
 	else
 		to_chat(user, "The indicator shows that the cell is missing.")
 
@@ -123,8 +127,8 @@
 
 /obj/machinery/recharge_station/RefreshParts()
 	..()
-	var/man_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 0, 10)
-	var/cap_rating = Clamp(total_component_rating_of_type(/obj/item/stock_parts/capacitor), 0, 10)
+	var/man_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/manipulator), 0, 10)
+	var/cap_rating = clamp(total_component_rating_of_type(/obj/item/stock_parts/capacitor), 0, 10)
 
 	charging_power = 40000 + 40000 * cap_rating
 	weld_rate = max(0, man_rating - 3)
@@ -175,10 +179,7 @@
 
 /obj/machinery/recharge_station/proc/go_in(var/mob/M)
 
-	if(occupant)
-		return
-
-	if(!hascell(M))
+	if(occupant || M.anchored || !hascell(M))
 		return
 
 	add_fingerprint(M)
@@ -193,13 +194,13 @@
 		var/mob/living/silicon/robot/R = M
 		return (R.cell)
 	if(ishuman(M))
-		var/mob/living/carbon/human/H = M		
+		var/mob/living/carbon/human/H = M
 		if(H.isSynthetic())
 			return 1
-		if(istype(H.back,/obj/item/rig))
-			var/obj/item/rig/R = H.back
+		var/obj/item/rig/R = H.get_equipped_item(slot_back_str)
+		if(istype(R))
 			return R.cell
-		return H.internal_organs_by_name["cell"]
+		return GET_INTERNAL_ORGAN(H, BP_CELL)
 	return 0
 
 /obj/machinery/recharge_station/proc/go_out()

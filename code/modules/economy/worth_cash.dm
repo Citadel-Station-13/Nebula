@@ -11,20 +11,21 @@
 	throw_speed = 1
 	throw_range = 2
 	w_class = ITEM_SIZE_TINY
+	material = /decl/material/solid/cardboard //#TODO: Replace with paper
 	var/currency
 	var/absolute_worth = 0
 	var/can_flip = TRUE // Cooldown tracker for single-coin flips.
+	var/static/overlay_cap = 50 // Max overlays to show in this pile.
 
 /obj/item/cash/Initialize(ml, material_key)
 	. = ..()
-	appearance_flags |= PIXEL_SCALE
 	if(!ispath(currency, /decl/currency))
-		currency = GLOB.using_map.default_currency
+		currency = global.using_map.default_currency
 	if(absolute_worth > 0)
 		update_from_worth()
 
 /obj/item/cash/get_base_value()
-	. = holographic ? 0 : absolute_worth 
+	. = holographic ? 0 : absolute_worth
 
 /obj/item/cash/proc/set_currency(var/new_currency)
 	currency = new_currency
@@ -38,8 +39,8 @@
 		update_from_worth()
 
 /obj/item/cash/proc/get_worth()
-	var/decl/currency/cur = decls_repository.get_decl(currency)
-	. = Floor(absolute_worth / cur.absolute_value)
+	var/decl/currency/cur = GET_DECL(currency)
+	. = FLOOR(absolute_worth / cur.absolute_value)
 
 /obj/item/cash/attackby(obj/item/W, mob/user)
 	if(istype(W, /obj/item/cash))
@@ -49,7 +50,7 @@
 			return
 		if(user.unEquip(W))
 			adjust_worth(cash.absolute_worth)
-			var/decl/currency/cur = decls_repository.get_decl(currency)
+			var/decl/currency/cur = GET_DECL(currency)
 			to_chat(user, SPAN_NOTICE("You add [cash.get_worth()] [cur.name] to the pile."))
 			to_chat(user, SPAN_NOTICE("It holds [get_worth()] [cur.name] now."))
 			qdel(W)
@@ -59,10 +60,11 @@
 		L.absorb_cash(src, user)
 
 /obj/item/cash/on_update_icon()
+	. = ..()
 	icon_state = ""
 	var/draw_worth = get_worth()
-	var/list/adding_notes
-	var/decl/currency/cur = decls_repository.get_decl(currency)
+	var/decl/currency/cur = GET_DECL(currency)
+	var/i = 0
 	for(var/datum/denomination/denomination in cur.denominations)
 		while(draw_worth >= denomination.marked_value)
 			draw_worth -= denomination.marked_value
@@ -75,11 +77,13 @@
 			if(denomination.rotate_icon)
 				M.Turn(pick(-45, -27.5, 0, 0, 0, 0, 0, 0, 0, 27.5, 45))
 			banknote.transform = M
-			LAZYADD(adding_notes, banknote)
-	overlays = adding_notes
+			add_overlay(banknote)
+			i++
+			if(i >= overlay_cap)
+				return
 
 /obj/item/cash/proc/update_from_worth()
-	var/decl/currency/cur = decls_repository.get_decl(currency)
+	var/decl/currency/cur = GET_DECL(currency)
 	matter = list()
 	matter[cur.material] = absolute_worth * max(1, round(SHEET_MATERIAL_AMOUNT/10))
 	var/current_worth = get_worth()
@@ -96,12 +100,12 @@
 
 /obj/item/cash/attack_self(var/mob/user)
 
-	var/decl/currency/cur = decls_repository.get_decl(currency)
+	var/decl/currency/cur = GET_DECL(currency)
 	var/current_worth = get_worth()
 
 	// Handle coin flipping. Mostly copied from /obj/item/coin.
 	var/datum/denomination/denomination = cur.denominations_by_value["[current_worth]"]
-	if(denomination && length(denomination.faces) && alert("Do you wish to divide \the [src], or flip it?", "Flip or Split?", "Flip", "Split") == "Flip")
+	if(denomination && length(denomination.faces) && (cur.denominations_by_value[length(cur.denominations_by_value)] == "[current_worth]" || alert("Do you wish to divide \the [src], or flip it?", "Flip or Split?", "Flip", "Split") == "Flip"))
 		if(!can_flip)
 			to_chat(user, SPAN_WARNING("\The [src] is already being flipped!"))
 			return
@@ -119,12 +123,12 @@
 		return TRUE
 
 	var/amount = input(usr, "How many [cur.name] do you want to take? (0 to [get_worth() - 1])", "Take Money", 20) as num
-	amount = round(Clamp(amount, 0, Floor(get_worth() - 1)))
+	amount = round(clamp(amount, 0, FLOOR(get_worth() - 1)))
 
 	if(!amount || QDELETED(src) || get_worth() <= 1 || user.incapacitated() || loc != user)
 		return TRUE
 
-	amount = Floor(amount * cur.absolute_value)
+	amount = FLOOR(amount * cur.absolute_value)
 	adjust_worth(-(amount))
 	var/obj/item/cash/cash = new(get_turf(src))
 	cash.set_currency(currency)
@@ -167,10 +171,11 @@
 /obj/item/charge_stick
 	name = "charge-stick"
 	icon = 'icons/obj/items/credstick.dmi'
-	on_mob_icon = 'icons/obj/items/credstick.dmi'
-	icon_state = "peasant"
+	icon_state = ICON_STATE_WORLD
 	desc = "A digital stick that holds an amount of money."
-
+	w_class = ITEM_SIZE_TINY
+	material = /decl/material/solid/plastic
+	matter = list(/decl/material/solid/metal/copper = MATTER_AMOUNT_TRACE, /decl/material/solid/silicon = MATTER_AMOUNT_TRACE)
 	var/max_worth = 5000
 	var/loaded_worth = 0
 	var/creator			// Who originally created this card. Mostly for book-keeping purposes. In game these cards are 'anonymous'.
@@ -182,16 +187,15 @@
 /obj/item/charge_stick/Initialize(ml, material_key)
 	. = ..()
 	id = "[grade]-card-[sequential_id("charge_stick")]"
-	appearance_flags |= PIXEL_SCALE
 	if(!ispath(currency, /decl/currency))
-		currency = GLOB.using_map.default_currency
+		currency = global.using_map.default_currency
 		update_name_desc()
 	set_extension(src, lock_type)
 	update_icon()
 
 /obj/item/charge_stick/proc/update_name_desc()
 	if(!isnull(currency))
-		var/decl/currency/cur = decls_repository.get_decl(currency)
+		var/decl/currency/cur = GET_DECL(currency)
 		name = "[cur.name]-stick"
 		desc = "A pre-charged digital stick that anonymously holds an amount of [cur.name]."
 		return
@@ -211,8 +215,8 @@
 			to_chat(user, SPAN_WARNING("\The [src] is locked."))
 		else
 			to_chat(user, SPAN_NOTICE("<b>Id:</b> [id]."))
-			var/decl/currency/cur = decls_repository.get_decl(currency)
-			to_chat(user, SPAN_NOTICE("<b>[capitalize(cur.name)]</b> remaining: [Floor(loaded_worth / cur.absolute_value)]."))
+			var/decl/currency/cur = GET_DECL(currency)
+			to_chat(user, SPAN_NOTICE("<b>[capitalize(cur.name)]</b> remaining: [FLOOR(loaded_worth / cur.absolute_value)]."))
 
 /obj/item/charge_stick/get_base_value()
 	. = holographic ? 0 : loaded_worth
@@ -230,22 +234,22 @@
 			to_chat(user, SPAN_WARNING("Cannot transfer funds from a locked [W]."))
 			return TRUE
 		if(sender.currency != currency)
-			to_chat(user, SPAN_WARNING("\icon[src] [src] chirps, \"Mismatched currency detected. Unable to transfer.\""))
+			to_chat(user, SPAN_WARNING("[html_icon(src)] [src] chirps, \"Mismatched currency detected. Unable to transfer.\""))
 			return TRUE
 		var/amount = input(user, "How much of [sender.loaded_worth] do you want to transfer?", "[sender] transfer", "0") as null|num
 		if(!amount)
 			return TRUE
 		if(amount < 0 || amount > sender.loaded_worth)
-			to_chat(user, SPAN_NOTICE("\icon[src] [src] chirps, \"Enter a valid number between 1 and [sender.loaded_worth] to transfer.\""))
+			to_chat(user, SPAN_NOTICE("[html_icon(src)] [src] chirps, \"Enter a valid number between 1 and [sender.loaded_worth] to transfer.\""))
 			return TRUE
 		sender.loaded_worth -= amount
 		loaded_worth += amount
 		sender.update_icon()
 		update_icon()
-		var/decl/currency/cur = decls_repository.get_decl(currency)
-		to_chat(user, SPAN_NOTICE("\icon[src] [src] chirps, \"Completed transfer of [amount] [cur.name].\""))
+		var/decl/currency/cur = GET_DECL(currency)
+		to_chat(user, SPAN_NOTICE("[html_icon(src)] [src] chirps, \"Completed transfer of [amount] [cur.name].\""))
 		return TRUE
-	
+
 	if(lock.attackby(W, user))
 		return TRUE
 	return ..()
@@ -258,7 +262,7 @@
 
 /obj/item/charge_stick/attack_self(var/mob/user)
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
-	lock.ui_interact(user)		
+	lock.ui_interact(user)
 
 /obj/item/charge_stick/proc/is_locked()
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
@@ -266,11 +270,15 @@
 
 /obj/item/charge_stick/on_update_icon()
 	. = ..()
-	if(get_world_inventory_state() == ICON_STATE_WORLD)
-		icon_state = "world"
-		return 
 
-	icon_state = grade
+	if(grade && grade != "peasant")
+		var/image/I = image(icon, "[icon_state]-[grade]")
+		I.appearance_flags |= RESET_COLOR
+		overlays += I
+
+	if(get_world_inventory_state() == ICON_STATE_WORLD)
+		return
+
 	var/datum/extension/lockable/lock = get_extension(src, /datum/extension/lockable)
 	if(lock.locked)
 		return
@@ -282,11 +290,11 @@
 		return
 
 	var/h_thou = loaded_worth / 100000
-	var/t_thou = (loaded_worth - (Floor(h_thou) * 100000)) / 10000
-	var/thou = (loaded_worth - (Floor(h_thou) * 100000) - (Floor(t_thou) * 10000)) / 1000
-	overlays += image(icon, "[Floor(h_thou)]__")
-	overlays += image(icon, "_[Floor(t_thou)]_")
-	overlays += image(icon, "__[Floor(thou)]")
+	var/t_thou = (loaded_worth - (FLOOR(h_thou) * 100000)) / 10000
+	var/thou = (loaded_worth - (FLOOR(h_thou) * 100000) - (FLOOR(t_thou) * 10000)) / 1000
+	overlays += image(icon, "[FLOOR(h_thou)]__")
+	overlays += image(icon, "_[FLOOR(t_thou)]_")
+	overlays += image(icon, "__[FLOOR(thou)]")
 
 /obj/item/charge_stick/copper
 	grade = "copper"
@@ -310,9 +318,6 @@
 
 /atom/movable/proc/GetChargeStick()
 	return null
-	
+
 /obj/item/charge_stick/GetChargeStick()
 	return src
-
-/obj/item/coin/get_base_value()
-	. = max((holographic ? 0 : absolute_worth), ..())

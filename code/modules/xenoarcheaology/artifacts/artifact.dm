@@ -3,11 +3,11 @@
 	desc = "A large alien device."
 	icon = 'icons/obj/xenoarchaeology.dmi'
 	icon_state = "ano00"
+	density = TRUE
+
 	var/base_icon = "ano0"
-	density = 1
 	var/datum/artifact_effect/my_effect
 	var/datum/artifact_effect/secondary_effect
-	var/being_used = 0
 
 /obj/structure/artifact/Initialize()
 	. = ..()
@@ -35,6 +35,7 @@
 	return FALSE
 
 /obj/structure/artifact/on_update_icon()
+	..()
 	icon_state = "[base_icon][is_active()]"
 
 /obj/structure/artifact/Destroy()
@@ -61,7 +62,7 @@
 		return
 
 	for(var/obj/item/grab/G in grabbed_by)
-		if(G.assailant)
+		if(isliving(G.assailant))
 			check_triggers(/datum/artifact_trigger/proc/on_touch, G.assailant)
 			touched(G.assailant)
 
@@ -72,20 +73,20 @@
 	for(var/datum/artifact_effect/effect in list(my_effect, secondary_effect))
 		effect.process()
 
-/obj/structure/artifact/attack_robot(mob/living/user)
+/obj/structure/artifact/attack_robot(mob/user)
 	if(!CanPhysicallyInteract(user))
 		return
 	visible_message(SPAN_NOTICE("[user] touches \the [src]."))
 	check_triggers(/datum/artifact_trigger/proc/on_touch, user)
 	touched(user)
 
-/obj/structure/artifact/attack_hand(mob/living/user)
+/obj/structure/artifact/attack_hand(mob/user)
 	. = ..()
 	visible_message(SPAN_NOTICE("[user] touches \the [src]."))
 	check_triggers(/datum/artifact_trigger/proc/on_touch, user)
 	touched(user)
 
-/obj/structure/artifact/attackby(obj/item/W, mob/living/user)
+/obj/structure/artifact/attackby(obj/item/W, mob/user)
 	. = ..()
 	visible_message(SPAN_WARNING("[user] hits \the [src] with \the [W]."))
 	check_triggers(/datum/artifact_trigger/proc/on_hit, W, user)
@@ -93,7 +94,8 @@
 /obj/structure/artifact/Bumped(M)
 	..()
 	check_triggers(/datum/artifact_trigger/proc/on_bump, M)
-	touched(M)
+	if(isliving(M))
+		touched(M)
 
 /obj/structure/artifact/bullet_act(var/obj/item/projectile/P)
 	visible_message(SPAN_WARNING("\The [P] hits \the [src]!"))
@@ -129,3 +131,6 @@
 		out += secondary_effect.getDescription()
 
 	return out
+
+/obj/structure/artifact/fluid_act(datum/reagents/fluids)
+	check_triggers(/datum/artifact_trigger/proc/on_fluid_act, fluids)

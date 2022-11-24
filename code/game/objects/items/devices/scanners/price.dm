@@ -5,24 +5,24 @@
 	icon_state = "price_scanner"
 	origin_tech = "{'materials':6,'magnets':4}"
 	scan_sound = 'sound/effects/checkout.ogg'
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	matter = list(
-		MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT,
-		MAT_SILVER = MATTER_AMOUNT_TRACE
+		/decl/material/solid/fiberglass = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/metal/silver = MATTER_AMOUNT_TRACE
 	)
 	var/scanner_currency
 
 /obj/item/scanner/price/Initialize(ml, material_key)
 	. = ..()
 	if(!ispath(scanner_currency, /decl/currency))
-		scanner_currency = GLOB.using_map.default_currency
+		scanner_currency = global.using_map.default_currency
 
 /obj/item/scanner/price/is_valid_scan_target(atom/movable/target)
 	return istype(target) && target.get_combined_monetary_worth() > 0
 
 /obj/item/scanner/price/scan(atom/movable/target, mob/user)
 	scan_title = "Price estimations"
-	var/decl/currency/cur = decls_repository.get_decl(scanner_currency)
+	var/decl/currency/cur = GET_DECL(scanner_currency)
 	var/data = "\The [target]: [cur.format_value(target.get_combined_monetary_worth())]"
 	if(!scan_data)
 		scan_data = data

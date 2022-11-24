@@ -1,4 +1,7 @@
 /mob/living/silicon/robot/Life()
+
+	SHOULD_CALL_PARENT(FALSE)
+
 	set invisibility = 0
 	set background = 1
 
@@ -10,6 +13,7 @@
 	//Status updates, death etc.
 	clamp_values()
 	handle_regular_status_updates()
+	handle_status_effects()
 	handle_actions()
 
 	if(client)
@@ -20,14 +24,12 @@
 		process_killswitch()
 		process_locks()
 		process_queued_alarms()
+		process_os()
 	UpdateLyingBuckledAndVerbStatus()
 
 /mob/living/silicon/robot/proc/clamp_values()
-
-//	SetStunned(min(stunned, 30))
-	SetParalysis(min(paralysis, 30))
-//	SetWeakened(min(weakened, 20))
-	sleeping = 0
+	set_status(STAT_PARA, min(GET_STATUS(src, STAT_PARA), 30))
+	set_status(STAT_ASLEEP, 0)
 	adjustBruteLoss(0)
 	adjustToxLoss(0)
 	adjustOxyLoss(0)
@@ -67,34 +69,26 @@
 		set_light(0)
 
 /mob/living/silicon/robot/handle_regular_status_updates()
-
-	if(src.camera && !scrambledcodes)
-		if(src.stat == 2 || wires.IsIndexCut(BORG_WIRE_CAMERA))
-			src.camera.set_status(0)
-		else
-			src.camera.set_status(1)
-
 	updatehealth()
 
-	if(src.sleeping)
-		Paralyse(3)
-		src.sleeping--
+	if(HAS_STATUS(src, STAT_ASLEEP))
+		SET_STATUS_MAX(src, STAT_PARA, 3)
 
 	if(src.resting)
-		Weaken(5)
+		SET_STATUS_MAX(src, STAT_WEAK, 5)
 
 	if(health < config.health_threshold_dead && src.stat != 2) //die only once
 		death()
 
 	if (src.stat != DEAD) //Alive.
-		if (src.paralysis || src.stunned || src.weakened || !src.has_power) //Stunned etc.
+		if (incapacitated(INCAPACITATION_DISRUPTED) || !has_power)
 			src.set_stat(UNCONSCIOUS)
-			if (src.stunned > 0)
-				AdjustStunned(-1)
-			if (src.weakened > 0)
-				AdjustWeakened(-1)
-			if (src.paralysis > 0)
-				AdjustParalysis(-1)
+			if (HAS_STATUS(src, STAT_STUN))
+				ADJ_STATUS(src, STAT_STUN, -1)
+			if(HAS_STATUS(src, STAT_WEAK))
+				ADJ_STATUS(src, STAT_WEAK, -1)
+			if (HAS_STATUS(src, STAT_PARA) > 0)
+				ADJ_STATUS(src, STAT_PARA, -1)
 				src.blinded = 1
 			else
 				src.blinded = 0
@@ -102,35 +96,20 @@
 		else	//Not stunned.
 			src.set_stat(CONSCIOUS)
 
-		handle_confused()
-
 	else //Dead.
+		cameranet.update_visibility(src, FALSE)
 		src.blinded = 1
 		src.set_stat(DEAD)
 
-	if (src.stuttering) src.stuttering--
-
-	if (src.eye_blind)
-		src.eye_blind--
+	if(HAS_STATUS(src, STAT_BLIND))
+		ADJ_STATUS(src, STAT_BLIND, -1)
 		src.blinded = 1
-
-	if (src.ear_deaf > 0) src.ear_deaf--
-	if (src.ear_damage < 25)
-		src.ear_damage -= 0.05
-		src.ear_damage = max(src.ear_damage, 0)
 
 	src.set_density(!src.lying)
-
-	if ((src.sdisabilities & BLINDED))
+	if(src.sdisabilities & BLINDED)
 		src.blinded = 1
-	if ((src.sdisabilities & DEAFENED))
-		src.ear_deaf = 1
-
-	if (src.eye_blurry > 0)
-		src.eye_blurry--
-		src.eye_blurry = max(0, src.eye_blurry)
-
-	handle_drugged()
+	if(src.sdisabilities & DEAFENED)
+		src.set_status(STAT_DEAF, 1)
 
 	//update the state of modules and components here
 	if (src.stat != CONSCIOUS)
@@ -146,6 +125,7 @@
 		src.blinded = 0
 	else
 		src.blinded = 1
+		cameranet.update_visibility(src, FALSE)
 
 	return 1
 
@@ -161,6 +141,13 @@
 				process_sec_hud(src,0,network = get_computer_network())
 			if (MED_HUD)
 				process_med_hud(src,0,network = get_computer_network())
+
+	if(length(get_active_grabs()))
+		ui_drop_grab.invisibility = 0
+		ui_drop_grab.alpha = 255
+	else
+		ui_drop_grab.invisibility = INVISIBILITY_MAXIMUM
+		ui_drop_grab.alpha = 0
 
 	if (src.healths)
 		if (src.stat != 2)
@@ -192,29 +179,28 @@
 						src.healths.icon_state = "health3"
 					if(0 to 50)
 						src.healths.icon_state = "health4"
-					if(config.health_threshold_dead to 0)
-						src.healths.icon_state = "health5"
 					else
-						src.healths.icon_state = "health6"
+						if(health > config.health_threshold_dead)
+							src.healths.icon_state = "health5"
+						else
+							src.healths.icon_state = "health6"
 		else
 			src.healths.icon_state = "health7"
 
 	if (src.syndicate && src.client)
-		for(var/datum/mind/tra in GLOB.traitors.current_antagonists)
+		var/decl/special_role/traitors = GET_DECL(/decl/special_role/traitor)
+		for(var/datum/mind/tra in traitors.current_antagonists)
 			if(tra.current)
 				// TODO: Update to new antagonist system.
 				var/I = image('icons/mob/mob.dmi', loc = tra.current, icon_state = "traitor")
 				src.client.images += I
 		src.disconnect_from_ai()
 		if(src.mind)
-			// TODO: Update to new antagonist system.
-			if(!src.mind.special_role)
-				src.mind.special_role = "traitor"
-				GLOB.traitors.current_antagonists |= src.mind
+			traitors.add_antagonist_mind(mind)
 
 	if (src.cells)
 		if (src.cell)
-			var/chargeNum = Clamp(ceil(cell.percent()/25), 0, 4)	//0-100 maps to 0-4, but give it a paranoid clamp just in case.
+			var/chargeNum = clamp(CEILING(cell.percent()/25), 0, 4)	//0-100 maps to 0-4, but give it a paranoid clamp just in case.
 			src.cells.icon_state = "charge[chargeNum]"
 		else
 			src.cells.icon_state = "charge-empty"
@@ -240,7 +226,7 @@
 			else
 				src.fire.icon_state = "fire1"
 	if(oxygen && environment)
-		var/datum/species/species = all_species[GLOB.using_map.default_species]
+		var/decl/species/species = all_species[global.using_map.default_species]
 		if(!species.breath_type || environment.gas[species.breath_type] >= species.breath_pressure)
 			src.oxygen.icon_state = "oxy0"
 			for(var/gas in species.poison_types)
@@ -256,8 +242,8 @@
 		else
 			clear_fullscreen("blind")
 			set_fullscreen(disabilities & NEARSIGHTED, "impaired", /obj/screen/fullscreen/impaired, 1)
-			set_fullscreen(eye_blurry, "blurry", /obj/screen/fullscreen/blurry)
-			set_fullscreen(drugged, "high", /obj/screen/fullscreen/high)
+			set_fullscreen(GET_STATUS(src, STAT_BLURRY), "blurry", /obj/screen/fullscreen/blurry)
+			set_fullscreen(GET_STATUS(src, STAT_DRUGGY), "high", /obj/screen/fullscreen/high)
 
 	return 1
 

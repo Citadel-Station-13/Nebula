@@ -1,6 +1,6 @@
 /spell/aoe_turf/drain_blood
 	name = "Drain Blood"
-	desc = "this spell allows the caster to borrow blood from those around them. Sharing is caring!"
+	desc = "This spell allows the caster to borrow blood from those around them. Sharing is caring!"
 	feedback = "DB"
 	school = "transmutation"
 	charge_max = 600
@@ -38,7 +38,7 @@
 				var/mob/living/carbon/human/H = user
 				var/amount = min(10, H.species.blood_volume - H.vessel.total_volume)
 				if(amount > 0)
-					H.vessel.add_reagent(H.species.blood_reagent, amount)
+					H.adjust_blood(amount)
 					continue
 			L.adjustBruteLoss(-5)
 			L.adjustFireLoss(-2.5)

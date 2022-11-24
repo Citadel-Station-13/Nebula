@@ -1,10 +1,14 @@
+var/global/list/valid_icon_sizes = list(32, 48, 64, 96, 128)
+
 /datum/preferences
 	var/clientfps = 0
 	var/ooccolor = "#010000" //Whatever this is set to acts as 'reset' color and is thus unusable as an actual custom color
-
+	var/icon_size = 64
 	var/UI_style = "Midnight"
-	var/UI_style_color = "#ffffff"
-	var/UI_style_alpha = 255
+	var/UI_style_alpha =     255
+	var/UI_style_color =     COLOR_WHITE
+	var/UI_mouseover_alpha = 255
+	var/UI_mouseover_color = COLOR_AMBER
 	//Style for popup tooltips
 	var/tooltip_style = "Midnight"
 
@@ -12,40 +16,68 @@
 	name = "UI"
 	sort_order = 1
 
-/datum/category_item/player_setup_item/player_global/ui/load_preferences(var/savefile/S)
-	S["UI_style"]		>> pref.UI_style
-	S["UI_style_color"]	>> pref.UI_style_color
-	S["UI_style_alpha"]	>> pref.UI_style_alpha
-	S["ooccolor"]		>> pref.ooccolor
-	S["clientfps"]		>> pref.clientfps
+/datum/category_item/player_setup_item/player_global/ui/load_preferences(datum/pref_record_reader/R)
+	pref.icon_size =          R.read("icon_size")
+	pref.UI_style =           R.read("UI_style")
+	pref.UI_mouseover_color = R.read("UI_mouseover_color")
+	pref.UI_mouseover_alpha = R.read("UI_mouseover_alpha")
+	pref.UI_style_color =     R.read("UI_style_color")
+	pref.UI_style_alpha =     R.read("UI_style_alpha")
+	pref.ooccolor =           R.read("ooccolor")
+	pref.clientfps =          R.read("clientfps")
 
-/datum/category_item/player_setup_item/player_global/ui/save_preferences(var/savefile/S)
-	S["UI_style"]		<< pref.UI_style
-	S["UI_style_color"]	<< pref.UI_style_color
-	S["UI_style_alpha"]	<< pref.UI_style_alpha
-	S["ooccolor"]		<< pref.ooccolor
-	S["clientfps"]		<< pref.clientfps
+/datum/category_item/player_setup_item/player_global/ui/save_preferences(datum/pref_record_writer/W)
+	W.write("icon_size",          pref.icon_size)
+	W.write("UI_style",           pref.UI_style)
+	W.write("UI_mouseover_color", pref.UI_mouseover_color)
+	W.write("UI_mouseover_alpha", pref.UI_mouseover_alpha)
+	W.write("UI_style_color",     pref.UI_style_color)
+	W.write("UI_style_alpha",     pref.UI_style_alpha)
+	W.write("ooccolor",           pref.ooccolor)
+	W.write("clientfps",          pref.clientfps)
 
 /datum/category_item/player_setup_item/player_global/ui/sanitize_preferences()
-	pref.UI_style		= sanitize_inlist(pref.UI_style, all_ui_styles, initial(pref.UI_style))
-	pref.UI_style_color	= sanitize_hexcolor(pref.UI_style_color, initial(pref.UI_style_color))
-	pref.UI_style_alpha	= sanitize_integer(pref.UI_style_alpha, 0, 255, initial(pref.UI_style_alpha))
-	pref.ooccolor		= sanitize_hexcolor(pref.ooccolor, initial(pref.ooccolor))
-	pref.clientfps	    = sanitize_integer(pref.clientfps, CLIENT_MIN_FPS, CLIENT_MAX_FPS, initial(pref.clientfps))
+	pref.UI_style		    = sanitize_inlist(pref.UI_style, all_ui_styles, initial(pref.UI_style))
+	pref.UI_mouseover_color	= sanitize_hexcolor(pref.UI_mouseover_color, initial(pref.UI_mouseover_color))
+	pref.UI_mouseover_alpha	= sanitize_integer(pref.UI_mouseover_alpha, 0, 255, initial(pref.UI_mouseover_alpha))
+	pref.UI_style_color	    = sanitize_hexcolor(pref.UI_style_color, initial(pref.UI_style_color))
+	pref.UI_style_alpha	    = sanitize_integer(pref.UI_style_alpha, 0, 255, initial(pref.UI_style_alpha))
+	pref.ooccolor		    = sanitize_hexcolor(pref.ooccolor, initial(pref.ooccolor))
+	pref.clientfps	        = sanitize_integer(pref.clientfps, CLIENT_MIN_FPS, CLIENT_MAX_FPS, initial(pref.clientfps))
+
+	if(!isnum(pref.icon_size))
+		pref.icon_size = initial(pref.icon_size)
+	pref.client?.SetWindowIconSize(pref.icon_size)
+
+/datum/category_item/player_setup_item/player_global/ui/proc/get_ui_table(var/mob/user)
+	LAZYINITLIST(.)
+	. += "<tr><td>UI Color</td>"
+	. += "<td><a href='?src=\ref[src];select_color=1'><b>[pref.UI_style_color]</b></a></td>"
+	. += "<td><table style='display:inline;' bgcolor='[pref.UI_style_color]'><tr><td>__</td></tr></table></td>"
+	. += "<td><a href='?src=\ref[src];reset=ui'>reset</a></td>"
+	. += "</tr>"
+	. += "<tr><td>UI Opacity</td>"
+	. += "<td colspan = 2><a href='?src=\ref[src];select_alpha=1'><b>[pref.UI_style_alpha]</b></a></td>"
+	. += "<td><a href='?src=\ref[src];reset=alpha'>reset</a></td>"
+	. += "</tr>"
 
 /datum/category_item/player_setup_item/player_global/ui/content(var/mob/user)
-	. += "<b>UI Settings</b><br>"
+	. = "<b>UI Settings</b><br>"
 	. += "<b>UI Style:</b> <a href='?src=\ref[src];select_style=1'><b>[pref.UI_style]</b></a><br>"
-	. += "<b>Custom UI</b> (recommended for White UI):<br>"
-	. += "-Color: <a href='?src=\ref[src];select_color=1'><b>[pref.UI_style_color]</b></a> <table style='display:inline;' bgcolor='[pref.UI_style_color]'><tr><td>__</td></tr></table> <a href='?src=\ref[src];reset=ui'>reset</a><br>"
-	. += "-Alpha(transparency): <a href='?src=\ref[src];select_alpha=1'><b>[pref.UI_style_alpha]</b></a> <a href='?src=\ref[src];reset=alpha'>reset</a><br>"
+
+	. += "<b>Custom UI</b> (recommended for White UI):"
+	. += "<table style='margin: 0px auto; padding: 1px;'>"
+	. += jointext(get_ui_table(), null)
+	. += "</table><br>"
 	. += "<b>Tooltip Style:</b> <a href='?src=\ref[src];select_tooltip_style=1'><b>[pref.tooltip_style]</b></a><br>"
+	. += "<b>Default icon size:</b> <a href='?src=\ref[src];select_icon_size=1'>[pref.icon_size]x[pref.icon_size]</a><br>"
+
 	if(can_select_ooc_color(user))
-		. += "<b>OOC Color:</b> "
+		. += "<b>OOC Color:</b> "
 		if(pref.ooccolor == initial(pref.ooccolor))
 			. += "<a href='?src=\ref[src];select_ooc_color=1'><b>Using Default</b></a><br>"
 		else
-			. += "<a href='?src=\ref[src];select_ooc_color=1'><b>[pref.ooccolor]</b></a> <table style='display:inline;' bgcolor='[pref.ooccolor]'><tr><td>__</td></tr></table> <a href='?src=\ref[src];reset=ooc'>reset</a><br>"
+			. += "<a href='?src=\ref[src];select_ooc_color=1'><b>[pref.ooccolor]</b></a> <table style='display:inline;' bgcolor='[pref.ooccolor]'><tr><td>__</td></tr></table> <a href='?src=\ref[src];reset=ooc'>reset</a><br>"
 	. += "<b>Client FPS:</b> <a href='?src=\ref[src];select_fps=1'><b>[pref.clientfps]</b></a><br>"
 
 /datum/category_item/player_setup_item/player_global/ui/OnTopic(var/href,var/list/href_list, var/mob/user)
@@ -81,7 +113,7 @@
 			version_message += "\nThis server does not currently support client side fps. You can set now for when it does."
 		var/new_fps = input(user, "Choose your desired fps.[version_message]\n(0 = synced with server tick rate (currently:[world.fps]))", "Global Preference") as num|null
 		if (isnum(new_fps) && CanUseTopic(user))
-			pref.clientfps = Clamp(new_fps, CLIENT_MIN_FPS, CLIENT_MAX_FPS)
+			pref.clientfps = clamp(new_fps, CLIENT_MIN_FPS, CLIENT_MAX_FPS)
 
 			var/mob/target_mob = preference_mob()
 			if(target_mob && target_mob.client)
@@ -101,9 +133,20 @@
 				pref.UI_style_color = initial(pref.UI_style_color)
 			if("alpha")
 				pref.UI_style_alpha = initial(pref.UI_style_alpha)
+			if("mouseover_color")
+				pref.UI_mouseover_color = initial(pref.UI_mouseover_color)
+			if("mouseover_alpha")
+				pref.UI_mouseover_alpha = initial(pref.UI_mouseover_alpha)
 			if("ooc")
 				pref.ooccolor = initial(pref.ooccolor)
 		return TOPIC_REFRESH
+
+	else if(href_list["select_icon_size"])
+		var/new_icon_size = input(user, "Enter a new default icon size.", "Default Icon Size", pref.icon_size) as null|anything in global.valid_icon_sizes
+		if(new_icon_size && pref.icon_size != new_icon_size)
+			pref.icon_size = new_icon_size
+			pref.client?.SetWindowIconSize(pref.icon_size)
+			return TOPIC_REFRESH
 
 	return ..()
 

@@ -1,6 +1,5 @@
 /decl/grab/normal/passive
 	name = "passive hold"
-	fancy_desc = "holding"
 	upgrab = /decl/grab/normal/struggle
 	shift = 8
 	stop_move = 0
@@ -12,17 +11,20 @@
 	icon_state = "reinforce"
 	break_chance_table = list(15, 60, 100)
 
-/decl/grab/normal/passive/on_hit_disarm(var/obj/item/grab/G)
-	to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to pin."))
-	return 0
+/decl/grab/normal/passive/on_hit_disarm(var/obj/item/grab/G, var/atom/A, var/proximity)
+	if(proximity)
+		to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to pin."))
+	return FALSE
 
-/decl/grab/normal/passive/on_hit_grab(var/obj/item/grab/G)
-	to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to jointlock."))
-	return 0
+/decl/grab/normal/passive/on_hit_grab(var/obj/item/grab/G, var/atom/A, var/proximity)
+	if(proximity)
+		to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to jointlock."))
+	return FALSE
 
-/decl/grab/normal/passive/on_hit_harm(var/obj/item/grab/G)
-	to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to dislocate."))
-	return 0
+/decl/grab/normal/passive/on_hit_harm(var/obj/item/grab/G, var/atom/A, var/proximity)
+	if(proximity)
+		to_chat(G.assailant, SPAN_WARNING("Your grip isn't strong enough to dislocate."))
+	return FALSE
 
 /decl/grab/normal/passive/resolve_openhand_attack(var/obj/item/grab/G)
-	return 0
+	return FALSE

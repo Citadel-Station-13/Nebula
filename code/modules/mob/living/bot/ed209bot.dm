@@ -9,7 +9,6 @@
 	health = 100
 	maxHealth = 100
 
-	is_ranged = 1
 	preparing_arrest_sounds = new()
 
 	a_intent = I_HURT
@@ -20,7 +19,8 @@
 	var/shot_delay = 4
 	var/last_shot = 0
 
-/mob/living/bot/secbot/ed209/update_icons()
+/mob/living/bot/secbot/ed209/on_update_icon()
+	..()
 	icon_state = "ed2090"
 
 /mob/living/bot/secbot/ed209/explode()
@@ -39,9 +39,7 @@
 		else
 			new /obj/item/clothing/suit/armor/vest(Tsec)
 
-	var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	spark_at(src, cardinal_only = TRUE)
 
 	new /obj/effect/decal/cleanable/blood/oil(Tsec)
 	qdel(src)

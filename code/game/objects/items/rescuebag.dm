@@ -6,6 +6,8 @@
 	icon = 'icons/obj/closets/rescuebag.dmi'
 	icon_state = "folded"
 	origin_tech = "{'biotech':2}"
+	material = /decl/material/solid/plastic
+	matter = list(/decl/material/solid/silicon = MATTER_AMOUNT_SECONDARY)
 	var/obj/item/tank/airtank
 
 /obj/item/bodybag/rescue/loaded
@@ -39,7 +41,7 @@
 			airtank = W
 			to_chat(user, "You install \the [W] in \the [src].")
 			return 1
-	else if(airtank && isScrewdriver(W))
+	else if(airtank && IS_SCREWDRIVER(W))
 		to_chat(user, "You remove \the [airtank] from \the [src].")
 		airtank.dropInto(loc)
 		airtank = null
@@ -82,9 +84,8 @@
 
 /obj/structure/closet/body_bag/rescue/on_update_icon()
 	..()
-	overlays.Cut()
 	if(airtank)
-		overlays += image(icon, "tank")
+		add_overlay("tank")
 
 /obj/structure/closet/body_bag/rescue/attackby(obj/item/W, mob/user, var/click_params)
 	if(istype(W,/obj/item/tank/))
@@ -95,7 +96,7 @@
 			set_tank(W)
 			to_chat(user, "You install \the [W] in \the [src].")
 			return 1
-	else if(airtank && isScrewdriver(W))
+	else if(airtank && IS_SCREWDRIVER(W))
 		to_chat(user, "You remove \the [airtank] from \the [src].")
 		airtank.dropInto(loc)
 		airtank = null

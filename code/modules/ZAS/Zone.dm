@@ -45,7 +45,6 @@ Class Procs:
 	var/invalid = 0
 	var/list/contents = list()
 	var/list/fire_tiles = list()
-	var/list/fuel_objs = list()
 	var/needs_update = 0
 	var/list/edges = list()
 	var/datum/gas_mixture/air = new
@@ -64,7 +63,7 @@ Class Procs:
 #ifdef ZASDBG
 	ASSERT(!invalid)
 	ASSERT(istype(T))
-	ASSERT(!SSair.has_valid_zone(T))
+	ASSERT(!TURF_HAS_VALID_ZONE(T))
 #endif
 
 	var/datum/gas_mixture/turf_air = T.return_air()
@@ -74,9 +73,6 @@ Class Procs:
 	if(T.fire)
 		fire_tiles.Add(T)
 		SSair.active_fire_zones |= src
-		var/obj/effect/fluid/fuel = T.return_fluid()
-		if(fuel?.get_fuel_amount()) 
-			fuel_objs += fuel
 	T.update_graphic(air.graphic)
 
 /zone/proc/remove(turf/simulated/T)
@@ -88,8 +84,6 @@ Class Procs:
 #endif
 	contents.Remove(T)
 	fire_tiles.Remove(T)
-	if(T.fire)
-		fuel_objs -= T.return_fluid()
 	T.zone = null
 	T.update_graphic(graphic_remove = air.graphic)
 	if(contents.len)
@@ -109,7 +103,7 @@ Class Procs:
 		into.add(T)
 		T.update_graphic(graphic_remove = air.graphic)
 		#ifdef ZASDBG
-		T.dbg(merged)
+		T.dbg(zasdbgovl_merged)
 		#endif
 
 	//rebuild the old zone's edges so that they will be possessed by the new zone
@@ -124,7 +118,7 @@ Class Procs:
 	SSair.remove_zone(src)
 	#ifdef ZASDBG
 	for(var/turf/simulated/T in contents)
-		T.dbg(invalid_zone)
+		T.dbg(zasdbgovl_invalid_zone)
 	#endif
 
 /zone/proc/rebuild()
@@ -133,7 +127,6 @@ Class Procs:
 	c_invalidate()
 	for(var/turf/simulated/T in contents)
 		T.update_graphic(graphic_remove = air.graphic) //we need to remove the overlays so they're not doubled when the zone is rebuilt
-		//T.dbg(invalid_zone)
 		T.needs_air_update = 0 //Reset the marker so that it will be added to the list.
 		SSair.mark_for_update(T)
 		CHECK_TICK
@@ -150,7 +143,6 @@ Class Procs:
 
 	// Update fires.
 	if(air.temperature >= FLAMMABLE_GAS_FLASHPOINT && !(src in SSair.active_fire_zones) && air.check_combustibility() && contents.len)
-
 		var/turf/T = pick(contents)
 		if(istype(T))
 			T.create_fire(vsc.fire_firelevel_multiplier)
@@ -159,6 +151,7 @@ Class Procs:
 	if(air.check_tile_graphic(graphic_add, graphic_remove))
 		for(var/turf/simulated/T in contents)
 			T.update_graphic(graphic_add, graphic_remove)
+			CHECK_TICK
 		graphic_add.len = 0
 		graphic_remove.len = 0
 
@@ -166,6 +159,7 @@ Class Procs:
 	for(var/connection_edge/E in edges)
 		if(E.sleeping)
 			E.recheck()
+			CHECK_TICK
 
 	// Handle condensation from the air.
 	if(!condensing)
@@ -178,15 +172,15 @@ Class Procs:
 			for(var/check_atom in T.contents)
 				var/atom/checking = check_atom
 				if(checking.simulated)
-					QUEUE_TEMPERATURE_ATOMS(checking)
+					queue_temperature_atoms(checking)
 			CHECK_TICK
 
 /zone/proc/handle_condensation()
 	set waitfor = FALSE
 	condensing = TRUE
 	for(var/g in air.gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
-		if(air.temperature <= mat.gas_condensation_point)
+		var/decl/material/mat = GET_DECL(g)
+		if(!isnull(mat.gas_condensation_point) && (air.temperature <= mat.gas_condensation_point))
 			var/condensation_area = air.group_multiplier / length(air.gas)
 			while(condensation_area > 0 && length(contents))
 				condensation_area--
@@ -198,19 +192,18 @@ Class Procs:
 				var/obj/effect/fluid/F = locate() in flooding
 				if(!F) F = new(flooding)
 				F.reagents.add_reagent(g, condense_amt * REAGENT_UNITS_PER_GAS_MOLE)
-				CHECK_TICK
+		CHECK_TICK
 	condensing = FALSE
 
 /zone/proc/dbg_data(mob/M)
 	to_chat(M, name)
 	for(var/g in air.gas)
-		var/decl/material/mat = decls_repository.get_decl(g)
+		var/decl/material/mat = GET_DECL(g)
 		to_chat(M, "[capitalize(mat.gas_name)]: [air.gas[g]]")
 	to_chat(M, "P: [air.return_pressure()] kPa V: [air.volume]L T: [air.temperature]°K ([air.temperature - T0C]°C)")
-	to_chat(M, "O2 per N2: [(air.gas[MAT_NITROGEN] ? air.gas[MAT_OXYGEN]/air.gas[MAT_NITROGEN] : "N/A")] Moles: [air.total_moles]")
+	to_chat(M, "O2 per N2: [(air.gas[/decl/material/gas/nitrogen] ? air.gas[/decl/material/gas/oxygen]/air.gas[/decl/material/gas/nitrogen] : "N/A")] Moles: [air.total_moles]")
 	to_chat(M, "Simulated: [contents.len] ([air.group_multiplier])")
-//	to_chat(M, "Unsimulated: [unsimulated_contents.len]")
-//	to_chat(M, "Edges: [edges.len]")
+	to_chat(M, "Edges: [length(edges)]")
 	if(invalid) to_chat(M, "Invalid!")
 	var/zone_edges = 0
 	var/space_edges = 0

@@ -2,8 +2,8 @@
 	channels = list(
 		"Security" = TRUE
 	)
-	networks = list(
-		NETWORK_SECURITY
+	camera_channels = list(
+		CAMERA_CHANNEL_SECURITY
 	)
 	software = list(
 		/datum/computer_file/program/suit_sensors,
@@ -29,7 +29,7 @@
 				T.update_icon()
 			else
 				T.charge_tick = 0
-	var/obj/item/melee/baton/robot/B = locate() in equipment
+	var/obj/item/baton/robot/B = locate() in equipment
 	if(B && B.bcell)
 		B.bcell.give(amount)
 
@@ -37,21 +37,20 @@
 	name = "security robot module"
 	display_name = "Security"
 	crisis_locked = TRUE
-	sprites = list(
-		"Basic" = "secborg",
-		"Red Knight" = "Security",
-		"Black Knight" = "securityrobot",
-		"Bloodhound" = "bloodhound",
-		"Bloodhound - Treaded" = "secborg+tread",
-		"Tridroid" = "orb-security"
+	module_sprites = list(
+		"Basic"                = 'icons/mob/robots/robot_security_old.dmi',
+		"Black Knight"         = 'icons/mob/robots/robot_secborg.dmi',
+		"Bloodhound"           = 'icons/mob/robots/robot_security.dmi',
+		"Bloodhound - Treaded" = 'icons/mob/robots/robot_security_tread.dmi',
+		"Tridroid"             = 'icons/mob/robots/robot_orb.dmi'
 	)
 	equipment = list(
 		/obj/item/flash,
 		/obj/item/borg/sight/hud/sec,
 		/obj/item/handcuffs/cyborg,
-		/obj/item/melee/baton/robot,
+		/obj/item/baton/robot,
 		/obj/item/gun/energy/gun/secure/mounted,
-		/obj/item/taperoll/police,
+		/obj/item/stack/tape_roll/barricade_tape/police,
 		/obj/item/megaphone,
 		/obj/item/holowarrant,
 		/obj/item/crowbar,
@@ -64,8 +63,8 @@
 	display_name = "Combat"
 	crisis_locked = TRUE
 	hide_on_manifest = TRUE
-	sprites = list(
-		"Combat Android" = "droid-combat"
+	module_sprites = list(
+		"Combat Android" = 'icons/mob/robots/robot_combat.dmi'
 	)
 	equipment = list(
 		/obj/item/flash,

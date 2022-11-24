@@ -8,7 +8,7 @@
 	icon_state = "conpipe-s"
 	anchored = 0
 	density = 0
-	material = MAT_STEEL
+	material = /decl/material/solid/metal/steel
 	level = 2
 	obj_flags = OBJ_FLAG_ROTATABLE
 	var/sort_type = ""
@@ -92,7 +92,8 @@
 	set_dir(turn(dir, 180))
 
 /obj/structure/disposalconstruct/on_update_icon()
-	if("con[built_icon_state]" in icon_states(icon))
+	..()
+	if(check_state_in_icon("con[built_icon_state]", icon))
 		icon_state = "con[built_icon_state]"
 	else
 		icon_state = built_icon_state
@@ -129,7 +130,7 @@
 
 	var/obj/structure/disposalpipe/CP = locate() in T
 
-	if(isWrench(I))
+	if(IS_WRENCH(I))
 		if(anchored)
 			anchored = 0
 			wrench_down(FALSE)
@@ -146,7 +147,7 @@
 	else if(istype(I, /obj/item/weldingtool))
 		if(anchored)
 			var/obj/item/weldingtool/W = I
-			if(W.remove_fuel(0,user))
+			if(W.weld(0,user))
 				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 				to_chat(user, "Welding \the [src] in place.")
 				if(do_after(user, 20, src))

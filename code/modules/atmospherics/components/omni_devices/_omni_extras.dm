@@ -1,16 +1,10 @@
 //--------------------------------------------
 // Omni device port types
 //--------------------------------------------
-#define ATM_NONE	0
-#define ATM_INPUT	1
-#define ATM_OUTPUT	2
-
-#define ATM_O2		3
-#define ATM_N2		4
-#define ATM_CO2		5
-#define ATM_P		6	//Phoron
-#define ATM_N2O		7
-#define ATM_H2		8
+#define ATM_NONE		0
+#define ATM_INPUT		1
+#define ATM_OUTPUT		2
+#define ATM_FILTER		8 //as to not interfer with legacy handling.
 
 //--------------------------------------------
 // Omni port datum
@@ -25,10 +19,10 @@
 	var/mode = 0
 	var/concentration = 0
 	var/con_lock = 0
-	var/transfer_moles = 0
 	var/datum/gas_mixture/air
-	var/obj/machinery/atmospherics/node
+	var/list/nodes // lazy list of nodes
 	var/datum/pipe_network/network
+	var/decl/material/gas/filtering //Our filtering gas, if any.
 
 /datum/omni_port/New(var/obj/machinery/atmospherics/omni/M, var/direction = NORTH)
 	..()
@@ -38,17 +32,25 @@
 	air = new
 	air.volume = 200
 
+/datum/omni_port/Destroy()
+	QDEL_NULL(network)
+	QDEL_NULL(air)
+	master = null
+	nodes = null
+	. = ..()
+
 /datum/omni_port/proc/connect()
-	if(node)
+	if(LAZYLEN(nodes))
 		return
 	master.atmos_init()
-	master.build_network()
-	if(node)
+	for(var/obj/machinery/atmospherics/node as anything in nodes)
 		node.atmos_init()
+	master.build_network()
+	for(var/obj/machinery/atmospherics/node as anything in nodes)
 		node.build_network()
 
 /datum/omni_port/proc/disconnect()
-	if(node)
+	for(var/obj/machinery/atmospherics/node as anything in nodes)
 		node.disconnect(master)
 		master.disconnect(node)
 
@@ -93,19 +95,3 @@
 		else
 			return 0
 
-/proc/mode_to_gasid(var/mode)
-	switch(mode)
-		if(ATM_O2)
-			return MAT_OXYGEN
-		if(ATM_N2)
-			return MAT_NITROGEN
-		if(ATM_CO2)
-			return MAT_CO2
-		if(ATM_P)
-			return MAT_PHORON
-		if(ATM_N2O)
-			return MAT_N2O
-		if(ATM_H2)
-			return MAT_HYDROGEN
-		else
-			return null

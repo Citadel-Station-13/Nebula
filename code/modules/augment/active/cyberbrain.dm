@@ -4,6 +4,8 @@
 	icon_state = "cyberbrain"
 	allowed_organs = list(BP_AUGMENT_HEAD)
 	augment_flags = AUGMENTATION_MECHANIC
+	origin_tech = "{'materials':2,'magnets':3,'engineering':3,'biotech':2,'programming':4}"
+
 	var/list/default_hardware = list(
 		/obj/item/stock_parts/computer/processor_unit/small,
 		/obj/item/stock_parts/computer/hard_drive/small,
@@ -21,12 +23,18 @@
 	. = ..()
 
 	START_PROCESSING(SSobj, src)
-	set_extension(src, /datum/extension/interactive/ntos/device/implant)
+	set_extension(src, /datum/extension/interactive/os/device/implant)
 	set_extension(src, /datum/extension/assembly/modular_computer/cyberbrain)
 
 	update_icon()
-	
+
 	install_default_hardware()
+
+/obj/item/organ/internal/augment/active/cyberbrain/get_contained_external_atoms()
+	. = ..()
+	var/datum/extension/assembly/assembly = get_extension(src, /datum/extension/assembly)
+	if(assembly)
+		LAZYREMOVE(., assembly.parts)
 
 // Used to perform preset-specific hardware changes.
 /obj/item/organ/internal/augment/active/cyberbrain/proc/install_default_hardware()
@@ -40,7 +48,7 @@
 
 	var/datum/extension/assembly/modular_computer/assembly = get_extension(src, /datum/extension/assembly)
 	if(assembly.enabled && assembly.screen_on)
-		var/datum/extension/interactive/ntos/os = get_extension(src, /datum/extension/interactive/ntos)
+		var/datum/extension/interactive/os/os = get_extension(src, /datum/extension/interactive/os)
 		if(os)
 			os.ui_interact(owner)
 	else if(!assembly.enabled && assembly.screen_on)
@@ -52,21 +60,23 @@
 		return
 	return ..()
 
-/obj/item/organ/internal/augment/active/cyberbrain/MouseDrop(var/atom/over_object)
-	var/mob/M = usr
-	if(!istype(over_object, /obj/screen) && CanMouseDrop(M))
-		return attack_self(M)
+/obj/item/organ/internal/augment/active/cyberbrain/handle_mouse_drop(atom/over, mob/user)
+	if(!istype(over, /obj/screen))
+		attack_self(user)
+		return TRUE
+	. = ..()
 
 /obj/item/organ/internal/augment/active/cyberbrain/Process()
-	var/datum/extension/assembly/assembly = get_extension(src, /datum/extension/assembly)
-	if(assembly)
-		assembly.Process()
-		if(!assembly.enabled)
-			return
-
-	var/datum/extension/interactive/ntos/os = get_extension(src, /datum/extension/interactive/ntos)
-	if(os)
-		os.Process()
+	..()
+	if(!is_broken() && !(status & ORGAN_DEAD))
+		var/datum/extension/assembly/assembly = get_extension(src, /datum/extension/assembly)
+		if(assembly)
+			assembly.Process()
+			if(!assembly.enabled)
+				return
+		var/datum/extension/interactive/os/os = get_extension(src, /datum/extension/interactive/os)
+		if(os)
+			os.Process()
 
 /*
  *
@@ -89,8 +99,8 @@
 	assembly_name = "cyberbrain"
 	force_synth = TRUE
 
-/datum/extension/interactive/ntos/device/implant
+/datum/extension/interactive/os/device/implant
 	expected_type = /obj/item/organ/internal/augment/active/cyberbrain
 
-/datum/extension/interactive/ntos/device/implant/emagged()
+/datum/extension/interactive/os/device/implant/emagged()
 	return FALSE

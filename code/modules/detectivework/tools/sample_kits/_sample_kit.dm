@@ -4,6 +4,7 @@
 	icon = 'icons/obj/forensics.dmi'
 	w_class = ITEM_SIZE_TINY
 	item_flags = ITEM_FLAG_NO_PRINT
+	material = /decl/material/solid/glass
 
 // Sampling kits
 
@@ -27,18 +28,20 @@
 
 /obj/item/forensics/sample_kit/proc/take_sample(var/mob/user, var/atom/supplied)
 	var/obj/item/forensics/sample/S = new evidence_path(get_turf(user), supplied)
-	to_chat(user, SPAN_NOTICE("You transfer [S.evidence.len] [S.evidence.len > 1 ? "[evidence_type]s" : "[evidence_type]"] to \the [S]."))
+	to_chat(user, SPAN_NOTICE("You transfer [S.evidence.len] [evidence_type]\s to \the [S]."))
 
 /obj/item/forensics/sample_kit/afterattack(var/atom/A, var/mob/user, var/proximity)
 	if(!proximity)
 		return
-	if(user.skill_check(SKILL_FORENSICS, SKILL_ADEPT) && can_take_sample(user, A))
+	if(user.skill_check(SKILL_FORENSICS, SKILL_BASIC) && can_take_sample(user, A))
 		take_sample(user,A)
 		. = 1
 	else
 		to_chat(user, SPAN_WARNING("You are unable to locate any [evidence_type]s on \the [A]."))
 		. = ..()
 
-/obj/item/forensics/sample_kit/MouseDrop(atom/over)
-	if(ismob(src.loc) && CanMouseDrop(over))
-		afterattack(over, usr, TRUE)
+/obj/item/forensics/sample_kit/handle_mouse_drop(atom/over, mob/user)
+	if(ismob(loc))
+		afterattack(over, user, TRUE)
+		return TRUE
+	. = ..()

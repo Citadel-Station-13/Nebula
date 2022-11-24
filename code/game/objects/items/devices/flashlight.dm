@@ -9,18 +9,22 @@
 	item_state = "flashlight"
 	w_class = ITEM_SIZE_SMALL
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 
-	material = MAT_PLASTIC
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/plastic
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 
 	action_button_name = "Toggle Flashlight"
+
 	var/on = FALSE
 	var/activation_sound = 'sound/effects/flashlight.ogg'
-	var/flashlight_max_bright = 0.5 //brightness of light when on, must be no greater than 1.
-	var/flashlight_inner_range = 1 //inner range of light when on, can be negative
-	var/flashlight_outer_range = 3 //outer range of light when on, can be negative
+
+	var/flashlight_range = 4 // range of light when on, can be negative
+	var/flashlight_power     // brightness of light when on
 	var/flashlight_flags = 0 // FLASHLIGHT_ bitflags
+
+	light_wedge = LIGHT_WIDE
+	var/spawn_dir // a way for mappers to force which way a flashlight faces upon spawning
 
 /obj/item/flashlight/Initialize()
 	. = ..()
@@ -29,6 +33,7 @@
 	update_icon()
 
 /obj/item/flashlight/on_update_icon()
+	. = ..()
 	if (flashlight_flags & FLASHLIGHT_ALWAYS_ON)
 		return // Prevent update_icon shennanigans with objects that won't have on/off variant sprites
 
@@ -59,10 +64,32 @@
 	return 1
 
 /obj/item/flashlight/proc/set_flashlight()
+	if(light_wedge)
+		set_dir(pick(NORTH, SOUTH, EAST, WEST))
+		if(spawn_dir)
+			set_dir(spawn_dir)
 	if (on)
-		set_light(flashlight_max_bright, flashlight_inner_range, flashlight_outer_range, 2, light_color)
+		set_light(flashlight_range, flashlight_power, light_color)
 	else
 		set_light(0)
+
+/obj/item/flashlight/examine(mob/user, distance)
+	. = ..()
+	if(light_wedge && isturf(loc))
+		to_chat(user, FONT_SMALL(SPAN_NOTICE("\The [src] is facing [dir2text(dir)].")))
+
+/obj/item/flashlight/dropped(mob/user)
+	. = ..()
+	if(light_wedge)
+		set_dir(user.dir)
+		update_light()
+
+/obj/item/flashlight/throw_at()
+	. = ..()
+	if(light_wedge)
+		var/new_dir = pick(NORTH, SOUTH, EAST, WEST)
+		set_dir(new_dir)
+		update_light()
 
 /obj/item/flashlight/attack(mob/living/M, mob/living/user)
 	add_fingerprint(user)
@@ -73,8 +100,9 @@
 
 		var/mob/living/carbon/human/H = M	//mob has protective eyewear
 		if(istype(H))
-			for(var/obj/item/clothing/C in list(H.head,H.wear_mask,H.glasses))
-				if(istype(C) && (C.body_parts_covered & EYES))
+			for(var/slot in global.standard_headgear_slots)
+				var/obj/item/clothing/C = H.get_equipped_item(slot)
+				if(istype(C) && (C.body_parts_covered & SLOT_EYES))
 					to_chat(user, "<span class='warning'>You're going to need to remove [C] first.</span>")
 					return
 
@@ -83,10 +111,11 @@
 				to_chat(user, "<span class='warning'>You can't find anything on [H] to direct [src] into!</span>")
 				return
 
-			vision = H.internal_organs_by_name[H.species.vision_organ]
+			vision = GET_INTERNAL_ORGAN(H, H.species.vision_organ)
 			if(!vision)
 				vision = H.species.has_organ[H.species.vision_organ]
-				to_chat(user, "<span class='warning'>\The [H] is missing \his [initial(vision.name)]!</span>")
+				var/decl/pronouns/G = H.get_pronouns()
+				to_chat(user, "<span class='warning'>\The [H] is missing [G.his] [initial(vision.name)]!</span>")
 				return
 
 			user.visible_message("<span class='notice'>\The [user] directs [src] into [M]'s [vision.name].</span>", \
@@ -114,17 +143,25 @@
 			to_chat(user, "<span class='notice'>\The [H]'s pupils give an eerie glow!</span>")
 		if(vision.damage)
 			to_chat(user, "<span class='warning'>There's visible damage to [H]'s [vision.name]!</span>")
-		else if(H.eye_blurry)
+		else if(HAS_STATUS(H, STAT_BLURRY))
 			to_chat(user, "<span class='notice'>\The [H]'s pupils react slower than normally.</span>")
 		if(H.getBrainLoss() > 15)
 			to_chat(user, "<span class='notice'>There's visible lag between left and right pupils' reactions.</span>")
 
-		var/list/pinpoint = list(/decl/material/liquid/painkillers=5,/decl/material/liquid/amphetamines=1)
-		var/list/dilating = list(/decl/material/liquid/psychoactives=5,/decl/material/liquid/hallucinogenics=1,/decl/material/liquid/adrenaline=1)
+		var/static/list/pinpoint = list(
+			/decl/material/liquid/painkillers = 5,
+			/decl/material/liquid/amphetamines = 1
+		)
+		var/static/list/dilating = list(
+			/decl/material/liquid/psychoactives = 5,
+			/decl/material/liquid/hallucinogenics = 1,
+			/decl/material/liquid/adrenaline = 1
+		)
+
 		var/datum/reagents/ingested = H.get_ingested_reagents()
-		if(H.reagents.has_any_reagent(pinpoint) || ingested.has_any_reagent(pinpoint))
+		if(H.reagents.has_any_reagent(pinpoint) || ingested?.has_any_reagent(pinpoint))
 			to_chat(user, "<span class='notice'>\The [H]'s pupils are already pinpoint and cannot narrow any more.</span>")
-		else if(H.shock_stage >= 30 || H.reagents.has_any_reagent(dilating) || ingested.has_any_reagent(dilating))
+		else if(H.shock_stage >= 30 || H.reagents.has_any_reagent(dilating) || ingested?.has_any_reagent(dilating))
 			to_chat(user, "<span class='notice'>\The [H]'s pupils narrow slightly, but are still very dilated.</span>")
 		else
 			to_chat(user, "<span class='notice'>\The [H]'s pupils narrow.</span>")
@@ -136,8 +173,8 @@
 	desc = "An energy efficient flashlight."
 	icon_state = "biglight"
 	item_state = "biglight"
-	flashlight_max_bright = 0.75
-	flashlight_outer_range = 4
+	flashlight_range = 6
+	flashlight_power = 3
 
 /obj/item/flashlight/flashdark
 	name = "flashdark"
@@ -145,9 +182,8 @@
 	icon_state = "flashdark"
 	item_state = "flashdark"
 	w_class = ITEM_SIZE_NORMAL
-	flashlight_max_bright = -1
-	flashlight_outer_range = 4
-	flashlight_inner_range = 1
+	flashlight_range = 8
+	flashlight_power = -6
 
 /obj/item/flashlight/pen
 	name = "penlight"
@@ -157,9 +193,12 @@
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	slot_flags = SLOT_EARS
 	w_class = ITEM_SIZE_TINY
-	flashlight_max_bright = 0.25
-	flashlight_inner_range = 0.1
-	flashlight_outer_range = 2
+	flashlight_range = 2
+	light_wedge = LIGHT_OMNI
+
+/obj/item/flashlight/pen/Initialize()
+	set_extension(src, /datum/extension/tool, list(TOOL_PEN = TOOL_QUALITY_DEFAULT), list(TOOL_PEN = list(TOOL_PROP_COLOR = "black", TOOL_PROP_COLOR_NAME = "black")))
+	. = ..()
 
 /obj/item/flashlight/maglight
 	name = "maglight"
@@ -168,11 +207,9 @@
 	item_state = "maglight"
 	force = 10
 	attack_verb = list ("smacked", "thwacked", "thunked")
-	material = MAT_ALUMINIUM
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
-	hitsound = "swing_hit"
-	flashlight_max_bright = 0.5
-	flashlight_outer_range = 5
+	material = /decl/material/solid/metal/aluminium
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
+	light_wedge = LIGHT_NARROW
 
 /******************************Lantern*******************************/
 /obj/item/flashlight/lantern
@@ -185,13 +222,15 @@
 	attack_verb = list ("bludgeoned", "bashed", "whack")
 	w_class = ITEM_SIZE_NORMAL
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
-	flashlight_outer_range = 5
+	slot_flags = SLOT_LOWER_BODY
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
+	flashlight_range = 2
+	light_wedge = LIGHT_OMNI
+	light_color = LIGHT_COLOR_FIRE
 
 /obj/item/flashlight/lantern/on_update_icon()
-	..()
+	. = ..()
 	if(on)
 		item_state = "lantern-on"
 	else
@@ -206,9 +245,7 @@
 	item_state = ""
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
 	w_class = ITEM_SIZE_TINY
-	flashlight_max_bright = 0.25
-	flashlight_inner_range = 0.1
-	flashlight_outer_range = 2
+	flashlight_range = 2
 
 
 // the desk lamps are a bit special
@@ -219,10 +256,8 @@
 	item_state = "lamp"
 	w_class = ITEM_SIZE_LARGE
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	flashlight_max_bright = 0.3
-	flashlight_inner_range = 2
-	flashlight_outer_range = 5
-
+	flashlight_range = 5
+	light_wedge = LIGHT_OMNI
 	on = 1
 
 // green-shaded desk lamp
@@ -231,6 +266,7 @@
 	icon_state = "lampgreen"
 	item_state = "lampgreen"
 	light_color = "#ffc58f"
+	flashlight_range = 4
 
 /obj/item/flashlight/lamp/verb/toggle_light()
 	set name = "Toggle light"
@@ -250,15 +286,16 @@
 	icon_state = "flare"
 	item_state = "flare"
 	action_button_name = null //just pull it manually, neckbeard.
-	var/fuel = 0
-	var/on_damage = 7
-	var/produce_heat = 1500
 	activation_sound = 'sound/effects/flare.ogg'
 	flashlight_flags = FLASHLIGHT_SINGLE_USE
 
-	flashlight_max_bright = 0.8
-	flashlight_inner_range = 0.1
-	flashlight_outer_range = 5
+	flashlight_range = 5
+	flashlight_power = 3
+	light_wedge = LIGHT_OMNI
+
+	var/fuel = 0
+	var/on_damage = 7
+	var/produce_heat = 1500
 
 /obj/item/flashlight/flare/Initialize()
 	. = ..()
@@ -315,7 +352,7 @@
 		damtype = initial(damtype)
 
 /obj/item/flashlight/flare/on_update_icon()
-	..()
+	. = ..()
 	if(!on && fuel <= 0)
 		icon_state = "[initial(icon_state)]-empty"
 
@@ -331,9 +368,8 @@
 	produce_heat = 0
 	activation_sound = 'sound/effects/glowstick.ogg'
 
-	flashlight_max_bright = 0.6
-	flashlight_inner_range = 0.1
-	flashlight_outer_range = 3
+	flashlight_range = 3
+	flashlight_power = 2
 
 /obj/item/flashlight/flare/glowstick/Initialize()
 	. = ..()
@@ -341,24 +377,18 @@
 	light_color = color
 
 /obj/item/flashlight/flare/glowstick/on_update_icon()
-	item_state = "glowstick"
-	overlays.Cut()
-	if(fuel <= 0)
-		icon_state = "glowstick-empty"
+	var/nofuel = fuel <= 0
+	if(nofuel)
 		on = FALSE
-	else if (on)
-		var/image/I = overlay_image(icon,"glowstick-on",color)
+	. = ..()
+	icon_state = nofuel? "glowstick-empty" : icon_state
+	item_state = initial(item_state)
+	if(on)
+		var/image/I = overlay_image(icon, "glowstick-on", color)
 		I.blend_mode = BLEND_ADD
-		overlays += I
+		add_overlay(I)
 		item_state = "glowstick-on"
-	else
-		icon_state = "glowstick"
-	var/mob/M = loc
-	if(istype(M))
-		if(M.l_hand == src)
-			M.update_inv_l_hand()
-		if(M.r_hand == src)
-			M.update_inv_r_hand()
+	update_held_icon()
 
 /obj/item/flashlight/flare/glowstick/activate(var/mob/user)
 	if(istype(user))
@@ -400,9 +430,8 @@
 	on = TRUE //Bio-luminesence has one setting, on.
 	flashlight_flags = FLASHLIGHT_ALWAYS_ON
 
-	flashlight_max_bright = 1
-	flashlight_inner_range = 0.1
-	flashlight_outer_range = 5
+	flashlight_range = 5
+	light_wedge = LIGHT_OMNI
 
 //hand portable floodlights for emergencies. Less bulky than the large ones. But also less light. Unused green variant in the sheet.
 
@@ -416,9 +445,9 @@
 	w_class = ITEM_SIZE_LARGE
 	obj_flags = OBJ_FLAG_CONDUCTIBLE | OBJ_FLAG_ROTATABLE
 
-	flashlight_max_bright = 1
-	flashlight_inner_range = 3
-	flashlight_outer_range = 7
+	flashlight_power = 1
+	flashlight_range = 7
+	light_wedge = LIGHT_WIDE
 
 /obj/item/flashlight/lamp/floodlamp/green
 	icon_state = "greenfloodlamp"
@@ -431,15 +460,13 @@
 	icon_state = "lavalamp"
 	on = 0
 	action_button_name = "Toggle lamp"
-	flashlight_outer_range = 3 //range of light when on
-	material = MAT_ALUMINIUM
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	flashlight_range = 3 //range of light when on
+	material = /decl/material/solid/metal/aluminium
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 
 /obj/item/flashlight/lamp/lava/on_update_icon()
-	overlays.Cut()
-	var/image/I = image(icon = icon, icon_state = "lavalamp-[on ? "on" : "off"]")
-	I.color = light_color
-	overlays += I
+	. = ..()
+	add_overlay(overlay_image(icon, "lavalamp-[on ? "on" : "off"]", light_color))
 
 /obj/item/flashlight/lamp/lava/red
 	desc = "A kitchy red decorative light."

@@ -5,9 +5,10 @@
 	icon = 'icons/obj/nanopaste.dmi'
 	icon_state = "tube"
 	origin_tech = "{'materials':4,'engineering':3}"
+	max_amount = 10
 	amount = 10
-	material = MAT_STEEL
-	matter = list(MAT_GLASS = MATTER_AMOUNT_REINFORCEMENT)
+	material = /decl/material/solid/metal/steel
+	matter = list(/decl/material/solid/glass = MATTER_AMOUNT_REINFORCEMENT)
 
 /obj/item/stack/nanopaste/attack(mob/living/M, mob/user)
 	if (!istype(M) || !istype(user))
@@ -27,7 +28,7 @@
 
 	if (istype(M,/mob/living/carbon/human))		//Repairing robolimbs
 		var/mob/living/carbon/human/H = M
-		var/obj/item/organ/external/S = H.get_organ(user.zone_sel.selecting)
+		var/obj/item/organ/external/S = GET_EXTERNAL_ORGAN(H, user.zone_sel.selecting)
 
 		if(!S)
 			to_chat(user, "<span class='warning'>\The [M] is missing that body part.</span>")

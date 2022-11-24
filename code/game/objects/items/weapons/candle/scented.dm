@@ -29,9 +29,9 @@
 		set_extension(src, style.scent_datum)
 
 /obj/item/flame/candle/scented/proc/get_scent()
-	var/scent_type = safepick(scent_types)
+	var/scent_type = SAFEPICK(scent_types)
 	if(scent_type)
-		style = decls_repository.get_decl(scent_type)
+		style = GET_DECL(scent_type)
 		color = style.color
 		scent = style.scent
 	if(scent)
@@ -43,4 +43,5 @@
 	desc = "An unbranded pack of scented candles, in a variety of scents."
 	max_storage_space = 5
 
-	startswith = list(/obj/item/flame/candle/scented = 5)
+/obj/item/storage/candle_box/scented/WillContain()
+	return list(/obj/item/flame/candle/scented = 5)

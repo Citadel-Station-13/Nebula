@@ -1,7 +1,7 @@
 // These are objects that destroy themselves and add themselves to the
 // decal list of the floor under them. Use them rather than distinct icon_states
 // when mapping in interesting floor designs.
-var/list/floor_decals = list()
+var/global/list/floor_decals = list()
 
 /obj/effect/floor_decal
 	name = "floor decal"
@@ -24,23 +24,22 @@ var/list/floor_decals = list()
 
 	if(supplied_dir) set_dir(supplied_dir)
 	var/turf/T = get_turf(src)
-	if(istype(T, /turf/simulated/floor) || istype(T, /turf/unsimulated/floor))
+	if(istype(T))
 		layer = T.is_plating() ? DECAL_PLATING_LAYER : DECAL_LAYER
-		var/cache_key = "[alpha]-[color]-[dir]-[icon_state]-[plane]-[layer]-[detail_overlay]-[detail_color]"
+		var/cache_key = "[alpha]-[color]-[dir]-[icon_state]-[plane]-[layer]-[detail_overlay]-[detail_color]-[pixel_x]-[pixel_y]"
 		if(!floor_decals[cache_key])
 			var/image/I = image(icon = src.icon, icon_state = src.icon_state, dir = src.dir)
 			I.layer = layer
 			I.appearance_flags = appearance_flags
 			I.color = src.color
 			I.alpha = src.alpha
+			I.pixel_x = src.pixel_x
+			I.pixel_y = src.pixel_y
 			if(detail_overlay)
-				var/image/B = overlay_image(icon, "[detail_overlay]", flags=RESET_COLOR)
-				B.color = detail_color
-				I.overlays |= B
+				I.overlays |= overlay_image(icon, "[detail_overlay]", color = detail_color, flags=RESET_COLOR)
 			floor_decals[cache_key] = I
-		if(!T.decals) T.decals = list()
-		T.decals |= floor_decals[cache_key]
-		T.overlays |= floor_decals[cache_key]
+		LAZYDISTINCTADD(T.decals, floor_decals[cache_key])
+		T.add_overlay(floor_decals[cache_key])
 	qdel(src)
 
 /obj/effect/floor_decal/reset
@@ -51,6 +50,19 @@ var/list/floor_decals = list()
 	var/turf/T = get_turf(src)
 	T.remove_decals()
 	T.update_icon()
+	atom_flags |= ATOM_FLAG_INITIALIZED
+	return INITIALIZE_HINT_QDEL
+
+/obj/effect/floor_decal/undo
+	name = "undo marker"
+
+/obj/effect/floor_decal/undo/Initialize()
+	SHOULD_CALL_PARENT(FALSE)
+	var/turf/T = get_turf(src)
+	if(length(T.decals))
+		T.decals.len--
+		UNSETEMPTY(T.decals)
+		T.update_icon()
 	atom_flags |= ATOM_FLAG_INITIALIZED
 	return INITIALIZE_HINT_QDEL
 
@@ -215,6 +227,41 @@ var/list/floor_decals = list()
 	icon_state = "bordercolorfull"
 
 /obj/effect/floor_decal/corner/paleblue/bordercee
+	icon_state = "bordercolorcee"
+
+
+/obj/effect/floor_decal/corner/navyblue
+	name = "navy blue corner"
+	color = COLOR_NAVY_BLUE
+
+/obj/effect/floor_decal/corner/navyblue/diagonal
+	icon_state = "corner_white_diagonal"
+
+/obj/effect/floor_decal/corner/navyblue/three_quarters
+	icon_state = "corner_white_three_quarters"
+
+/obj/effect/floor_decal/corner/navyblue/full
+	icon_state = "corner_white_full"
+
+/obj/effect/floor_decal/corner/navyblue/border
+	icon_state = "bordercolor"
+
+/obj/effect/floor_decal/corner/navyblue/half
+	icon_state = "bordercolorhalf"
+
+/obj/effect/floor_decal/corner/navyblue/mono
+	icon_state = "bordercolormonofull"
+
+/obj/effect/floor_decal/corner/navyblue/bordercorner
+	icon_state = "bordercolorcorner"
+
+/obj/effect/floor_decal/corner/navyblue/bordercorner2
+	icon_state = "bordercolorcorner2"
+
+/obj/effect/floor_decal/corner/navyblue/borderfull
+	icon_state = "bordercolorfull"
+
+/obj/effect/floor_decal/corner/navyblue/bordercee
 	icon_state = "bordercolorcee"
 
 /obj/effect/floor_decal/corner/green
@@ -1335,6 +1382,3 @@ var/list/floor_decals = list()
 
 /obj/effect/floor_decal/stoneborder/corner
 	icon_state = "stoneborder_c"
-
-/obj/effect/floor_decal/ivenmoth
-	icon_state = "ivenmoth"

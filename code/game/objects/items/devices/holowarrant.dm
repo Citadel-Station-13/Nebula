@@ -9,8 +9,15 @@
 	throw_speed = 4
 	throw_range = 10
 	obj_flags = OBJ_FLAG_CONDUCTIBLE
-	slot_flags = SLOT_BELT
+	slot_flags = SLOT_LOWER_BODY
 	req_access = list(list(access_heads, access_security))
+	material = /decl/material/solid/plastic
+	matter = list(
+		/decl/material/solid/metal/copper    = MATTER_AMOUNT_REINFORCEMENT, 
+		/decl/material/solid/silicon         = MATTER_AMOUNT_REINFORCEMENT, 
+		/decl/material/solid/metal/aluminium = MATTER_AMOUNT_REINFORCEMENT,
+		/decl/material/solid/glass           = MATTER_AMOUNT_TRACE,
+	)
 	var/datum/computer_file/report/warrant/active
 
 /obj/item/holowarrant/Initialize(ml, material_key)
@@ -28,7 +35,7 @@
 		to_chat(user, "<span class='notice'>You have to be closer if you want to read it.</span>")
 
 //hit yourself with it
-/obj/item/holowarrant/attack_self(mob/living/user)
+/obj/item/holowarrant/attack_self(mob/user)
 	ui_interact(user)
 
 /obj/item/holowarrant/ui_interact(mob/user, ui_key = "main",var/datum/nanoui/ui = null)
@@ -52,7 +59,7 @@
 	
 	if(href_list["select"])
 		var/list/active_warrants = list()
-		for(var/datum/computer_file/report/warrant/W in GLOB.all_warrants)
+		for(var/datum/computer_file/report/warrant/W in global.all_warrants)
 			if(!W.archived)
 				active_warrants["[capitalize(W.get_category())] - [W.get_name()]"] = W
 		if(!length(active_warrants))
@@ -63,7 +70,7 @@
 		if(!selected_name)
 			return TOPIC_HANDLED
 		var/datum/computer_file/report/warrant/selected = active_warrants[selected_name]
-		if(selected.archived || !(selected in GLOB.all_warrants))
+		if(selected.archived || !(selected in global.all_warrants))
 			to_chat(user,SPAN_WARNING("Invalid selection, try again."))
 			return TOPIC_HANDLED
 		active = selected
@@ -98,6 +105,7 @@
 	M.examinate(src)
 
 /obj/item/holowarrant/on_update_icon()
+	. = ..()
 	if(active)
 		icon_state = "holowarrant_filled"
 	else

@@ -80,14 +80,12 @@
 /obj/machinery/suspension_gen/proc/activate()
 	var/turf/T = get_turf(get_step(src,dir))
 	suspension_field = new(T)
-	visible_message(SPAN_NOTICE("\icon[src] [src] activates with a low hum."))
-	update_icon()
+	visible_message(SPAN_NOTICE("[html_icon(src)] [src] activates with a low hum."))
 	update_use_power(POWER_USE_ACTIVE)
 
 /obj/machinery/suspension_gen/proc/deactivate()
 	visible_message(SPAN_NOTICE("[src] deactivates with a gentle shudder."))
 	QDEL_NULL(suspension_field)
-	update_icon()
 	update_use_power(POWER_USE_IDLE)
 
 /obj/machinery/suspension_gen/on_update_icon()
@@ -133,7 +131,7 @@
 	victim_number = 0
 	var/turf/T = get_turf(src)
 	for(var/mob/living/M in T)
-		M.weakened = max(M.weakened, 3)
+		SET_STATUS_MAX(M, STAT_WEAK, 3)
 		victim_number++
 		if(prob(5))
 			to_chat(M, SPAN_WARNING("[pick("You feel tingly","You feel like floating","It is hard to speak","You can barely move")]."))

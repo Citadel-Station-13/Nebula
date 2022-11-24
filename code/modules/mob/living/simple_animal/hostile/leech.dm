@@ -2,9 +2,6 @@
 	name = "megaleech"
 	desc = "A green leech the size of a common snake."
 	icon = 'icons/mob/simple_animal/megaleech.dmi'
-	icon_state = "leech"
-	icon_living = "leech"
-	icon_dead = "leech_dead"
 	health = 15
 	maxHealth = 15
 	harm_intent_damage = 5
@@ -39,30 +36,35 @@
 		H.remove_blood_simple(suck_potency)
 		if(health < maxHealth)
 			health += suck_potency / 1.5
-		belly += Clamp(suck_potency, 0, 100)
+		belly += clamp(suck_potency, 0, 100)
 
 /obj/structure/leech_spawner
 	name = "reeds"
 	desc = "Some reeds with a few funnel-like structures growing alongside."
-	icon = 'icons/mob/simple_animal/megaleech.dmi'
+	icon = 'icons/obj/structures/reeds.dmi'
 	icon_state = "reeds"
 	anchored = TRUE
-	var/number_to_spawn = 12
-	var/spent = FALSE
+	var/datum/proximity_trigger/proxy_listener
 
 /obj/structure/leech_spawner/Initialize()
+	..()
+	. = INITIALIZE_HINT_LATELOAD
+
+/obj/structure/leech_spawner/LateInitialize()
+	..()
+	proxy_listener = new /datum/proximity_trigger/square(src, .proc/burst, .proc/burst, 5)
+	proxy_listener.register_turfs()
+
+/obj/structure/leech_spawner/Destroy()
+	QDEL_NULL(proxy_listener)
 	. = ..()
-	START_PROCESSING(SSobj, src)
 
-/obj/structure/leech_spawner/Process()
-	if(!spent && (locate(/mob/living/carbon/human) in orange(5, src)))
-		burst()
-
-/obj/structure/leech_spawner/proc/burst()
-	for(var/i in 1 to number_to_spawn)
+/obj/structure/leech_spawner/proc/burst(var/mob/living/carbon/victim)
+	if(!proxy_listener || !istype(victim) || !(victim in view(5, src)))
+		return
+	for(var/i in 1 to 12)
 		new /mob/living/simple_animal/hostile/leech(get_turf(src))
 	visible_message(SPAN_MFAUNA("A swarm of leeches burst out from \the [src]!"))
 	icon_state = "reeds_empty"
 	desc = "Some alien reeds."
-	spent = TRUE
-	STOP_PROCESSING(SSobj, src)
+	QDEL_NULL(proxy_listener)

@@ -2,31 +2,24 @@
 	name = "drake"
 	desc = "A large reptilian creature, with vicious looking claws."
 	icon = 'icons/mob/simple_animal/drake.dmi'
-	icon_state = "drake"
-	icon_living = "drake"
-	icon_dead = "drake_dead"
 	mob_size = MOB_SIZE_LARGE
 	speak_emote = list("hisses")
 	emote_hear = list("clicks")
 	emote_see = list("flaps its wings idly")
-	response_help  = "pats"
-	response_disarm = "nudges"
-	response_harm   = "strikes"
 	break_stuff_probability = 15
 	faction = "drakes"
 	pry_time = 4 SECONDS
-	skull_type = /obj/item/melee/whip/tail
+	skull_type = /obj/item/whip/tail
 	bleed_colour = COLOR_VIOLET
-	melee_damage_flags = DAM_EDGE
 
 	health = 200
 	maxHealth = 200
 	natural_weapon = /obj/item/natural_weapon/claws/drake
-	var/obj/item/melee/whip/tail/tailwhip
+	var/obj/item/whip/tail/tailwhip
 	natural_armor = list(
-		melee = ARMOR_MELEE_RESISTANT, 
-		energy = ARMOR_ENERGY_SHIELDED, 
-		laser = ARMOR_LASER_HEAVY, 
+		melee = ARMOR_MELEE_RESISTANT,
+		energy = ARMOR_ENERGY_SHIELDED,
+		laser = ARMOR_LASER_HEAVY,
 		bomb = ARMOR_BOMB_SHIELDED
 	)
 	ability_cooldown = 80 SECONDS
@@ -58,7 +51,7 @@
 			tailwhip = new(src)
 		return tailwhip
 	. = ..()
-	
+
 /mob/living/simple_animal/hostile/drake/proc/empower()
 	visible_message(SPAN_MFAUNA("\The [src] thrashes its tail about!"))
 	empowered_attack = TRUE

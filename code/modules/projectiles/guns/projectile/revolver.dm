@@ -2,8 +2,7 @@
 	name = "revolver"
 	desc = "The al-Maliki & Mosley Magnum Double Action is a choice revolver for when you absolutely, positively need to put a hole in the other guy."
 	icon = 'icons/obj/guns/revolvers.dmi'
-	on_mob_icon = 'icons/obj/guns/revolvers.dmi'
-	icon_state = "world"
+	icon_state = ICON_STATE_WORLD
 	safety_icon = "safety"
 	caliber = CALIBER_PISTOL_MAGNUM
 	origin_tech = "{'combat':2,'materials':2}"
@@ -18,10 +17,6 @@
 	accuracy_power = 8
 	one_hand_penalty = 2
 	bulk = 3
-
-/obj/item/gun/projectile/revolver/AltClick()
-	if(CanPhysicallyInteract(usr))
-		spin_cylinder()
 
 /obj/item/gun/projectile/revolver/verb/spin_cylinder()
 	set name = "Spin cylinder"
@@ -68,3 +63,15 @@
 	cap = FALSE
 	update_icon()
 	return 1
+
+/obj/item/gun/projectile/revolver/get_alt_interactions(var/mob/user)
+	. = ..()
+	LAZYADD(., /decl/interaction_handler/revolver_spin_cylinder)
+
+/decl/interaction_handler/revolver_spin_cylinder
+	name = "Spin Cylinder"
+	expected_target_type = /obj/item/gun/projectile/revolver
+
+/decl/interaction_handler/revolver_spin_cylinder/invoked(var/atom/target, var/mob/user)
+	var/obj/item/gun/projectile/revolver/R = target
+	R.spin_cylinder()

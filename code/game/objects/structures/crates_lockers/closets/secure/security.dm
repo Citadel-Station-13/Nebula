@@ -10,13 +10,13 @@
 		/obj/item/clothing/suit/captunic,
 		/obj/item/clothing/suit/captunic/capjacket,
 		/obj/item/clothing/head/caphat/cap,
-		/obj/item/clothing/under/rank/captain,
+		/obj/item/clothing/under/captain,
 		/obj/item/clothing/head/helmet,
 		/obj/item/clothing/shoes/color/brown,
 		/obj/item/radio/headset/heads/captain,
 		/obj/item/clothing/gloves/captain,
 		/obj/item/gun/energy/gun,
-		/obj/item/melee/telebaton,
+		/obj/item/telebaton,
 		/obj/item/clothing/under/dress/dress_cap,
 		/obj/item/clothing/head/caphat/formal,
 		/obj/item/clothing/under/captainformal,
@@ -43,18 +43,18 @@
 
 /obj/structure/closet/secure_closet/hop2/WillContain()
 	return list(
-		/obj/item/clothing/under/rank/head_of_personnel,
+		/obj/item/clothing/under/head_of_personnel,
 		/obj/item/clothing/under/dress/dress_hop,
 		/obj/item/clothing/under/dress/dress_hr,
 		/obj/item/clothing/under/lawyer/female,
-		/obj/item/clothing/under/lawyer/black,
+		/obj/item/clothing/under/lawyer,
 		/obj/item/clothing/under/lawyer/red,
 		/obj/item/clothing/under/lawyer/oldman,
 		/obj/item/clothing/shoes/color/brown,
 		/obj/item/clothing/shoes/color/black,
 		/obj/item/clothing/shoes/craftable,
 		/obj/item/clothing/shoes/color/white,
-		/obj/item/clothing/under/rank/head_of_personnel_whimsy,
+		/obj/item/clothing/under/head_of_personnel_whimsy,
 		/obj/item/clothing/head/caphat/hop
 	)
 
@@ -68,21 +68,20 @@
 		new/datum/atom_creator/weighted(list(/obj/item/storage/backpack/security, /obj/item/storage/backpack/satchel/sec)),
 		/obj/item/clothing/head/HoS,
 		/obj/item/clothing/suit/armor/vest/heavy/hos,
-		/obj/item/clothing/under/rank/head_of_security/jensen,
+		/obj/item/clothing/under/head_of_security/jensen,
 		/obj/item/clothing/suit/armor/hos/jensen,
 		/obj/item/clothing/suit/armor/hos,
-		/obj/item/clothing/head/HoS/dermal,
 		/obj/item/radio/headset/heads/hos,
 		/obj/item/clothing/glasses/sunglasses/sechud,
-		/obj/item/taperoll/police,
+		/obj/item/stack/tape_roll/barricade_tape/police,
 		/obj/item/shield/riot,
 		/obj/item/storage/box/flashbangs,
 		/obj/item/storage/belt/holster/security,
 		/obj/item/flash,
-		/obj/item/melee/baton/loaded,
+		/obj/item/baton/loaded,
 		/obj/item/gun/energy/gun,
 		/obj/item/clothing/accessory/storage/holster/waist,
-		/obj/item/melee/telebaton,
+		/obj/item/telebaton,
 		/obj/item/holowarrant
 	)
 
@@ -96,17 +95,17 @@
 		new/datum/atom_creator/weighted(list(/obj/item/storage/backpack/security, /obj/item/storage/backpack/satchel/sec)),
 		new/datum/atom_creator/simple(/obj/item/storage/backpack/dufflebag/sec, 50),
 		/obj/item/clothing/suit/armor/vest/heavy/warden,
-		/obj/item/clothing/under/rank/warden,
+		/obj/item/clothing/under/warden,
 		/obj/item/clothing/suit/armor/warden,
 		/obj/item/clothing/head/warden,
 		/obj/item/radio/headset/headset_sec,
 		/obj/item/clothing/glasses/sunglasses/sechud,
-		/obj/item/taperoll/police,
+		/obj/item/stack/tape_roll/barricade_tape/police,
 		/obj/item/storage/box/flashbangs,
 		/obj/item/storage/box/teargas,
 		/obj/item/storage/belt/holster/security,
 		/obj/item/chems/spray/pepper,
-		/obj/item/melee/baton/loaded,
+		/obj/item/baton/loaded,
 		/obj/item/gun/energy/gun,
 		/obj/item/storage/box/holobadge,
 		/obj/item/holowarrant
@@ -127,11 +126,11 @@
 		/obj/item/flash,
 		/obj/item/chems/spray/pepper,
 		/obj/item/grenade/chem_grenade/teargas,
-		/obj/item/melee/baton/loaded,
+		/obj/item/baton/loaded,
 		/obj/item/clothing/glasses/sunglasses/sechud,
-		/obj/item/taperoll/police,
+		/obj/item/stack/tape_roll/barricade_tape/police,
 		/obj/item/hailer,
-		/obj/item/clothing/accessory/storage/black_vest,
+		/obj/item/clothing/accessory/storage/vest/black,
 		/obj/item/gun/energy/taser,
 		/obj/item/holowarrant,
 	)
@@ -178,10 +177,10 @@
 		/obj/item/storage/box/evidence,
 		/obj/item/radio/headset/headset_sec,
 		/obj/item/clothing/suit/armor/pcarrier/detective,
-		/obj/item/taperoll/police,
+		/obj/item/stack/tape_roll/barricade_tape/police,
 		/obj/item/gun/projectile/pistol,
 		/obj/item/clothing/accessory/storage/holster/armpit,
-		/obj/item/chems/food/drinks/flask/detflask,
+		/obj/item/chems/drinks/flask/detflask,
 		/obj/item/storage/briefcase/crimekit,
 		/obj/item/holowarrant
 	)
@@ -198,6 +197,10 @@
 	req_access = list(access_brig)
 	anchored = 1
 	var/id = null
+
+/obj/structure/closet/secure_closet/brig/modify_mapped_vars(map_hash)
+	..()
+	ADJUST_TAG_VAR(id, map_hash)
 
 /obj/structure/closet/secure_closet/brig/WillContain()
 	return list(
@@ -226,6 +229,10 @@
 
 	//too small to put a man in
 	large = 0
+
+/obj/structure/closet/secure_closet/wall/Initialize()
+	. = ..()
+	tool_interaction_flags &= ~TOOL_INTERACTION_ANCHOR
 
 /obj/structure/closet/secure_closet/lawyer
 	name = "internal affairs secure closet"

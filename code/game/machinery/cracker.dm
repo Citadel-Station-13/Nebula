@@ -13,7 +13,6 @@
 
 	var/tmp/fluid_consumption_per_tick = 100
 	var/tmp/gas_generated_per_tick = 1
-	var/tmp/max_reagents = 100
 
 /obj/machinery/portable_atmospherics/cracker/on_update_icon()
 	icon_state = (use_power == POWER_USE_ACTIVE) ? "cracker_on" : "cracker"
@@ -24,20 +23,17 @@
 	else
 		update_use_power(POWER_USE_IDLE)
 	user.visible_message(SPAN_NOTICE("\The [user] [use_power == POWER_USE_ACTIVE ? "engages" : "disengages"] \the [src]."))
-	update_icon()
 	return TRUE
 
 /obj/machinery/portable_atmospherics/cracker/power_change()
 	. = ..()
 	if(. && (stat & NOPOWER))
 		update_use_power(POWER_USE_IDLE)
-		update_icon()
 
 /obj/machinery/portable_atmospherics/cracker/set_broken(new_state)
 	. = ..()
 	if(. && (stat & BROKEN))
 		update_use_power(POWER_USE_IDLE)
-		update_icon()
 
 /obj/machinery/portable_atmospherics/cracker/Process()
 	..()
@@ -58,7 +54,7 @@
 			// Gas production.
 			var/datum/gas_mixture/produced = new
 			var/gen_amt = min(1, (gas_generated_per_tick * (consuming/fluid_consumption_per_tick)))
-			produced.adjust_gas(MAT_OXYGEN,  gen_amt)
-			produced.adjust_gas(MAT_HYDROGEN, gen_amt * 2)
+			produced.adjust_gas(/decl/material/gas/oxygen,  gen_amt)
+			produced.adjust_gas(/decl/material/gas/hydrogen, gen_amt * 2)
 			produced.temperature = T20C //todo water temperature
 			air_contents.merge(produced)
